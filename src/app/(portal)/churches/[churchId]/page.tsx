@@ -1,9 +1,13 @@
-import { notFound } from "next/navigation";
+"use client";
+
+import Link from "next/link";
+import { useParams } from "next/navigation";
 import { Users, HandCoins, Clock, CalendarDays } from "lucide-react";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { MemberTable } from "@/components/members/member-table";
+import { useZone } from "@/lib/data/zone-context";
 import {
   getChurch,
   getChurchStats,
@@ -11,18 +15,27 @@ import {
   getMembersByChurch,
 } from "@/lib/data/analytics";
 
-export default async function ChurchPage({
-  params,
-}: {
-  params: Promise<{ churchId: string }>;
-}) {
-  const { churchId } = await params;
-  const church = getChurch(churchId);
-  if (!church) notFound();
+export default function ChurchPage() {
+  const { churchId } = useParams<{ churchId: string }>();
+  const { data: ds } = useZone();
+  const church = getChurch(ds, churchId);
 
-  const country = getCountry(church.countryId);
-  const stats = getChurchStats(churchId);
-  const members = getMembersByChurch(churchId);
+  if (!church) {
+    return (
+      <div className="space-y-4">
+        <Breadcrumb items={[{ label: "Zone Dashboard", href: "/dashboard" }, { label: "Not found" }]} />
+        <p className="text-sm text-muted-foreground">This church doesn&apos;t exist.</p>
+        <Link href="/countries" className="text-sm text-primary hover:underline">
+          Back to countries
+        </Link>
+      </div>
+    );
+  }
+
+  const country = getCountry(ds, church.countryId);
+  const stats = getChurchStats(ds, church.id);
+  const members = getMembersByChurch(ds, church.id);
+  const subline = [church.city, country?.name, church.pastor].filter(Boolean).join(" · ");
 
   return (
     <div className="space-y-6">
@@ -36,16 +49,14 @@ export default async function ChurchPage({
 
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{church.name}</h1>
-        <p className="text-sm text-muted-foreground">
-          {church.city}, {country?.name} &middot; {church.pastor}
-        </p>
+        {subline && <p className="text-sm text-muted-foreground">{subline}</p>}
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard label="Members" value={stats.memberCount.toLocaleString()} icon={Users} />
         <StatCard label="Total giving" value={`$${stats.totalGiving.toLocaleString()}`} icon={HandCoins} />
         <StatCard label="Avg. tenure" value={`${stats.avgTenure.toFixed(1)} yrs`} icon={Clock} />
-        <StatCard label="Founded" value={String(church.foundedYear)} icon={CalendarDays} />
+        <StatCard label="Founded" value={church.foundedYear ? String(church.foundedYear) : "—"} icon={CalendarDays} />
       </div>
 
       <Card>
@@ -55,7 +66,7 @@ export default async function ChurchPage({
         </CardHeader>
         <CardContent>
           <MemberTable
-            initialMembers={members}
+            members={members}
             churchId={church.id}
             countryId={church.countryId}
             churchName={church.name}

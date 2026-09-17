@@ -29,12 +29,10 @@ const AVATAR_COLORS = ["#7c3aed", "#a21caf", "#9333ea", "#be185d", "#6d28d9", "#
 export function AddMemberDialog({
   churchId,
   countryId,
-  nextId,
   onAdd,
 }: {
   churchId: string;
   countryId: string;
-  nextId: string;
   onAdd: (member: Member) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -55,8 +53,9 @@ export function AddMemberDialog({
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!firstName || !lastName) return;
+    const id = `mem-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
     const member: Member = {
-      id: nextId,
+      id,
       firstName,
       lastName,
       email: email || `${firstName.toLowerCase()}.${lastName.toLowerCase()}@havenmail.org`,

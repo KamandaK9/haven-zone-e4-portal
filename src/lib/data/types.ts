@@ -8,9 +8,9 @@ export type Church = {
   id: string;
   name: string;
   countryId: string;
-  city: string;
-  foundedYear: number;
-  pastor: string;
+  city?: string;
+  foundedYear?: number;
+  pastor?: string;
 };
 
 export type LessonStatus = "not_started" | "in_progress" | "completed";
@@ -67,4 +67,29 @@ export type CalendarEvent = {
   type: CalendarEventType;
   churchId?: string;
   countryId?: string;
+};
+
+export type Assistant = {
+  id: string;
+  name: string;
+  email: string;
+  role: "Admin";
+};
+
+export type SuperAdmin = {
+  name: string;
+  email: string;
+  phone: string;
+};
+
+export type ZoneData = {
+  zoneName: string;
+  superAdmin: SuperAdmin | null;
+  countries: Country[];
+  churches: Church[];
+  members: Member[];
+  assistants: Assistant[];
+  activity: ActivityItem[];
+  events: CalendarEvent[];
+  setupComplete: boolean;
 };

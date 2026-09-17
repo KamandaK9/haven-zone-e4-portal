@@ -24,22 +24,23 @@ import {
 import { AddMemberDialog } from "./add-member-dialog";
 import { ImportMembersDialog } from "./import-members-dialog";
 import { memberFullName, memberTenureYears, memberTotalGiving } from "@/lib/data/analytics";
+import { useZone } from "@/lib/data/zone-context";
 import type { Member, MemberRole } from "@/lib/data/types";
 
 const ROLES: (MemberRole | "All roles")[] = ["All roles", "Member", "Worker", "Cell Leader", "Pastor"];
 
 export function MemberTable({
-  initialMembers,
+  members,
   churchId,
   countryId,
   churchName,
 }: {
-  initialMembers: Member[];
+  members: Member[];
   churchId: string;
   countryId: string;
   churchName: string;
 }) {
-  const [members, setMembers] = useState(initialMembers);
+  const { addMember } = useZone();
   const [query, setQuery] = useState("");
   const [role, setRole] = useState<(typeof ROLES)[number]>("All roles");
 
@@ -53,8 +54,6 @@ export function MemberTable({
       return matchesQuery && matchesRole;
     });
   }, [members, query, role]);
-
-  const nextId = `mem-new-${members.length + 1}`;
 
   return (
     <div className="space-y-4">
@@ -87,8 +86,7 @@ export function MemberTable({
           <AddMemberDialog
             churchId={churchId}
             countryId={countryId}
-            nextId={nextId}
-            onAdd={(m) => setMembers((prev) => [m, ...prev])}
+            onAdd={addMember}
           />
         </div>
       </div>

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, MapPin, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getChurch } from "@/lib/data/analytics";
+import { getChurch, type Dataset } from "@/lib/data/analytics";
 import type { CalendarEvent, CalendarEventType } from "@/lib/data/types";
 import { cn } from "@/lib/utils";
 
@@ -16,7 +16,17 @@ const TYPE_STYLES: Record<CalendarEventType, { dot: string; badge: string; label
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-export function MonthCalendar({ events, year, month }: { events: CalendarEvent[]; year: number; month: number }) {
+export function MonthCalendar({
+  events,
+  year,
+  month,
+  ds,
+}: {
+  events: CalendarEvent[];
+  year: number;
+  month: number;
+  ds: Dataset;
+}) {
   const [selected, setSelected] = useState<string | null>(null);
 
   const firstOfMonth = new Date(year, month, 1);
@@ -106,7 +116,7 @@ export function MonthCalendar({ events, year, month }: { events: CalendarEvent[]
           )}
           <div className="space-y-3">
             {selectedEvents.map((e) => {
-              const church = e.churchId ? getChurch(e.churchId) : undefined;
+              const church = e.churchId ? getChurch(ds, e.churchId) : undefined;
               return (
                 <div key={e.id} className="rounded-lg border p-3 space-y-1.5">
                   <div className="flex items-start justify-between gap-2">

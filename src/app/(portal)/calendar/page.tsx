@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { CalendarNav, MonthCalendar } from "@/components/calendar/month-calendar";
-import { EVENTS } from "@/lib/data/seed";
+import { useZone } from "@/lib/data/zone-context";
 
 const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
@@ -10,7 +10,9 @@ const MONTH_NAMES = [
 ];
 
 export default function CalendarPage() {
-  const [cursor, setCursor] = useState({ year: 2026, month: 8 }); // September 2026
+  const { data: ds } = useZone();
+  const now = new Date();
+  const [cursor, setCursor] = useState({ year: now.getFullYear(), month: now.getMonth() });
 
   function shiftMonth(delta: number) {
     setCursor((prev) => {
@@ -41,7 +43,7 @@ export default function CalendarPage() {
         />
       </div>
 
-      <MonthCalendar events={EVENTS} year={cursor.year} month={cursor.month} />
+      <MonthCalendar events={ds.events} year={cursor.year} month={cursor.month} ds={ds} />
     </div>
   );
 }

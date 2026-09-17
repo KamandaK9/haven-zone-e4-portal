@@ -1,5 +1,7 @@
-import { notFound } from "next/navigation";
+"use client";
+
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { Mail, Phone, Calendar, HandCoins, Clock, CheckCircle2, CircleDashed, CircleDot } from "lucide-react";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { StatCard } from "@/components/dashboard/stat-card";
@@ -7,6 +9,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { MemberGivingChart } from "@/components/charts/member-giving-chart";
+import { useZone } from "@/lib/data/zone-context";
 import {
   getChurch,
   getCountry,
@@ -24,17 +27,25 @@ const STATUS_META: Record<LessonStatus, { label: string; icon: React.ComponentTy
   not_started: { label: "Not started", icon: CircleDashed, className: "text-muted-foreground" },
 };
 
-export default async function MemberPage({
-  params,
-}: {
-  params: Promise<{ memberId: string }>;
-}) {
-  const { memberId } = await params;
-  const member = getMember(memberId);
-  if (!member) notFound();
+export default function MemberPage() {
+  const { memberId } = useParams<{ memberId: string }>();
+  const { data: ds } = useZone();
+  const member = getMember(ds, memberId);
 
-  const church = getChurch(member.churchId);
-  const country = getCountry(member.countryId);
+  if (!member) {
+    return (
+      <div className="space-y-4">
+        <Breadcrumb items={[{ label: "Zone Dashboard", href: "/dashboard" }, { label: "Not found" }]} />
+        <p className="text-sm text-muted-foreground">This member doesn&apos;t exist.</p>
+        <Link href="/dashboard" className="text-sm text-primary hover:underline">
+          Back to dashboard
+        </Link>
+      </div>
+    );
+  }
+
+  const church = getChurch(ds, member.churchId);
+  const country = getCountry(ds, member.countryId);
   const totalGiving = memberTotalGiving(member);
   const tenure = memberTenureYears(member);
   const completed = member.trainings.filter((t) => t.status === "completed").length;

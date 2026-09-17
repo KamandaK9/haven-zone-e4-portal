@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { TrendingUp, Minus, TrendingDown } from "lucide-react";
-import { getChurchHealth, getCountry } from "@/lib/data/analytics";
-import { cn } from "@/lib/utils";
+import { getChurchHealth, getCountry, type Dataset } from "@/lib/data/analytics";
+import { cn, pluralize } from "@/lib/utils";
 
 type HealthRow = ReturnType<typeof getChurchHealth>[number];
 
@@ -11,11 +11,19 @@ const STATUS_STYLES: Record<HealthRow["status"], { icon: React.ComponentType<{ c
   "Needs Attention": { icon: TrendingDown, className: "bg-red-50 text-red-700 border-red-200" },
 };
 
-export function ChurchHealthList({ rows }: { rows: HealthRow[] }) {
+export function ChurchHealthList({ rows, ds }: { rows: HealthRow[]; ds: Dataset }) {
+  if (rows.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground py-8 text-center border rounded-lg border-dashed">
+        No churches yet. Add some from Zone Setup.
+      </p>
+    );
+  }
+
   return (
     <div className="divide-y">
       {rows.map(({ church, memberCount, status }) => {
-        const country = getCountry(church.countryId);
+        const country = getCountry(ds, church.countryId);
         const { icon: Icon, className } = STATUS_STYLES[status];
         return (
           <Link
@@ -26,7 +34,7 @@ export function ChurchHealthList({ rows }: { rows: HealthRow[] }) {
             <div className="min-w-0">
               <p className="text-sm font-medium truncate">{church.name}</p>
               <p className="text-xs text-muted-foreground">
-                {country?.flag} {country?.name} &middot; {memberCount} members
+                {country?.flag} {country?.name} &middot; {pluralize(memberCount, "member")}
               </p>
             </div>
             <span

@@ -1,14 +1,23 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
-import { getChurchesByCountry, getCountryStats } from "@/lib/data/analytics";
+import { getChurchesByCountry, getCountryStats, type Dataset } from "@/lib/data/analytics";
 import type { Country } from "@/lib/data/types";
+import { pluralize } from "@/lib/utils";
 
-export function CountryGrid({ countries }: { countries: Country[] }) {
+export function CountryGrid({ countries, ds }: { countries: Country[]; ds: Dataset }) {
+  if (countries.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground py-8 text-center border rounded-lg border-dashed">
+        No countries yet. Add some from Zone Setup.
+      </p>
+    );
+  }
+
   return (
     <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
       {countries.map((country) => {
-        const stats = getCountryStats(country.id);
-        const churches = getChurchesByCountry(country.id);
+        const stats = getCountryStats(ds, country.id);
+        const churches = getChurchesByCountry(ds, country.id);
         return (
           <Link
             key={country.id}
@@ -22,7 +31,7 @@ export function CountryGrid({ countries }: { countries: Country[] }) {
                   {country.name}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {stats.memberCount} members &middot; {churches.length} churches
+                  {pluralize(stats.memberCount, "member")} &middot; {pluralize(churches.length, "church", "churches")}
                 </p>
               </div>
             </div>

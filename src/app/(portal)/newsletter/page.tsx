@@ -14,20 +14,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { COUNTRIES, CHURCHES } from "@/lib/data/seed";
 import { getMembersByChurch, getMembersByCountry } from "@/lib/data/analytics";
-import { MEMBERS } from "@/lib/data/seed";
+import { useZone } from "@/lib/data/zone-context";
 
 export default function NewsletterPage() {
+  const { data: ds } = useZone();
   const [group, setGroup] = useState("zone");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [sent, setSent] = useState(false);
 
   const recipientCount = (() => {
-    if (group === "zone") return MEMBERS.length;
-    if (group.startsWith("country:")) return getMembersByCountry(group.split(":")[1]).length;
-    if (group.startsWith("church:")) return getMembersByChurch(group.split(":")[1]).length;
+    if (group === "zone") return ds.members.length;
+    if (group.startsWith("country:")) return getMembersByCountry(ds, group.split(":")[1]).length;
+    if (group.startsWith("church:")) return getMembersByChurch(ds, group.split(":")[1]).length;
     return 0;
   })();
 
@@ -61,13 +61,13 @@ export default function NewsletterPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="zone">Entire Zone E4</SelectItem>
-                    {COUNTRIES.map((c) => (
+                    <SelectItem value="zone">Entire {ds.zoneName}</SelectItem>
+                    {ds.countries.map((c) => (
                       <SelectItem key={c.id} value={`country:${c.id}`}>
                         {c.flag} {c.name} — all churches
                       </SelectItem>
                     ))}
-                    {CHURCHES.map((c) => (
+                    {ds.churches.map((c) => (
                       <SelectItem key={c.id} value={`church:${c.id}`}>
                         {c.name}
                       </SelectItem>
@@ -126,7 +126,7 @@ export default function NewsletterPage() {
           </CardHeader>
           <CardContent>
             <div className="rounded-lg border bg-muted/30 p-4 space-y-2 min-h-[280px]">
-              <p className="text-xs text-muted-foreground">From: Haven Zone E4 Office</p>
+              <p className="text-xs text-muted-foreground">From: {ds.zoneName} Office</p>
               <p className="text-sm font-semibold">{subject || "Your subject line will appear here"}</p>
               <div className="pt-2 text-sm whitespace-pre-wrap text-muted-foreground">
                 {body || "Your message preview will appear here as you type."}

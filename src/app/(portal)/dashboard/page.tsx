@@ -1,3 +1,5 @@
+"use client";
+
 import { Users, Church, Globe2, TrendingUp } from "lucide-react";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { CountryGrid } from "@/components/dashboard/country-grid";
@@ -10,7 +12,7 @@ import { TenureChart } from "@/components/charts/tenure-chart";
 import { GrowthChart } from "@/components/charts/growth-chart";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { COUNTRIES } from "@/lib/data/seed";
+import { useZone } from "@/lib/data/zone-context";
 import {
   getChurchHealth,
   getGivingByChurch,
@@ -27,16 +29,17 @@ import { Download, CalendarClock } from "lucide-react";
 import Link from "next/link";
 
 export default function DashboardPage() {
-  const stats = getZoneStats();
-  const givingTrend = getGivingTrendZone();
-  const givingByCountry = getGivingByCountry();
-  const givingByChurch = getGivingByChurch().slice(0, 8);
-  const tenure = getTenureDistribution();
-  const growth = getMembershipGrowth();
-  const health = getChurchHealth();
-  const topGivers = getTopGivers(6);
-  const activity = getRecentActivity(7);
-  const events = getUpcomingEvents(4);
+  const { data: ds } = useZone();
+  const stats = getZoneStats(ds);
+  const givingTrend = getGivingTrendZone(ds);
+  const givingByCountry = getGivingByCountry(ds);
+  const givingByChurch = getGivingByChurch(ds).slice(0, 8);
+  const tenure = getTenureDistribution(ds.members);
+  const growth = getMembershipGrowth(ds);
+  const health = getChurchHealth(ds);
+  const topGivers = getTopGivers(ds, 6);
+  const activity = getRecentActivity(ds, 7);
+  const events = getUpcomingEvents(ds, 4);
 
   return (
     <div className="space-y-6">
@@ -44,7 +47,7 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Zone Dashboard</h1>
           <p className="text-sm text-muted-foreground">
-            An overview of membership, giving, and growth across Haven Zone E4.
+            An overview of membership, giving, and growth across {ds.zoneName}.
           </p>
         </div>
         <Button variant="outline" size="sm" className="gap-2">
@@ -77,18 +80,18 @@ export default function DashboardPage() {
             <CardDescription>Zone-wide leaderboard</CardDescription>
           </CardHeader>
           <CardContent>
-            <TopGivers givers={topGivers} />
+            <TopGivers givers={topGivers} ds={ds} />
           </CardContent>
         </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Countries in Zone E4</CardTitle>
+          <CardTitle>Countries in {ds.zoneName}</CardTitle>
           <CardDescription>Click a country to drill into its churches</CardDescription>
         </CardHeader>
         <CardContent>
-          <CountryGrid countries={COUNTRIES} />
+          <CountryGrid countries={ds.countries} ds={ds} />
         </CardContent>
       </Card>
 
@@ -141,7 +144,7 @@ export default function DashboardPage() {
             <CardDescription>Which churches are growing, flat, or need attention</CardDescription>
           </CardHeader>
           <CardContent>
-            <ChurchHealthList rows={health} />
+            <ChurchHealthList rows={health} ds={ds} />
           </CardContent>
         </Card>
 
@@ -151,7 +154,13 @@ export default function DashboardPage() {
               <CardTitle>Recent activity</CardTitle>
             </CardHeader>
             <CardContent>
-              <ActivityFeed items={activity} />
+              {activity.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-8 text-center border rounded-lg border-dashed">
+                  No activity yet.
+                </p>
+              ) : (
+                <ActivityFeed items={activity} />
+              )}
             </CardContent>
           </Card>
 
@@ -163,17 +172,21 @@ export default function DashboardPage() {
               </Link>
             </CardHeader>
             <CardContent className="space-y-2">
-              {events.map((e) => (
-                <div key={e.id} className="flex items-start gap-2.5 text-sm">
-                  <CalendarClock className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                  <div>
-                    <p className="font-medium leading-snug">{e.title}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(e.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })} &middot; {e.time}
-                    </p>
+              {events.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">No upcoming events.</p>
+              ) : (
+                events.map((e) => (
+                  <div key={e.id} className="flex items-start gap-2.5 text-sm">
+                    <CalendarClock className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                    <div>
+                      <p className="font-medium leading-snug">{e.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(e.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })} &middot; {e.time}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </CardContent>
           </Card>
         </div>

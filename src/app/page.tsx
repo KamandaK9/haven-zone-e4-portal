@@ -9,11 +9,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { getZoneStats } from "@/lib/data/analytics";
+import { useZone } from "@/lib/data/zone-context";
 
 export default function LandingPage() {
   const router = useRouter();
+  const { data: ds } = useZone();
   const [loading, setLoading] = useState(false);
-  const stats = getZoneStats();
+  const stats = getZoneStats(ds);
 
   function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
@@ -37,14 +39,14 @@ export default function LandingPage() {
             <BrandMark size={32} />
           </div>
           <div>
-            <p className="font-semibold leading-tight">Haven Zone E4</p>
+            <p className="font-semibold leading-tight">{ds.zoneName}</p>
             <p className="text-xs text-primary-foreground/70 leading-tight">Member Portal</p>
           </div>
         </div>
 
         <div className="relative space-y-6 max-w-md">
           <h1 className="text-4xl font-semibold leading-tight tracking-tight">
-            One view of every church, every member, every country in Zone E4.
+            One view of every church, every member, every country in {ds.zoneName}.
           </h1>
           <p className="text-primary-foreground/80 text-[15px] leading-relaxed">
             Track membership growth, tithe and giving analytics, and training
@@ -60,7 +62,7 @@ export default function LandingPage() {
         </div>
 
         <p className="relative text-xs text-primary-foreground/60">
-          An arm of Christ Embassy &middot; Zone E4
+          An arm of Christ Embassy &middot; {ds.zoneName}
         </p>
       </div>
 
@@ -69,7 +71,7 @@ export default function LandingPage() {
           <div className="flex flex-col items-center gap-3 lg:hidden">
             <BrandMark size={44} />
             <div className="text-center">
-              <p className="font-semibold">Haven Zone E4</p>
+              <p className="font-semibold">{ds.zoneName}</p>
               <p className="text-xs text-muted-foreground">Member Portal</p>
             </div>
           </div>
@@ -77,7 +79,7 @@ export default function LandingPage() {
           <div className="space-y-1.5 text-center lg:text-left">
             <h2 className="text-2xl font-semibold tracking-tight">Welcome back</h2>
             <p className="text-sm text-muted-foreground">
-              Sign in to access the Zone E4 dashboard.
+              Sign in to access the {ds.zoneName} dashboard.
             </p>
           </div>
 
@@ -111,7 +113,7 @@ export default function LandingPage() {
           </Card>
 
           <p className="text-center text-xs text-muted-foreground">
-            Haven Zone E4 &middot; Powered by Christ Embassy
+            {ds.zoneName} &middot; Powered by Christ Embassy
           </p>
         </div>
       </div>

@@ -1,14 +1,23 @@
 import Link from "next/link";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { getChurch, memberFullName } from "@/lib/data/analytics";
+import { getChurch, memberFullName, type Dataset } from "@/lib/data/analytics";
 import type { Member } from "@/lib/data/types";
 
-export function TopGivers({ givers }: { givers: { member: Member; total: number }[] }) {
+export function TopGivers({ givers, ds }: { givers: { member: Member; total: number }[]; ds: Dataset }) {
   const max = givers[0]?.total ?? 1;
+
+  if (givers.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground py-8 text-center border rounded-lg border-dashed">
+        No giving recorded yet.
+      </p>
+    );
+  }
+
   return (
     <div className="space-y-1">
       {givers.map(({ member, total }, i) => {
-        const church = getChurch(member.churchId);
+        const church = getChurch(ds, member.churchId);
         return (
           <Link
             key={member.id}
