@@ -4,7 +4,7 @@ import { getCurrentProfile } from "@/lib/data/get-dataset";
 
 export default async function MemberLayout({ children }: { children: React.ReactNode }) {
   const profile = await getCurrentProfile();
-  if (!profile) redirect("/");
+  if (!profile) redirect("/?from=member");
   if (!profile.setupComplete) redirect("/setup");
   if (profile.role !== "member") redirect("/dashboard");
 

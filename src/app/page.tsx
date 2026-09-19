@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Globe2, Users2, TrendingUp, ArrowRight, AlertCircle } from "lucide-react";
 import { BrandMark } from "@/components/brand-mark";
@@ -12,7 +12,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LandingPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
+  const isMember = useSearchParams().get("from") === "member";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -87,8 +96,12 @@ export default function LandingPage() {
           </div>
 
           <div className="space-y-1.5 text-center lg:text-left">
-            <h2 className="text-2xl font-semibold tracking-tight">Welcome back</h2>
-            <p className="text-sm text-muted-foreground">Sign in to access your zone&apos;s dashboard.</p>
+            <h2 className="text-2xl font-semibold tracking-tight">{isMember ? "Member sign in" : "Welcome back"}</h2>
+            <p className="text-sm text-muted-foreground">
+              {isMember
+                ? "Sign in to see your profile, giving history, and the calendar."
+                : "Sign in to access your zone's dashboard."}
+            </p>
           </div>
 
           <Card className="border-0 shadow-none lg:border lg:shadow-sm">
@@ -130,12 +143,14 @@ export default function LandingPage() {
                 </div>
               )}
 
-              <div className="mt-5 text-center text-xs text-muted-foreground">
-                Setting up a new zone?{" "}
-                <Link href="/setup" className="text-primary font-medium hover:underline">
-                  Start here
-                </Link>
-              </div>
+              {!isMember && (
+                <div className="mt-5 text-center text-xs text-muted-foreground">
+                  Setting up a new zone?{" "}
+                  <Link href="/setup" className="text-primary font-medium hover:underline">
+                    Start here
+                  </Link>
+                </div>
+              )}
             </CardContent>
           </Card>
 
