@@ -32,9 +32,15 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
+
+# real member data — never belongs in git or the deployed bundle
+*.xlsx
+*.xls
+*.csv
 
 # typescript
 *.tsbuildinfo

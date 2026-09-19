@@ -1,13 +1,13 @@
-"use client";
-
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { redirect } from "next/navigation";
 import { ChevronRight, Church as ChurchIcon, Users, HandCoins, Clock } from "lucide-react";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { BarBreakdownChart } from "@/components/charts/bar-breakdown-chart";
-import { useZone } from "@/lib/data/zone-context";
+import { getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
+import { getDisplayCurrency } from "@/lib/currency-server";
+import { formatMoney } from "@/lib/currency";
 import {
   getChurchesByCountry,
   getChurchStats,
@@ -17,9 +17,16 @@ import {
 } from "@/lib/data/analytics";
 import { pluralize } from "@/lib/utils";
 
-export default function CountryPage() {
-  const { countryId } = useParams<{ countryId: string }>();
-  const { data: ds } = useZone();
+export default async function CountryPage({
+  params,
+}: {
+  params: Promise<{ countryId: string }>;
+}) {
+  const { countryId } = await params;
+  const profile = await getCurrentProfile();
+  if (!profile) redirect("/");
+  const ds = await getZoneDataset(profile.zoneId);
+  const { currency, rates } = await getDisplayCurrency(profile.zoneCurrency);
   const country = getCountry(ds, countryId);
 
   if (!country) {
@@ -61,7 +68,7 @@ export default function CountryPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard label="Members" value={stats.memberCount.toLocaleString()} icon={Users} />
         <StatCard label="Churches" value={String(stats.churchCount)} icon={ChurchIcon} />
-        <StatCard label="Total giving" value={`$${stats.totalGiving.toLocaleString()}`} icon={HandCoins} />
+        <StatCard label="Total giving" value={formatMoney(stats.totalGiving, currency, rates)} icon={HandCoins} />
         <StatCard label="Avg. tenure" value={`${stats.avgTenure.toFixed(1)} yrs`} icon={Clock} />
       </div>
 
@@ -97,7 +104,7 @@ export default function CountryPage() {
                     <p className="text-[11px] text-muted-foreground">members</p>
                   </div>
                   <div className="text-right hidden sm:block">
-                    <p className="text-sm font-semibold">${cStats.totalGiving.toLocaleString()}</p>
+                    <p className="text-sm font-semibold">{formatMoney(cStats.totalGiving, currency, rates)}</p>
                     <p className="text-[11px] text-muted-foreground">giving</p>
                   </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
@@ -115,7 +122,14 @@ export default function CountryPage() {
             <CardDescription>12-month total, {country.name}</CardDescription>
           </CardHeader>
           <CardContent>
-            <BarBreakdownChart data={giving} nameKey="name" dataKey="amount" layout="vertical" />
+            <BarBreakdownChart
+              data={giving}
+              nameKey="name"
+              dataKey="amount"
+              layout="vertical"
+              currency={currency}
+              rates={rates}
+            />
           </CardContent>
         </Card>
       )}

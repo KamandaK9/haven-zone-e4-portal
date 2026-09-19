@@ -3,8 +3,17 @@
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartTooltip, formatMonth } from "./chart-tooltip";
 import { BRAND_PURPLE, CHART_GRID, CHART_MUTED_TEXT } from "@/lib/chart-colors";
+import { compactMoney, formatMoney, type CurrencyCode } from "@/lib/currency";
 
-export function GivingTrendChart({ data }: { data: { month: string; amount: number }[] }) {
+export function GivingTrendChart({
+  data,
+  currency = "USD",
+  rates = {},
+}: {
+  data: { month: string; amount: number }[];
+  currency?: CurrencyCode;
+  rates?: Record<string, number>;
+}) {
   return (
     <ResponsiveContainer width="100%" height={260}>
       <AreaChart data={data} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
@@ -28,10 +37,10 @@ export function GivingTrendChart({ data }: { data: { month: string; amount: numb
           tick={{ fontSize: 11, fill: CHART_MUTED_TEXT }}
           tickLine={false}
           axisLine={false}
-          tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
+          tickFormatter={(v) => compactMoney(v, currency, rates)}
           width={48}
         />
-        <Tooltip content={(props) => <ChartTooltip {...props} />} />
+        <Tooltip content={(props) => <ChartTooltip {...props} valueFormatter={(v) => formatMoney(v, currency, rates)} />} />
         <Area
           type="monotone"
           dataKey="amount"

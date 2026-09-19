@@ -1,4 +1,4 @@
-import type { ActivityItem, CalendarEvent, Church, Country, Member } from "./types";
+import type { ActivityItem, CalendarEvent, Church, Country, Member, TrainingProgram } from "./types";
 
 export type Dataset = {
   members: Member[];
@@ -6,6 +6,7 @@ export type Dataset = {
   countries: Country[];
   activity: ActivityItem[];
   events: CalendarEvent[];
+  trainingPrograms: TrainingProgram[];
 };
 
 export function getLast12Months(now = new Date()): string[] {
@@ -56,6 +57,18 @@ export function memberTotalGiving(m: Member): number {
 export function memberTenureYears(m: Member, now = new Date()): number {
   const ms = now.getTime() - new Date(m.joinDate).getTime();
   return ms / (1000 * 60 * 60 * 24 * 365.25);
+}
+
+export function memberTrainingPoints(m: Member): number {
+  return m.trainings.filter((t) => t.status === "completed").reduce((sum, t) => sum + t.points, 0);
+}
+
+export function getTrainingLeaderboard(ds: Dataset, limit = 10) {
+  return [...ds.members]
+    .map((m) => ({ member: m, points: memberTrainingPoints(m) }))
+    .filter((row) => row.points > 0)
+    .sort((a, b) => b.points - a.points)
+    .slice(0, limit);
 }
 
 export function getZoneStats(ds: Dataset, now = new Date()) {

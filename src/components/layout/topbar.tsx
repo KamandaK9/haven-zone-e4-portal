@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, Bell, LayoutDashboard, Globe2, CalendarDays, Mail, LogOut } from "lucide-react";
+import { Menu, Bell, LogOut } from "lucide-react";
 import { BrandMark } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -13,25 +13,30 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { useZone } from "@/lib/data/zone-context";
+import { signOutAction } from "@/lib/actions/auth";
+import { getVisibleNavItems, type StaffRole } from "@/lib/nav-items";
 import { cn } from "@/lib/utils";
-
-const NAV_ITEMS = [
-  { href: "/dashboard", label: "Zone Dashboard", icon: LayoutDashboard },
-  { href: "/countries", label: "Countries", icon: Globe2 },
-  { href: "/calendar", label: "Calendar", icon: CalendarDays },
-  { href: "/newsletter", label: "Newsletter", icon: Mail },
-];
 
 function initials(name: string) {
   const parts = name.trim().split(/\s+/);
   return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "ZA";
 }
 
-export function Topbar() {
+export function Topbar({
+  zoneName,
+  fullName,
+  role,
+  hiddenNavItems,
+}: {
+  zoneName: string;
+  fullName: string;
+  role: StaffRole;
+  hiddenNavItems: string[];
+}) {
   const pathname = usePathname();
-  const { data: ds } = useZone();
-  const adminName = ds.superAdmin?.name || "Zone Admin";
+  const visibleItems = getVisibleNavItems(role, hiddenNavItems);
+  const navItems = visibleItems.filter((item) => item.key !== "settings");
+  const settingsItem = visibleItems.find((item) => item.key === "settings");
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b bg-card/95 backdrop-blur px-4 md:px-6">
@@ -44,10 +49,10 @@ export function Topbar() {
         <SheetContent side="left" className="w-72 bg-sidebar text-sidebar-foreground p-0 border-none">
           <SheetHeader className="border-b border-sidebar-border px-5 h-16 flex-row items-center gap-3 space-y-0">
             <BrandMark size={30} />
-            <SheetTitle className="text-sidebar-foreground text-sm">{ds.zoneName}</SheetTitle>
+            <SheetTitle className="text-sidebar-foreground text-sm">{zoneName}</SheetTitle>
           </SheetHeader>
           <nav className="p-3 space-y-1">
-            {NAV_ITEMS.map((item) => {
+            {navItems.map((item) => {
               const active = pathname === item.href || pathname.startsWith(item.href + "/");
               const Icon = item.icon;
               return (
@@ -66,20 +71,36 @@ export function Topbar() {
                 </Link>
               );
             })}
-            <Link
-              href="/"
-              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent transition-colors"
-            >
-              <LogOut className="h-4 w-4" />
-              Sign out
-            </Link>
+            {settingsItem && (
+              <Link
+                href={settingsItem.href}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                  pathname === settingsItem.href
+                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent"
+                )}
+              >
+                <settingsItem.icon className="h-4 w-4" />
+                {settingsItem.label}
+              </Link>
+            )}
+            <form action={signOutAction}>
+              <button
+                type="submit"
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent transition-colors"
+              >
+                <LogOut className="h-4 w-4" />
+                Sign out
+              </button>
+            </form>
           </nav>
         </SheetContent>
       </Sheet>
 
       <div className="flex items-center gap-2 md:hidden">
         <BrandMark size={26} />
-        <span className="font-semibold text-sm">{ds.zoneName}</span>
+        <span className="font-semibold text-sm">{zoneName}</span>
       </div>
 
       <div className="ml-auto flex items-center gap-3">
@@ -90,12 +111,12 @@ export function Topbar() {
         <div className="hidden sm:flex items-center gap-2 pl-2 border-l">
           <Avatar className="h-8 w-8">
             <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
-              {initials(adminName)}
+              {initials(fullName)}
             </AvatarFallback>
           </Avatar>
           <div className="leading-tight">
-            <p className="text-sm font-medium">{adminName}</p>
-            <p className="text-xs text-muted-foreground">{ds.zoneName} Office</p>
+            <p className="text-sm font-medium">{fullName}</p>
+            <p className="text-xs text-muted-foreground">{zoneName} Office</p>
           </div>
         </div>
       </div>

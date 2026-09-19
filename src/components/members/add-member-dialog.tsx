@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { UserPlus } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { UserPlus, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,26 +22,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Member, MemberRole } from "@/lib/data/types";
+import { createMember } from "@/lib/actions/members";
+import type { MemberRole } from "@/lib/data/types";
 
 const ROLES: MemberRole[] = ["Member", "Worker", "Cell Leader", "Pastor"];
-const AVATAR_COLORS = ["#7c3aed", "#a21caf", "#9333ea", "#be185d", "#6d28d9", "#c026d3", "#8b5cf6"];
 
-export function AddMemberDialog({
-  churchId,
-  countryId,
-  onAdd,
-}: {
-  churchId: string;
-  countryId: string;
-  onAdd: (member: Member) => void;
-}) {
+export function AddMemberDialog({ churchId, countryId }: { churchId: string; countryId: string }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [role, setRole] = useState<MemberRole>("Member");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   function reset() {
     setFirstName("");
@@ -48,38 +44,37 @@ export function AddMemberDialog({
     setEmail("");
     setPhone("");
     setRole("Member");
+    setError(null);
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!firstName || !lastName) return;
-    const id = `mem-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
-    const member: Member = {
-      id,
-      firstName,
-      lastName,
-      email: email || `${firstName.toLowerCase()}.${lastName.toLowerCase()}@havenmail.org`,
-      phone: phone || "+260 000000000",
-      churchId,
-      countryId,
-      joinDate: new Date().toISOString().slice(0, 10),
-      role,
-      avatarColor: AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)],
-      giving: [],
-      trainings: [
-        { name: "New Believers Class", status: "not_started" },
-        { name: "Foundation School", status: "not_started" },
-        { name: "Leadership Development", status: "not_started" },
-        { name: "Water Baptism", status: "not_started" },
-      ],
-    };
-    onAdd(member);
+    if (!firstName.trim() || !lastName.trim()) return;
+    setSubmitting(true);
+    setError(null);
+
+    const result = await createMember({ churchId, countryId, firstName, lastName, email, phone, role });
+
+    if (!result.ok) {
+      setError(result.error);
+      setSubmitting(false);
+      return;
+    }
+
     setOpen(false);
     reset();
+    setSubmitting(false);
+    router.refresh();
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        setOpen(v);
+        if (!v) reset();
+      }}
+    >
       <DialogTrigger asChild>
         <Button size="sm" className="gap-2">
           <UserPlus className="h-4 w-4" />
@@ -90,9 +85,7 @@ export function AddMemberDialog({
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Add a new member</DialogTitle>
-            <DialogDescription>
-              This adds the member to the table for this session. It isn&apos;t saved to a database in this prototype.
-            </DialogDescription>
+            <DialogDescription>They&apos;ll appear in the member list right away.</DialogDescription>
           </DialogHeader>
 
           <div className="grid grid-cols-2 gap-3 py-4">
@@ -129,11 +122,20 @@ export function AddMemberDialog({
             </div>
           </div>
 
+          {error && (
+            <div className="mb-4 flex items-center gap-2 rounded-lg bg-red-50 text-red-700 border border-red-200 px-3 py-2.5 text-xs">
+              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+              {error}
+            </div>
+          )}
+
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit">Add member</Button>
+            <Button type="submit" disabled={submitting}>
+              {submitting ? "Adding…" : "Add member"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

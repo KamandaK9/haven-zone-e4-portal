@@ -24,7 +24,6 @@ import {
 import { AddMemberDialog } from "./add-member-dialog";
 import { ImportMembersDialog } from "./import-members-dialog";
 import { memberFullName, memberTenureYears, memberTotalGiving } from "@/lib/data/analytics";
-import { useZone } from "@/lib/data/zone-context";
 import type { Member, MemberRole } from "@/lib/data/types";
 
 const ROLES: (MemberRole | "All roles")[] = ["All roles", "Member", "Worker", "Cell Leader", "Pastor"];
@@ -40,7 +39,6 @@ export function MemberTable({
   countryId: string;
   churchName: string;
 }) {
-  const { addMember } = useZone();
   const [query, setQuery] = useState("");
   const [role, setRole] = useState<(typeof ROLES)[number]>("All roles");
 
@@ -82,12 +80,8 @@ export function MemberTable({
           </Select>
         </div>
         <div className="flex gap-2 shrink-0">
-          <ImportMembersDialog churchName={churchName} />
-          <AddMemberDialog
-            churchId={churchId}
-            countryId={countryId}
-            onAdd={addMember}
-          />
+          <ImportMembersDialog churchName={churchName} churchId={churchId} countryId={countryId} />
+          <AddMemberDialog churchId={churchId} countryId={countryId} />
         </div>
       </div>
 

@@ -1,5 +1,4 @@
-"use client";
-
+import { redirect } from "next/navigation";
 import { Users, Church, Globe2, TrendingUp } from "lucide-react";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { CountryGrid } from "@/components/dashboard/country-grid";
@@ -12,7 +11,8 @@ import { TenureChart } from "@/components/charts/tenure-chart";
 import { GrowthChart } from "@/components/charts/growth-chart";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useZone } from "@/lib/data/zone-context";
+import { getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
+import { getDisplayCurrency } from "@/lib/currency-server";
 import {
   getChurchHealth,
   getGivingByChurch,
@@ -28,8 +28,11 @@ import {
 import { Download, CalendarClock } from "lucide-react";
 import Link from "next/link";
 
-export default function DashboardPage() {
-  const { data: ds } = useZone();
+export default async function DashboardPage() {
+  const profile = await getCurrentProfile();
+  if (!profile) redirect("/");
+  const ds = await getZoneDataset(profile.zoneId);
+  const { currency, rates } = await getDisplayCurrency(profile.zoneCurrency);
   const stats = getZoneStats(ds);
   const givingTrend = getGivingTrendZone(ds);
   const givingByCountry = getGivingByCountry(ds);
@@ -50,10 +53,14 @@ export default function DashboardPage() {
             An overview of membership, giving, and growth across {ds.zoneName}.
           </p>
         </div>
-        <Button variant="outline" size="sm" className="gap-2">
-          <Download className="h-3.5 w-3.5" />
-          Export report
-        </Button>
+        {profile.role === "super_admin" && (
+          <Button variant="outline" size="sm" className="gap-2" asChild>
+            <Link href="/reports">
+              <Download className="h-3.5 w-3.5" />
+              Full report
+            </Link>
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -70,7 +77,7 @@ export default function DashboardPage() {
             <CardDescription>Zone-wide giving over the last 12 months</CardDescription>
           </CardHeader>
           <CardContent>
-            <GivingTrendChart data={givingTrend} />
+            <GivingTrendChart data={givingTrend} currency={currency} rates={rates} />
           </CardContent>
         </Card>
 
@@ -80,7 +87,7 @@ export default function DashboardPage() {
             <CardDescription>Zone-wide leaderboard</CardDescription>
           </CardHeader>
           <CardContent>
-            <TopGivers givers={topGivers} ds={ds} />
+            <TopGivers givers={topGivers} ds={ds} currency={currency} rates={rates} />
           </CardContent>
         </Card>
       </div>
@@ -102,7 +109,14 @@ export default function DashboardPage() {
             <CardDescription>Total tithe &amp; giving, 12-month sum</CardDescription>
           </CardHeader>
           <CardContent>
-            <BarBreakdownChart data={givingByCountry} nameKey="name" dataKey="amount" layout="vertical" />
+            <BarBreakdownChart
+              data={givingByCountry}
+              nameKey="name"
+              dataKey="amount"
+              layout="vertical"
+              currency={currency}
+              rates={rates}
+            />
           </CardContent>
         </Card>
         <Card>
@@ -111,7 +125,14 @@ export default function DashboardPage() {
             <CardDescription>Top 8 churches, 12-month sum</CardDescription>
           </CardHeader>
           <CardContent>
-            <BarBreakdownChart data={givingByChurch} nameKey="name" dataKey="amount" layout="vertical" />
+            <BarBreakdownChart
+              data={givingByChurch}
+              nameKey="name"
+              dataKey="amount"
+              layout="vertical"
+              currency={currency}
+              rates={rates}
+            />
           </CardContent>
         </Card>
       </div>

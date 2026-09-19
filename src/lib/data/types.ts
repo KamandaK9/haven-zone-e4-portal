@@ -15,9 +15,28 @@ export type Church = {
 
 export type LessonStatus = "not_started" | "in_progress" | "completed";
 
-export type Training = {
+export type TrainingProgram = {
+  id: string;
   name: string;
+  description?: string;
+  videoUrl?: string;
+  icon: string;
+  points: number;
+};
+
+// A member's assignment/progress on one program — flattens the program's
+// own fields in so existing `t.name`/`t.status` reads keep working.
+export type Training = {
+  id: string;
+  programId: string;
+  name: string;
+  description?: string;
+  videoUrl?: string;
+  icon: string;
+  points: number;
   status: LessonStatus;
+  assignedAt: string;
+  completedAt?: string;
 };
 
 export type GivingPoint = {
@@ -40,6 +59,15 @@ export type Member = {
   avatarColor: string;
   giving: GivingPoint[];
   trainings: Training[];
+  hasPortalAccess: boolean;
+  // Populated for members imported from a leadership-roster workbook —
+  // free text, verbatim from source (see parse-leadership-roster.ts).
+  title?: string;
+  kcHandle?: string;
+  profession?: string;
+  spouseName?: string;
+  birthday?: string;
+  weddingAnniversary?: string;
 };
 
 export type ActivityType =
@@ -69,27 +97,28 @@ export type CalendarEvent = {
   countryId?: string;
 };
 
-export type Assistant = {
+export type LedgerEntryType = "income" | "expense";
+
+export type LedgerEntry = {
   id: string;
-  name: string;
-  email: string;
-  role: "Admin";
+  churchId: string;
+  type: LedgerEntryType;
+  category: string;
+  description?: string;
+  amount: number;
+  entryDate: string; // ISO date
 };
 
-export type SuperAdmin = {
-  name: string;
-  email: string;
-  phone: string;
-};
-
-export type ZoneData = {
-  zoneName: string;
-  superAdmin: SuperAdmin | null;
-  countries: Country[];
-  churches: Church[];
-  members: Member[];
-  assistants: Assistant[];
-  activity: ActivityItem[];
-  events: CalendarEvent[];
-  setupComplete: boolean;
+// A "balancing the books" snapshot — comparing what the ledger says a
+// church's balance should be against what's actually in the bank/cash box.
+export type Reconciliation = {
+  id: string;
+  churchId: string;
+  periodEnd: string; // ISO date
+  actualBalance: number;
+  calculatedBalance: number;
+  variance: number; // actual - calculated; 0 = balanced
+  notes?: string;
+  reconciledByName?: string;
+  createdAt: string;
 };

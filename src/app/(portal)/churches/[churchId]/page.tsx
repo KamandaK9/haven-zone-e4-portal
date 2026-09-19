@@ -1,13 +1,13 @@
-"use client";
-
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { redirect } from "next/navigation";
 import { Users, HandCoins, Clock, CalendarDays } from "lucide-react";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { MemberTable } from "@/components/members/member-table";
-import { useZone } from "@/lib/data/zone-context";
+import { getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
+import { getDisplayCurrency } from "@/lib/currency-server";
+import { formatMoney } from "@/lib/currency";
 import {
   getChurch,
   getChurchStats,
@@ -15,9 +15,16 @@ import {
   getMembersByChurch,
 } from "@/lib/data/analytics";
 
-export default function ChurchPage() {
-  const { churchId } = useParams<{ churchId: string }>();
-  const { data: ds } = useZone();
+export default async function ChurchPage({
+  params,
+}: {
+  params: Promise<{ churchId: string }>;
+}) {
+  const { churchId } = await params;
+  const profile = await getCurrentProfile();
+  if (!profile) redirect("/");
+  const ds = await getZoneDataset(profile.zoneId);
+  const { currency, rates } = await getDisplayCurrency(profile.zoneCurrency);
   const church = getChurch(ds, churchId);
 
   if (!church) {
@@ -54,7 +61,7 @@ export default function ChurchPage() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard label="Members" value={stats.memberCount.toLocaleString()} icon={Users} />
-        <StatCard label="Total giving" value={`$${stats.totalGiving.toLocaleString()}`} icon={HandCoins} />
+        <StatCard label="Total giving" value={formatMoney(stats.totalGiving, currency, rates)} icon={HandCoins} />
         <StatCard label="Avg. tenure" value={`${stats.avgTenure.toFixed(1)} yrs`} icon={Clock} />
         <StatCard label="Founded" value={church.foundedYear ? String(church.foundedYear) : "—"} icon={CalendarDays} />
       </div>

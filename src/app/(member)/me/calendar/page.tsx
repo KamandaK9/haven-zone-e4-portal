@@ -1,0 +1,11 @@
+import { redirect } from "next/navigation";
+import { CalendarView } from "@/components/calendar/calendar-view";
+import { getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
+
+export default async function MyCalendarPage() {
+  const profile = await getCurrentProfile();
+  if (!profile) redirect("/");
+  const ds = await getZoneDataset(profile.zoneId);
+
+  return <CalendarView events={ds.events} ds={ds} />;
+}

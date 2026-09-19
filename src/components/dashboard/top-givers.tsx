@@ -1,9 +1,20 @@
 import Link from "next/link";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { getChurch, memberFullName, type Dataset } from "@/lib/data/analytics";
+import { formatMoney, type CurrencyCode } from "@/lib/currency";
 import type { Member } from "@/lib/data/types";
 
-export function TopGivers({ givers, ds }: { givers: { member: Member; total: number }[]; ds: Dataset }) {
+export function TopGivers({
+  givers,
+  ds,
+  currency = "USD",
+  rates = {},
+}: {
+  givers: { member: Member; total: number }[];
+  ds: Dataset;
+  currency?: CurrencyCode;
+  rates?: Record<string, number>;
+}) {
   const max = givers[0]?.total ?? 1;
 
   if (givers.length === 0) {
@@ -49,7 +60,7 @@ export function TopGivers({ givers, ds }: { givers: { member: Member; total: num
               </div>
             </div>
             <span className="text-sm font-semibold tabular-nums shrink-0">
-              ${total.toLocaleString()}
+              {formatMoney(total, currency, rates)}
             </span>
           </Link>
         );

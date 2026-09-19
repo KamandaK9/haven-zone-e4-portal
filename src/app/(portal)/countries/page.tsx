@@ -1,14 +1,15 @@
-"use client";
-
+import { redirect } from "next/navigation";
 import { CountryGrid } from "@/components/dashboard/country-grid";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { BarBreakdownChart } from "@/components/charts/bar-breakdown-chart";
-import { useZone } from "@/lib/data/zone-context";
+import { getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
 import { getGivingByCountry } from "@/lib/data/analytics";
 import { pluralize } from "@/lib/utils";
 
-export default function CountriesPage() {
-  const { data: ds } = useZone();
+export default async function CountriesPage() {
+  const profile = await getCurrentProfile();
+  if (!profile) redirect("/");
+  const ds = await getZoneDataset(profile.zoneId);
   const giving = getGivingByCountry(ds);
   return (
     <div className="space-y-6">
