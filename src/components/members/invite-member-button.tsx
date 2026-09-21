@@ -35,14 +35,10 @@ export function InviteMemberButton({
     router.refresh();
   }
 
-  if (hasPortalAccess) {
-    return (
-      <span className="flex items-center gap-1.5 text-xs text-emerald-600">
-        <CheckCircle2 className="h-3.5 w-3.5" /> Has portal access
-      </span>
-    );
-  }
-
+  // Checked before hasPortalAccess on purpose: inviting sets this local
+  // state AND calls router.refresh(), which flips the hasPortalAccess prop
+  // to true almost immediately — if that check ran first it would swallow
+  // the one and only chance to show this password.
   if (tempPassword) {
     return (
       <div className="flex items-center gap-2 rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2 text-xs text-emerald-700">
@@ -60,6 +56,14 @@ export function InviteMemberButton({
           {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
         </button>
       </div>
+    );
+  }
+
+  if (hasPortalAccess) {
+    return (
+      <span className="flex items-center gap-1.5 text-xs text-emerald-600">
+        <CheckCircle2 className="h-3.5 w-3.5" /> Has portal access
+      </span>
     );
   }
 
