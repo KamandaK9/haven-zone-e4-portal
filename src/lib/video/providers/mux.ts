@@ -1,7 +1,7 @@
 import "server-only";
 import Mux from "@mux/mux-node";
 import { tenant } from "@/tenant";
-import type { AssetState, UploadState, VideoProvider } from "./types";
+import type { AssetState, LiveStreamState, UploadState, VideoProvider } from "./types";
 
 // Mux (mux.com). Videos are uploaded straight from the browser (a one-time
 // signed upload URL, so files never pass through this server) and played
@@ -40,6 +40,7 @@ function toAssetState(a: {
   upload_id?: string;
   duration?: number;
   playback_ids?: { id: string; policy: string }[];
+  live_stream_id?: string;
 }): AssetState {
   const status = a.status === "ready" ? "ready" : a.status === "errored" ? "errored" : "processing";
   return {
@@ -48,7 +49,23 @@ function toAssetState(a: {
     status,
     playbackId: a.playback_ids?.find((p) => p.policy === "signed")?.id,
     durationSeconds: a.duration,
+    liveStreamId: a.live_stream_id,
   };
+}
+
+function toLiveStreamState(
+  l: { id: string; status: string; active_asset_id?: string; recent_asset_ids?: string[] },
+  eventType?: string
+): LiveStreamState {
+  const status =
+    eventType === "video.live_stream.connected"
+      ? "connected"
+      : eventType === "video.live_stream.disconnected"
+        ? "disconnected"
+        : l.status === "active"
+          ? "active"
+          : "idle";
+  return { streamId: l.id, status, assetId: l.active_asset_id ?? l.recent_asset_ids?.at(-1) };
 }
 
 export const muxProvider: VideoProvider = {
@@ -114,6 +131,48 @@ export const muxProvider: VideoProvider = {
     };
   },
 
+  liveIngestUrl: "rtmps://global-live.mux.com:443/app",
+
+  async createLiveStream({ ref }) {
+    const stream = await mux().video.liveStreams.create({
+      playback_policies: ["signed"],
+      new_asset_settings: { playback_policies: ["signed"] },
+      // A few seconds behind real time, so chat and picture line up.
+      latency_mode: "low",
+      // Rides out a dropped connection without ending the broadcast.
+      reconnect_window: 60,
+      passthrough: ref,
+    });
+    const playbackId = stream.playback_ids?.find((p) => p.policy === "signed")?.id;
+    if (!playbackId) throw new Error("Mux did not return a playback ID.");
+    return { streamId: stream.id, streamKey: stream.stream_key, playbackId };
+  },
+
+  async getLiveStream(streamId) {
+    return toLiveStreamState(await mux().video.liveStreams.retrieve(streamId));
+  },
+
+  async endLiveStream(streamId) {
+    try {
+      await mux().video.liveStreams.complete(streamId);
+    } catch {
+      // not broadcasting — nothing to complete
+    }
+    try {
+      await mux().video.liveStreams.disable(streamId);
+    } catch {
+      // already disabled or gone
+    }
+  },
+
+  async deleteLiveStream(streamId) {
+    try {
+      await mux().video.liveStreams.delete(streamId);
+    } catch {
+      // already gone, or Mux unreachable
+    }
+  },
+
   webhooksConfigured() {
     return !!process.env.MUX_WEBHOOK_SECRET;
   },
@@ -126,9 +185,16 @@ export const muxProvider: VideoProvider = {
       case "video.upload.errored":
       case "video.upload.cancelled":
         return { upload: toUploadState(event.data) };
+      case "video.asset.created":
       case "video.asset.ready":
       case "video.asset.errored":
+      case "video.asset.live_stream_completed":
         return { asset: toAssetState(event.data) };
+      case "video.live_stream.connected":
+      case "video.live_stream.active":
+      case "video.live_stream.disconnected":
+      case "video.live_stream.idle":
+        return { liveStream: toLiveStreamState(event.data, event.type) };
       default:
         return null;
     }

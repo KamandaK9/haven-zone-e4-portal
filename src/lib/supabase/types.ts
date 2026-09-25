@@ -19,6 +19,9 @@ export type ProfileScope = "zone" | "sub_zone" | "chapter" | "self";
 export type GivingCategory = "pco" | "dues" | "special_project" | "meta";
 export type ChapterRecordKind = "minutes" | "correspondence" | "bank_advice";
 export type ChequeStatus = "issued" | "cleared" | "cancelled" | "void";
+export type LiveStreamStatus = "scheduled" | "live" | "ended";
+export type LiveStreamAudience = "zone" | "chapters" | "leaders";
+export type RecordingStatus = "none" | "processing" | "ready" | "errored";
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
@@ -787,6 +790,98 @@ export type Database = {
           stub_path: string | null;
           stub_file_name: string | null;
         }>;
+        Relationships: [];
+      };
+      live_streams: {
+        Row: {
+          id: string;
+          zone_id: string;
+          title: string;
+          description: string | null;
+          scheduled_at: string;
+          audience: LiveStreamAudience;
+          church_ids: string[];
+          status: LiveStreamStatus;
+          chat_enabled: boolean;
+          provider: "mux";
+          provider_stream_id: string | null;
+          playback_id: string | null;
+          recording_asset_id: string | null;
+          recording_playback_id: string | null;
+          recording_status: RecordingStatus;
+          recording_duration_seconds: number | null;
+          started_at: string | null;
+          ended_at: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          zone_id: string;
+          title: string;
+          description?: string | null;
+          scheduled_at: string;
+          audience?: LiveStreamAudience;
+          church_ids?: string[];
+          status?: LiveStreamStatus;
+          chat_enabled?: boolean;
+          provider?: "mux";
+          provider_stream_id?: string | null;
+          playback_id?: string | null;
+          created_by?: string | null;
+        };
+        Update: Partial<{
+          title: string;
+          description: string | null;
+          scheduled_at: string;
+          audience: LiveStreamAudience;
+          church_ids: string[];
+          status: LiveStreamStatus;
+          chat_enabled: boolean;
+          provider_stream_id: string | null;
+          playback_id: string | null;
+          recording_asset_id: string | null;
+          recording_playback_id: string | null;
+          recording_status: RecordingStatus;
+          recording_duration_seconds: number | null;
+          started_at: string | null;
+          ended_at: string | null;
+        }>;
+        Relationships: [];
+      };
+      live_stream_keys: {
+        Row: { stream_id: string; zone_id: string; stream_key: string };
+        Insert: { stream_id: string; zone_id: string; stream_key: string };
+        Update: Partial<{ stream_key: string }>;
+        Relationships: [];
+      };
+      live_stream_messages: {
+        Row: {
+          id: string;
+          stream_id: string;
+          zone_id: string;
+          profile_id: string;
+          author_name: string;
+          body: string;
+          created_at: string;
+          deleted_at: string | null;
+          deleted_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          stream_id: string;
+          zone_id: string;
+          profile_id: string;
+          author_name: string;
+          body: string;
+        };
+        Update: Partial<{ deleted_at: string | null; deleted_by: string | null }>;
+        Relationships: [];
+      };
+      live_stream_mutes: {
+        Row: { stream_id: string; profile_id: string; zone_id: string; created_by: string | null; created_at: string };
+        Insert: { stream_id: string; profile_id: string; zone_id: string; created_by?: string | null };
+        Update: Record<string, never>;
         Relationships: [];
       };
     };

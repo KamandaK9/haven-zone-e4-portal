@@ -74,6 +74,7 @@ export const CAPABILITIES = [
   "manage_access",
   "manage_events",
   "manage_records",
+  "manage_livestreams",
 ] as const;
 export type Capability = (typeof CAPABILITIES)[number];
 
@@ -92,6 +93,7 @@ export const CAPABILITY_LABELS: Record<Capability, string> = {
   manage_access: "Manage team access",
   manage_events: "Edit annual event pages",
   manage_records: "Keep minutes, correspondence & records",
+  manage_livestreams: "Run livestreams",
 };
 
 export function isPosition(value: unknown): value is Position {
@@ -156,7 +158,9 @@ export function defaultCapabilities(position: Position, portfolio: Portfolio | n
     if (portfolio === "finance") {
       for (const c of ["view_giving_individual", "import_giving", "manage_ledger", "view_reports"] as const) caps.add(c);
     } else if (portfolio === "programs") {
-      for (const c of ["manage_training", "manage_calendar", "send_newsletter"] as const) caps.add(c);
+      // Keep manage_livestreams in step with the backfill in
+      // supabase/migrations/20260926150000_live_streams.sql.
+      for (const c of ["manage_training", "manage_calendar", "send_newsletter", "manage_livestreams"] as const) caps.add(c);
     } else if (portfolio === "administration" || portfolio === "operations") {
       for (const c of ["manage_members", "manage_calendar", "send_newsletter", "manage_records"] as const) caps.add(c);
     }

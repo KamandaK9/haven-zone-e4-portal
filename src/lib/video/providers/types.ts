@@ -16,9 +16,26 @@ export type AssetState = {
   status: "processing" | "ready" | "errored";
   playbackId?: string;
   durationSeconds?: number;
+  // Set when the asset is the recording of a live stream.
+  liveStreamId?: string;
 };
 
-export type WebhookUpdate = { upload: UploadState } | { asset: AssetState };
+// A live stream as the host reports it. "active" = broadcasting to viewers;
+// "idle" = no broadcast (not started yet, or finished).
+export type LiveStreamState = {
+  streamId: string;
+  status: "idle" | "connected" | "active" | "disconnected";
+  // The recording of the current (or latest) broadcast, when known.
+  assetId?: string;
+};
+
+export type NewLiveStream = {
+  streamId: string;
+  streamKey: string;
+  playbackId: string;
+};
+
+export type WebhookUpdate = { upload: UploadState } | { asset: AssetState } | { liveStream: LiveStreamState };
 
 // What a video host has to provide. One file per host in this folder,
 // registered in ./index.ts.
@@ -36,6 +53,16 @@ export interface VideoProvider {
   deleteAsset(assetId: string): Promise<void>;
   // Playback for one viewing (e.g. signed, short-lived URLs/tokens).
   playbackSource(playbackId: string): Promise<PlaybackSource>;
+  // Live broadcasting. The broadcaster's app (OBS, Larix…) pushes to
+  // liveIngestUrl with the stream key; viewers play playbackId. Every
+  // broadcast is recorded as an asset.
+  liveIngestUrl: string;
+  createLiveStream(input: { ref: string }): Promise<NewLiveStream>;
+  getLiveStream(streamId: string): Promise<LiveStreamState>;
+  // Ends the broadcast now and stops the key working. Best-effort.
+  endLiveStream(streamId: string): Promise<void>;
+  // Best-effort; must not throw.
+  deleteLiveStream(streamId: string): Promise<void>;
   // Whether webhooks can be verified (the secret is set).
   webhooksConfigured(): boolean;
   // Verifies and translates a webhook. Throws on a bad signature; null for
