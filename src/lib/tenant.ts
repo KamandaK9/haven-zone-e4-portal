@@ -18,7 +18,7 @@ export type EventSeriesDef = {
 };
 
 export type TenantConfig = {
-  // How the organisation refers to itself in running copy ("Time in The Haven").
+  // How the organisation refers to itself in running copy ("Time in Grace Church").
   name: string;
   // Product name shown on the login page and browser tab.
   portalName: string;
@@ -57,7 +57,7 @@ export type TenantConfig = {
   lessonExamples: { video: string; quiz: string; videoHosts: string };
   roster: {
     // Prefixes stripped when matching chapter names across sheets, lowercase
-    // ("Haven Belvedere" and "Belvedere" are the same chapter).
+    // ("Grace Riverside" and "Riverside" are the same chapter).
     chapterPrefixes: readonly string[];
     // Chapter-name keywords → country, offered as editable guesses on import.
     countryGuesses: readonly (readonly [country: string, keywords: readonly string[]])[];

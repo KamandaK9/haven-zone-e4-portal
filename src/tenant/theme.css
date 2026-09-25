@@ -2,7 +2,7 @@
    Tailwind utilities; a new tenant only has to redefine them here. */
 
 :root {
-  /* Purple derived from the actual Haven logo mark (public/logo-mark.png):
+  /* Purple derived from the actual Haven logo mark (public/brand/logo-mark.png):
      hue ~343 (a plum/orchid magenta-purple), not a generic violet. */
   --background: oklch(0.985 0.003 90);
   --foreground: oklch(0.18 0.012 343);

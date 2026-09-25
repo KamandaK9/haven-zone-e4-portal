@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 export type LadderRung = {
   code: string;
   label: string;
-  // Sub-label ("Haven Millionaire").
+  // Sub-label, e.g. a nickname for the tier.
   alias?: string;
   criteria: string[];
   note?: string;

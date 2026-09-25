@@ -1,6 +1,11 @@
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
+import { readFileSync } from "node:fs";
+
+// The tenant's own names, which core code must never hard-code.
+const { bannedCopy } = JSON.parse(readFileSync(new URL("./src/tenant/lint.json", import.meta.url), "utf8"));
+const banned = new RegExp(bannedCopy.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|"), "i");
 
 const eslintConfig = defineConfig([
   ...nextVitals,
@@ -26,15 +31,15 @@ const eslintConfig = defineConfig([
       "no-restricted-syntax": [
         "error",
         ...["Literal", "JSXText"].map((node) => ({
-          selector: `${node}[value=/Haven/i]`,
+          selector: `${node}[value=${banned}]`,
           message: "Tenant-specific copy belongs in src/tenant/ — read it from `tenant`.",
         })),
         {
-          selector: "Literal[regex.pattern=/Haven/i]",
+          selector: `Literal[regex.pattern=${banned}]`,
           message: "Tenant-specific copy belongs in src/tenant/ — read it from `tenant`.",
         },
         {
-          selector: "TemplateElement[value.raw=/Haven/i]",
+          selector: `TemplateElement[value.raw=${banned}]`,
           message: "Tenant-specific copy belongs in src/tenant/ — read it from `tenant`.",
         },
       ],

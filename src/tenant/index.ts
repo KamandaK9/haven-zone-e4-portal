@@ -18,9 +18,9 @@ export const tenant: TenantConfig = {
   },
   affiliation: "An arm of Christ Embassy",
   emailPlaceholder: "you@havenzonee4.org",
-  // public/logo-mark.png is cropped from the real Haven logo — mark only,
+  // public/brand/logo-mark.png is cropped from the real Haven logo — mark only,
   // the baked-in text removed.
-  logo: { src: "/logo-mark.png", alt: "The Haven", width: 345, height: 414 },
+  logo: { src: "/brand/logo-mark.png", alt: "The Haven", width: 345, height: 414 },
   chartPrimary: "#7c3aed",
   chartRamp: ["#c4b5fd", "#a78bfa", "#8b5cf6", "#7c3aed"],
   avatarColors: ["#7c3aed", "#a21caf", "#9333ea", "#be185d", "#6d28d9", "#c026d3", "#8b5cf6"],

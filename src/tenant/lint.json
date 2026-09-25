@@ -1,0 +1,6 @@
+{
+  "_comment": "Names that must never appear as literals in core code (outside src/tenant/). Read by eslint.config.mjs.",
+  "bannedCopy": [
+    "Haven"
+  ]
+}

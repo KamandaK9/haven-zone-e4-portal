@@ -1,0 +1,7 @@
+# Each deployment's own files. When pulling Stratum updates into a client
+# repo, a conflict in these always keeps the client's version (enable once
+# per clone: git config merge.ours.driver true). Core files merge normally.
+src/tenant/** merge=ours
+public/brand/** merge=ours
+supabase/seed.sql merge=ours
+README.md merge=ours
