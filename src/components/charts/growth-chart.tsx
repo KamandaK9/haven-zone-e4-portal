@@ -2,7 +2,7 @@
 
 import { Bar, ComposedChart, CartesianGrid, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartTooltip, formatMonth } from "./chart-tooltip";
-import { BRAND_PURPLE, CATEGORICAL, CHART_GRID, CHART_MUTED_TEXT } from "@/lib/chart-colors";
+import { BRAND_PRIMARY, CATEGORICAL, CHART_GRID, CHART_MUTED_TEXT } from "@/lib/chart-colors";
 
 export function GrowthChart({ data }: { data: { month: string; cumulative: number; new: number }[] }) {
   return (
@@ -23,7 +23,7 @@ export function GrowthChart({ data }: { data: { month: string; cumulative: numbe
           type="monotone"
           dataKey="cumulative"
           name="Total members"
-          stroke={BRAND_PURPLE}
+          stroke={BRAND_PRIMARY}
           strokeWidth={2.5}
           dot={false}
           activeDot={{ r: 4, strokeWidth: 0 }}

@@ -37,19 +37,19 @@ import {
   type ChapterGroup,
 } from "@/lib/import/parse-leadership-roster";
 import { cn } from "@/lib/utils";
-import { ZONE_COUNTRIES } from "@/lib/zone-countries";
+import { tenant } from "@/tenant";
 
 const TOTAL_STEPS = STEP_LABELS.length;
 const IMPORT_STEP = STEP_LABELS.indexOf("Import members") + 1;
 
 const EMPTY_WIZARD: WizardState = {
-  zoneName: "The Haven Zone E4",
+  zoneName: tenant.defaultOrgName,
   adminName: "",
   adminEmail: "",
   adminPhone: "",
   adminPassword: "",
   adminPasswordConfirm: "",
-  countries: ZONE_COUNTRIES.map((c) => ({ name: c.name, churches: [""] })),
+  countries: tenant.countries.map((c) => ({ name: c.name, churches: [""] })),
   assistants: [{ name: "", email: "" }],
   importFileName: null,
   importedMembers: [],
@@ -140,7 +140,7 @@ export default function SetupPage() {
   return (
     <div className="min-h-screen bg-background">
       <datalist id="zone-countries">
-        {ZONE_COUNTRIES.map((c) => (
+        {tenant.countries.map((c) => (
           <option key={c.name} value={c.name} />
         ))}
       </datalist>
@@ -309,7 +309,7 @@ function StepZoneBasics({
           <Input
             id="adminEmail"
             type="email"
-            placeholder="you@havenzonee4.org"
+            placeholder={tenant.emailPlaceholder}
             value={wizard.adminEmail}
             onChange={(e) => setWizard((w) => ({ ...w, adminEmail: e.target.value }))}
           />

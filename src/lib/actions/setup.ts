@@ -3,7 +3,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { ParsedMemberRow } from "./members";
 import type { MemberRole } from "@/lib/data/types";
-import { flagForCountry } from "@/lib/zone-countries";
+import { flagForCountry } from "@/lib/country-flags";
 import { getAutoAssignedProgramIds } from "@/lib/data/programs-server";
 import { ensureEventSeries } from "@/lib/data/events";
 import { CAPABILITIES, effectiveCapabilities, type Portfolio, type Position } from "@/lib/access";

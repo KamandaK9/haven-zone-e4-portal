@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { tenant } from "@/tenant";
 
 const geistSans = Geist({
   variable: "--font-sans",
@@ -13,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "The Haven Zone E4 Portal",
-  description: "Member management and analytics for The Haven Zone E4",
+  title: tenant.portalName,
+  description: tenant.description,
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

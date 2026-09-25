@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
+import { tenant } from "@/tenant";
 
 export default function LandingPage() {
   return (
@@ -60,7 +61,7 @@ function LoginForm() {
             <BrandMark size={32} />
           </div>
           <div>
-            <p className="font-semibold leading-tight">The Haven Zone Portal</p>
+            <p className="font-semibold leading-tight">{tenant.portalName}</p>
             <p className="text-xs text-primary-foreground/70 leading-tight">Member Management</p>
           </div>
         </div>
@@ -92,7 +93,7 @@ function LoginForm() {
           <div className="flex flex-col items-center gap-3 lg:hidden">
             <BrandMark size={44} />
             <div className="text-center">
-              <p className="font-semibold">The Haven Zone Portal</p>
+              <p className="font-semibold">{tenant.portalName}</p>
               <p className="text-xs text-muted-foreground">Member Management</p>
             </div>
           </div>
@@ -114,7 +115,7 @@ function LoginForm() {
                   <Input
                     id="email"
                     type="email"
-                    placeholder="you@havenzonee4.org"
+                    placeholder={tenant.emailPlaceholder}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     autoComplete="email"

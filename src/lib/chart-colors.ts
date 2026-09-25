@@ -1,3 +1,5 @@
+import { tenant } from "@/tenant";
+
 // Validated categorical palette (dataviz skill default order — CVD-safe).
 export const CATEGORICAL = [
   "#2a78d6", // blue
@@ -10,10 +12,8 @@ export const CATEGORICAL = [
   "#e34948", // red
 ];
 
-// Brand purple, used for single-series/sequential encodings.
-export const BRAND_PURPLE = "#7c3aed";
-export const BRAND_PURPLE_LIGHT = "#a78bfa";
-export const BRAND_PURPLE_SOFT = "#ede9fe";
+// The tenant's brand colour, used for single-series/sequential encodings.
+export const BRAND_PRIMARY = tenant.chartPrimary;
 
 export const STATUS = {
   good: "#0ca30c",

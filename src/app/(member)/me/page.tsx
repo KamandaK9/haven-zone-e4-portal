@@ -25,6 +25,7 @@ import { sumByMonth } from "@/lib/giving";
 import { getTrainingLevel } from "@/lib/training-icons";
 import { getMemberAchievementStats } from "@/lib/data/achievements";
 import { POSITION_LABELS } from "@/lib/access";
+import { tenant } from "@/tenant";
 
 export default async function MemberDashboardPage() {
   const profile = await getCurrentProfile();
@@ -90,7 +91,7 @@ export default async function MemberDashboardPage() {
 
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         <StatCard label="Total giving" value={formatMoney(totalGiving, currency, rates)} icon={HandCoins} />
-        <StatCard label="Time in The Haven" value={formatTenure(tenure)} icon={Clock} />
+        <StatCard label={`Time in ${tenant.name}`} value={formatTenure(tenure)} icon={Clock} />
         <StatCard label="Trainings complete" value={`${completed}/${member.trainings.length}`} icon={CheckCircle2} />
       </div>
 

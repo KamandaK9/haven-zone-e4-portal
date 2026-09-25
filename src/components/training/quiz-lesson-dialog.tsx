@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { createQuizLesson, updateQuizLesson } from "@/lib/actions/training-lessons";
 import type { CourseLesson } from "@/lib/data/types";
+import { tenant } from "@/tenant";
 
 type EditableQuestion = { question: string; options: string[]; correctIndex: number };
 
@@ -96,7 +97,7 @@ export function QuizLessonDialog({
         <div className="space-y-4 py-2">
           <div className="space-y-1.5">
             <Label htmlFor="quizTitle">Title</Label>
-            <Input id="quizTitle" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Haven Orientation quiz" />
+            <Input id="quizTitle" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={tenant.lessonExamples.quiz} />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="quizDescription">Description</Label>

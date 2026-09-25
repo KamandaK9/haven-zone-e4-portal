@@ -31,6 +31,7 @@ import {
 import { Download, CalendarClock } from "lucide-react";
 import { describeScope } from "@/lib/scope-label";
 import Link from "next/link";
+import { tenant } from "@/tenant";
 
 export default async function DashboardPage({
   searchParams,
@@ -164,7 +165,7 @@ export default async function DashboardPage({
       <div className="grid lg:grid-cols-2 gap-4">
         <Card>
           <CardHeader>
-            <CardTitle>Time in The Haven</CardTitle>
+            <CardTitle>Time in {tenant.name}</CardTitle>
             <CardDescription>Membership tenure distribution, zone-wide</CardDescription>
           </CardHeader>
           <CardContent>

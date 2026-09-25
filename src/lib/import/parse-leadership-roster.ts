@@ -1,6 +1,7 @@
 import { readAllExcelSheets } from "./read-table-file";
 import { parseDesignation, positionRank, type Portfolio, type Position } from "@/lib/access";
 import { namesAgree, nameKey, normalizePhone } from "@/lib/name-match";
+import { tenant } from "@/tenant";
 
 // The source workbook is a hand-maintained org chart, not a flat export:
 // one sheet per sub-zone (SZ1, SZ2, ...) plus three zone-level leadership
@@ -44,15 +45,7 @@ function churchRoleFor(title: string | undefined): "Member" | "Pastor" | "Cell L
 
 // Best-effort suggestions only — every one of these ships to the wizard's
 // review table as an editable, pre-filled guess, never applied silently.
-const COUNTRY_GUESSES: [string, string[]][] = [
-  ["Zimbabwe", ["belvedere","borrowdale","chinhoyi","eastlea","glen norah","glen view","harare","hatfield","amakhosi","beitbridge","bulawayo","byo","chiredzi","gwanda","gweru","hwange","kuwadzana","kwekwe","marondera","masvingo","mpopoma","msasa park","mukakose","highfield","highffield","norton","pumula","ruwa","shurugwi","sunningdale","tynwald","victoria falls","waterfalls","zvishavane","quantum grace","new bulawayo","new byo"]],
-  ["Botswana", ["gaborone","francistown","jwaneng","kanye","kasane","letlhakane","lobatse","maun","mmadinare","mochudi","mogoditshane","molepolole","orapa","palapye","phikwe","ramotswa","serowe"]],
-  ["South Africa", ["sandton","midrand","east london","mthatha","queenstown","qtwn","port elizabeth"]],
-  ["Namibia", ["windhoek","swakopmund","walvisbay","katutura","oshakati"]],
-  ["Zambia", ["kitwe","lusaka","ndola","makeni","solwezi","uptown","millenials zambia"]],
-  ["Eswatini", ["ezulwini","manzini","matsapha","mbabane"]],
-  ["Malawi", ["malawi"]],
-];
+const COUNTRY_GUESSES = tenant.roster.countryGuesses;
 
 function guessCountry(chapter: string): string {
   const c = chapter.toLowerCase();
@@ -62,15 +55,23 @@ function guessCountry(chapter: string): string {
   return "";
 }
 
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// Leading "(the) <prefix>" on a chapter name, built from the tenant's
+// chapterPrefixes. Null when the tenant has none, so nothing is stripped.
+const CHAPTER_PREFIX_RE = tenant.roster.chapterPrefixes.length
+  ? new RegExp(`^(the\\s+)?(${tenant.roster.chapterPrefixes.map(escapeRegExp).join("|")})\\s*-?\\s*`, "i")
+  : null;
+
 // Collapses spelling variants that come from the leadership-summary sheets
-// prefixing with "Haven"/"CE"/"Christ Embassy" while a person's own
-// sub-zone sheet uses the bare local name (e.g. "Haven Belvedere" vs
-// "Belvedere" are the same church).
+// prefixing chapters with an org name (see tenant.roster.chapterPrefixes)
+// while a person's own sub-zone sheet uses the bare local name (e.g.
+// "<Prefix> Belvedere" vs "Belvedere" are the same church).
 export function normalizeChapterKey(chapter: string): string {
-  return chapter
-    .toLowerCase()
-    .trim()
-    .replace(/^(the\s+)?(christ embassy|ce|haven)\s*-?\s*/i, "")
+  const key = chapter.toLowerCase().trim();
+  return (CHAPTER_PREFIX_RE ? key.replace(CHAPTER_PREFIX_RE, "") : key)
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -196,7 +197,7 @@ export async function parseLeadershipRoster(file: File): Promise<RosterParseResu
       const chapterCell = idx.chapter !== -1 ? clean(row[idx.chapter]) : undefined;
       const usableChapterCell = chapterCell && !looksLikeSubZoneLabel(chapterCell) ? chapterCell : undefined;
       // The section label is the bare local name; prefer it over a CHAPTER
-      // cell that may carry a "Haven"/"CE" prefix or a sub-zone label.
+      // cell that may carry an org-name prefix or a sub-zone label.
       const chapterRaw = sectionLabel ?? usableChapterCell;
       if (!chapterRaw) {
         skipped.push({ sheet: sheet.sheetName, reason: `${firstName} ${lastName}: no chapter/church identified` });

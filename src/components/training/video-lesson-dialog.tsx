@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { createVideoLesson, updateVideoLesson } from "@/lib/actions/training-lessons";
 import type { CourseLesson } from "@/lib/data/types";
+import { tenant } from "@/tenant";
 
 export function VideoLessonDialog({
   programId,
@@ -73,7 +74,7 @@ export function VideoLessonDialog({
         <div className="space-y-4 py-2">
           <div className="space-y-1.5">
             <Label htmlFor="lessonTitle">Title</Label>
-            <Input id="lessonTitle" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Welcome to Haven Zone E4" />
+            <Input id="lessonTitle" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={tenant.lessonExamples.video} />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="lessonDescription">Description</Label>

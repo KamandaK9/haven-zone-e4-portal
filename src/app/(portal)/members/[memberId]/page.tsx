@@ -28,6 +28,7 @@ import {
 import { getTrainingIcon, getTrainingLevel } from "@/lib/training-icons";
 import type { LessonStatus } from "@/lib/data/types";
 import { cn } from "@/lib/utils";
+import { tenant } from "@/tenant";
 
 const STATUS_META: Record<LessonStatus, { label: string; className: string }> = {
   completed: { label: "Completed", className: "text-emerald-600" },
@@ -149,7 +150,7 @@ export default async function MemberPage({
         {ds.individualGiving && (
           <StatCard label="Total giving" value={formatMoney(totalGiving, currency, rates)} icon={HandCoins} />
         )}
-        <StatCard label="Time in The Haven" value={formatTenure(tenure)} icon={Clock} />
+        <StatCard label={`Time in ${tenant.name}`} value={formatTenure(tenure)} icon={Clock} />
         <StatCard label="Trainings complete" value={`${completed}/${member.trainings.length}`} icon={CheckCircle2} />
         {ds.individualGiving && (
           <StatCard

@@ -24,6 +24,7 @@ import {
   getTopGivers,
   getZoneStats,
 } from "@/lib/data/analytics";
+import { tenant } from "@/tenant";
 
 export default async function ReportsPage({
   searchParams,
@@ -130,7 +131,7 @@ export default async function ReportsPage({
       <div className="grid lg:grid-cols-2 gap-4">
         <Card>
           <CardHeader>
-            <CardTitle>Time in The Haven</CardTitle>
+            <CardTitle>Time in {tenant.name}</CardTitle>
             <CardDescription>Membership tenure distribution, zone-wide</CardDescription>
           </CardHeader>
           <CardContent>

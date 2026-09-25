@@ -2,7 +2,7 @@
 
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartTooltip, formatMonth } from "./chart-tooltip";
-import { BRAND_PURPLE, CHART_GRID, CHART_MUTED_TEXT } from "@/lib/chart-colors";
+import { BRAND_PRIMARY, CHART_GRID, CHART_MUTED_TEXT } from "@/lib/chart-colors";
 import { compactMoney, formatMoney, type CurrencyCode } from "@/lib/currency";
 
 export function GivingTrendChart({
@@ -19,8 +19,8 @@ export function GivingTrendChart({
       <AreaChart data={data} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
         <defs>
           <linearGradient id="givingFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={BRAND_PURPLE} stopOpacity={0.28} />
-            <stop offset="100%" stopColor={BRAND_PURPLE} stopOpacity={0.02} />
+            <stop offset="0%" stopColor={BRAND_PRIMARY} stopOpacity={0.28} />
+            <stop offset="100%" stopColor={BRAND_PRIMARY} stopOpacity={0.02} />
           </linearGradient>
         </defs>
         <CartesianGrid vertical={false} stroke={CHART_GRID} strokeDasharray="3 5" />
@@ -45,7 +45,7 @@ export function GivingTrendChart({
           type="monotone"
           dataKey="amount"
           name="Giving"
-          stroke={BRAND_PURPLE}
+          stroke={BRAND_PRIMARY}
           strokeWidth={2}
           fill="url(#givingFill)"
           activeDot={{ r: 4, strokeWidth: 0 }}
