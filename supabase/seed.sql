@@ -1,5 +1,6 @@
 -- Sample content so the annual-event pages have something to show.
--- Paste into the Supabase SQL editor. Adds two "The Haven Zonal Convention"
+-- Loaded by `supabase db reset` (see config.toml [db.seed]), or paste into
+-- the Supabase SQL editor. Adds two "The Haven Zonal Convention"
 -- editions (the newest is featured, the older one appears under "Past
 -- editions") with a cover, pictures, a resource file and two videos.
 -- The pictures/file are placeholders served from /public/demo.
@@ -13,7 +14,10 @@ declare
 begin
   select id into z from zones order by created_at limit 1;
   if z is null then
-    raise exception 'No zone found - finish zone setup first.';
+    -- `supabase db reset` runs this straight after migrations, before any
+    -- zone exists; skip quietly rather than failing the reset.
+    raise notice 'No zone found - finish zone setup first, then re-run this.';
+    return;
   end if;
 
   insert into event_series (zone_id, slug, name, sort_order)

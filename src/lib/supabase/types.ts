@@ -1,6 +1,6 @@
-// Hand-written to match supabase/migration.sql. No Supabase CLI is available
-// in this environment to auto-generate this from the live schema, so keep it
-// in sync by hand whenever the migration changes.
+// Hand-written to match supabase/migrations/. Keep it in sync by hand when a
+// migration changes, or regenerate it from a linked project with
+// `npm run db:types` (which overwrites this file).
 //
 // Every table needs `Relationships: []` (we don't use embedded-resource
 // foreign-key syntax that depends on it) and the schema needs empty
