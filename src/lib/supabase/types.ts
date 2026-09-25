@@ -730,7 +730,15 @@ export type Database = {
           created_at?: string;
         };
         Update: Record<string, never>;
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "chapter_record_files_record_id_fkey";
+            columns: ["record_id"];
+            isOneToOne: false;
+            referencedRelation: "chapter_records";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       cheques: {
         Row: {
