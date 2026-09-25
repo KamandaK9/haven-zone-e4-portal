@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { MemberAvatar } from "@/components/members/member-avatar";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -23,7 +23,8 @@ import {
 } from "@/components/ui/table";
 import { AddMemberDialog } from "./add-member-dialog";
 import { ImportMembersDialog } from "./import-members-dialog";
-import { memberFullName, memberTenureYears, memberTotalGiving } from "@/lib/data/analytics";
+import { formatTenure, memberFullName, memberTenureYears, memberTotalGiving } from "@/lib/data/analytics";
+import { POSITION_LABELS } from "@/lib/access";
 import type { Member, MemberRole } from "@/lib/data/types";
 
 const ROLES: (MemberRole | "All roles")[] = ["All roles", "Member", "Worker", "Cell Leader", "Pastor"];
@@ -33,7 +34,11 @@ export function MemberTable({
   churchId,
   countryId,
   churchName,
+  showGiving = true,
+  canManage = true,
 }: {
+  showGiving?: boolean;
+  canManage?: boolean;
   members: Member[];
   churchId: string;
   countryId: string;
@@ -79,10 +84,12 @@ export function MemberTable({
             </SelectContent>
           </Select>
         </div>
-        <div className="flex gap-2 shrink-0">
-          <ImportMembersDialog churchName={churchName} churchId={churchId} countryId={countryId} />
-          <AddMemberDialog churchId={churchId} countryId={countryId} />
-        </div>
+        {canManage && (
+          <div className="flex gap-2 shrink-0">
+            <ImportMembersDialog churchName={churchName} churchId={churchId} countryId={countryId} />
+            <AddMemberDialog churchId={churchId} countryId={countryId} />
+          </div>
+        )}
       </div>
 
       <div className="rounded-xl border overflow-hidden">
@@ -93,7 +100,7 @@ export function MemberTable({
               <TableHead>Role</TableHead>
               <TableHead>Tenure</TableHead>
               <TableHead>Training</TableHead>
-              <TableHead className="text-right">Total giving</TableHead>
+              {showGiving && <TableHead className="text-right">Total giving</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -103,15 +110,13 @@ export function MemberTable({
                 <TableRow key={member.id}>
                   <TableCell>
                     <Link href={`/members/${member.id}`} className="flex items-center gap-2.5 group">
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback
-                          className="text-xs font-semibold text-white"
-                          style={{ backgroundColor: member.avatarColor }}
-                        >
-                          {member.firstName[0]}
-                          {member.lastName[0]}
-                        </AvatarFallback>
-                      </Avatar>
+                      <MemberAvatar
+                        firstName={member.firstName}
+                        lastName={member.lastName}
+                        avatarColor={member.avatarColor}
+                        photoUrl={member.photoUrl}
+                        className="h-8 w-8 text-xs"
+                      />
                       <div className="min-w-0">
                         <p className="text-sm font-medium group-hover:text-primary transition-colors truncate">
                           {memberFullName(member)}
@@ -122,28 +127,28 @@ export function MemberTable({
                   </TableCell>
                   <TableCell>
                     <Badge variant="secondary" className="font-normal">
-                      {member.role}
+                      {member.position !== "member" ? POSITION_LABELS[member.position] : member.role}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {memberTenureYears(member) < 0.1
-                      ? "New"
-                      : `${memberTenureYears(member).toFixed(1)} yrs`}
+                    {formatTenure(memberTenureYears(member))}
                   </TableCell>
                   <TableCell>
                     <span className="text-xs text-muted-foreground">
                       {completed}/{member.trainings.length} complete
                     </span>
                   </TableCell>
-                  <TableCell className="text-right text-sm font-semibold tabular-nums">
-                    ${memberTotalGiving(member).toLocaleString()}
-                  </TableCell>
+                  {showGiving && (
+                    <TableCell className="text-right text-sm font-semibold tabular-nums">
+                      ${memberTotalGiving(member).toLocaleString()}
+                    </TableCell>
+                  )}
                 </TableRow>
               );
             })}
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-10">
+                <TableCell colSpan={showGiving ? 5 : 4} className="text-center text-sm text-muted-foreground py-10">
                   No members match your search.
                 </TableCell>
               </TableRow>

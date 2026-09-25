@@ -1,3 +1,6 @@
+import type { GivingCategory } from "@/lib/giving";
+import type { Portfolio, Position } from "@/lib/access";
+
 export type Country = {
   id: string;
   name: string;
@@ -11,6 +14,14 @@ export type Church = {
   city?: string;
   foundedYear?: number;
   pastor?: string;
+  subZoneId?: string;
+  // The Zonal Office — a home row for zone-level leaders, not a real chapter.
+  isOffice?: boolean;
+};
+
+export type SubZone = {
+  id: string;
+  name: string;
 };
 
 export type LessonStatus = "not_started" | "in_progress" | "completed";
@@ -22,6 +33,8 @@ export type TrainingProgram = {
   videoUrl?: string;
   icon: string;
   points: number;
+  // Whether new members are enrolled in this program automatically.
+  assignToNewMembers: boolean;
 };
 
 // A member's assignment/progress on one program — flattens the program's
@@ -42,6 +55,16 @@ export type Training = {
 export type GivingPoint = {
   month: string; // "2025-10"
   amount: number;
+  category?: GivingCategory; // absent on entries recorded before categories existed
+};
+
+// Giving totalled per chapter/month/category. Leaders who may see totals but
+// not individuals get exactly this — never a person's amounts.
+export type GivingAggregate = {
+  churchId: string;
+  month: string;
+  category?: GivingCategory;
+  amount: number;
 };
 
 export type MemberRole = "Member" | "Worker" | "Cell Leader" | "Pastor";
@@ -54,12 +77,15 @@ export type Member = {
   phone: string;
   churchId: string;
   countryId: string;
-  joinDate: string; // ISO date
+  joinDate?: string; // ISO date; unknown for members imported from a roster
   role: MemberRole;
+  position: Position;
+  portfolio?: Portfolio;
   avatarColor: string;
   giving: GivingPoint[];
   trainings: Training[];
   hasPortalAccess: boolean;
+  profileId?: string; // the login this member is linked to, if any
   // Populated for members imported from a leadership-roster workbook —
   // free text, verbatim from source (see parse-leadership-roster.ts).
   title?: string;
@@ -68,6 +94,36 @@ export type Member = {
   spouseName?: string;
   birthday?: string;
   weddingAnniversary?: string;
+  photoUrl?: string;
+};
+
+// A course's content — a video to watch or a graded quiz — in order.
+export type CourseLesson = {
+  id: string;
+  programId: string;
+  kind: "video" | "quiz";
+  title: string;
+  description?: string;
+  videoUrl?: string;
+  durationLabel?: string;
+  passThreshold?: number; // kind: "quiz"
+  sortOrder: number;
+  questionCount?: number; // kind: "quiz"
+};
+
+export type LessonProgress = {
+  lessonId: string;
+  completed: boolean;
+  completedAt?: string;
+  quizScore?: number;
+};
+
+// A quiz question as a learner sees it — no answer key.
+export type QuizQuestionForLearner = {
+  id: string;
+  question: string;
+  options: string[];
+  sortOrder: number;
 };
 
 export type ActivityType =
@@ -85,7 +141,7 @@ export type ActivityItem = {
   timestamp: string; // ISO datetime
 };
 
-export type CalendarEventType = "meeting" | "training" | "service" | "outreach";
+export type CalendarEventType = "meeting" | "training" | "service" | "outreach" | "flagship";
 
 export type CalendarEvent = {
   id: string;
@@ -95,6 +151,29 @@ export type CalendarEvent = {
   type: CalendarEventType;
   churchId?: string;
   countryId?: string;
+  // The event's own page (see /event/[id]).
+  description?: string;
+  endDate?: string; // ISO date
+  location?: string;
+  coverUrl?: string;
+  seriesId?: string; // set when this is an edition of an annual flagship event
+};
+
+export type EventSeries = {
+  id: string;
+  slug: string;
+  name: string;
+  description?: string;
+};
+
+export type EventMediaKind = "image" | "video" | "file";
+
+export type EventMedia = {
+  id: string;
+  eventId: string;
+  kind: EventMediaKind;
+  url: string;
+  title?: string;
 };
 
 export type LedgerEntryType = "income" | "expense";

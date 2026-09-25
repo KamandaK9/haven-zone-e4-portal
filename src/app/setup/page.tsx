@@ -37,21 +37,23 @@ import {
   type ChapterGroup,
 } from "@/lib/import/parse-leadership-roster";
 import { cn } from "@/lib/utils";
+import { ZONE_COUNTRIES } from "@/lib/zone-countries";
 
 const TOTAL_STEPS = STEP_LABELS.length;
 const IMPORT_STEP = STEP_LABELS.indexOf("Import members") + 1;
 
 const EMPTY_WIZARD: WizardState = {
-  zoneName: "Haven Zone E4",
+  zoneName: "The Haven Zone E4",
   adminName: "",
   adminEmail: "",
   adminPhone: "",
   adminPassword: "",
   adminPasswordConfirm: "",
-  countries: [{ name: "", churches: [""] }],
+  countries: ZONE_COUNTRIES.map((c) => ({ name: c.name, churches: [""] })),
   assistants: [{ name: "", email: "" }],
   importFileName: null,
   importedMembers: [],
+  churchMeta: {},
 };
 
 type AssistantCredential = Extract<CompleteZoneSetupResult, { ok: true }>["assistantCredentials"];
@@ -93,6 +95,7 @@ export default function SetupPage() {
       churchesByCountryIndex,
       assistants: wizard.assistants.filter((a) => a.name.trim() && a.email.trim()),
       importedMembers: wizard.importedMembers,
+      churchMeta: wizard.churchMeta,
     });
 
     if (!result.ok) {
@@ -136,6 +139,11 @@ export default function SetupPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      <datalist id="zone-countries">
+        {ZONE_COUNTRIES.map((c) => (
+          <option key={c.name} value={c.name} />
+        ))}
+      </datalist>
       <header className="border-b bg-card">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-3">
           <BrandMark size={32} />
@@ -408,7 +416,7 @@ function StepCountriesAndChurches({
       if (result.countries.length === 0) {
         setImportError(
           result.skipped[0]?.reason === 'No "Country" column found'
-            ? 'No "Country" column found in that file.'
+            ? 'No "Country" column found in that file. If this is the leadership roster workbook (one tab per sub-zone), skip this step and import it on the "Import members" step instead — it builds the countries and chapters for you.'
             : "No countries found in that file."
         );
         setImportState("error");
@@ -495,6 +503,7 @@ function StepCountriesAndChurches({
               <Globe2 className="h-4 w-4 text-muted-foreground shrink-0" />
               <Input
                 placeholder="e.g. Zambia"
+                list="zone-countries"
                 value={c.name}
                 onChange={(e) => updateCountryName(i, e.target.value)}
               />
@@ -569,9 +578,10 @@ function StepAssistants({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold">Assistants</h2>
+        <h2 className="text-lg font-semibold">Assistant Zonal Directors</h2>
         <p className="text-sm text-muted-foreground mt-0.5">
-          Add admins who&apos;ll help manage day-to-day data entry across the zone.
+          Add Assistant Zonal Directors who&apos;ll help run the zone. They get the same access you do, including
+          managing everyone else&apos;s access. Other leaders are added later from the roster, by invite.
         </p>
       </div>
       <div className="space-y-2.5">
@@ -710,7 +720,7 @@ function SimpleImportPanel({
   }
 
   function clear() {
-    setWizard((w) => ({ ...w, importFileName: null, importedMembers: [] }));
+    setWizard((w) => ({ ...w, importFileName: null, importedMembers: [], churchMeta: {} }));
     setSummary(null);
     setError(null);
     setImportStage("idle");
@@ -794,7 +804,7 @@ function SimpleImportPanel({
   );
 }
 
-type EditableGroup = ChapterGroup & { country: string; canonicalName: string };
+type EditableGroup = ChapterGroup & { country: string; canonicalName: string; subZone: string };
 type RosterStage = "idle" | "parsing" | "review" | "confirmed" | "error";
 
 function RosterImportPanel({
@@ -814,7 +824,7 @@ function RosterImportPanel({
   const [givingMap, setGivingMap] = useState<Map<string, { givingTotal?: number; givingDate?: string }>>(new Map());
   const [confirmedSummary, setConfirmedSummary] = useState<{
     people: number;
-    elevated: number;
+    leaders: number;
     churches: number;
     countries: number;
     giving: number;
@@ -834,7 +844,12 @@ function RosterImportPanel({
       }
       setPeople(result.people);
       setGroups(
-        result.chapterGroups.map((g) => ({ ...g, country: g.suggestedCountry, canonicalName: g.suggestedName }))
+        result.chapterGroups.map((g) => ({
+          ...g,
+          country: g.suggestedCountry,
+          canonicalName: g.suggestedName,
+          subZone: g.suggestedSubZone,
+        }))
       );
       setDuplicatesMerged(result.duplicatesMerged);
       setSkippedCount(result.skipped.length);
@@ -860,7 +875,7 @@ function RosterImportPanel({
     }
   }
 
-  function updateGroup(key: string, patch: Partial<Pick<EditableGroup, "country" | "canonicalName">>) {
+  function updateGroup(key: string, patch: Partial<Pick<EditableGroup, "country" | "canonicalName" | "subZone">>) {
     setGroups((gs) => gs.map((g) => (g.key === key ? { ...g, ...patch } : g)));
   }
 
@@ -871,7 +886,8 @@ function RosterImportPanel({
     const countryOrder: string[] = [];
     const byCountry = new Map<string, Set<string>>();
     let matchedGiving = 0;
-    let elevatedCount = 0;
+    let leaderCount = 0;
+    const churchMeta: WizardState["churchMeta"] = {};
 
     const importedMembers: WizardState["importedMembers"] = people.map((p) => {
       const group = byKey.get(normalizeChapterKey(p.chapterRaw))!;
@@ -882,10 +898,14 @@ function RosterImportPanel({
         countryOrder.push(countryName);
       }
       byCountry.get(countryName)!.add(churchName);
+      churchMeta[`${countryName}::${churchName}`] = {
+        subZoneName: group.subZone.trim() || undefined,
+        isOffice: group.isOffice,
+      };
 
       const giving = p.email ? givingMap.get(p.email) : undefined;
       if (giving?.givingTotal) matchedGiving++;
-      if (p.elevateToAdmin) elevatedCount++;
+      if (p.position !== "member") leaderCount++;
 
       return {
         countryName,
@@ -904,17 +924,18 @@ function RosterImportPanel({
           spouseName: p.spouseName,
           birthday: p.birthday,
           weddingAnniversary: p.weddingAnniversary,
-          elevateToAdmin: p.elevateToAdmin,
+          position: p.position,
+          portfolio: p.portfolio ?? undefined,
         },
       };
     });
 
     const countries: WizardCountry[] = countryOrder.map((name) => ({ name, churches: [...byCountry.get(name)!] }));
 
-    setWizard((w) => ({ ...w, countries, importedMembers }));
+    setWizard((w) => ({ ...w, countries, importedMembers, churchMeta }));
     setConfirmedSummary({
       people: importedMembers.length,
-      elevated: elevatedCount,
+      leaders: leaderCount,
       churches: new Set(importedMembers.map((m) => m.churchName)).size,
       countries: countries.length,
       giving: matchedGiving,
@@ -937,8 +958,9 @@ function RosterImportPanel({
     return (
       <div className="space-y-3">
         <p className="text-xs text-muted-foreground">
-          A multi-sheet workbook (one tab per sub-zone, plus leadership summary sheets) — Governors, Secretaries,
-          and the Zonal Director get real Assistant logins automatically.
+          A multi-sheet workbook (one tab per sub-zone, plus leadership summary sheets). Each person&apos;s position
+          (Governor, Deputy Governor, Secretary…) is read from the Designation column. Nobody gets a login
+          automatically — you invite leaders when they need access.
         </p>
         <div
           onClick={() => rosterInputRef.current?.click()}
@@ -978,8 +1000,8 @@ function RosterImportPanel({
           <CheckCircle2 className="h-3.5 w-3.5 shrink-0 mt-0.5" />
           <div>
             Ready to import {confirmedSummary.people.toLocaleString()} people across {confirmedSummary.countries}{" "}
-            countries and {confirmedSummary.churches} churches. {confirmedSummary.elevated} will get real Assistant
-            logins (Governors/Secretaries/Zonal Director).
+            countries and {confirmedSummary.churches} chapters. {confirmedSummary.leaders} hold a leadership
+            position (recorded only — no logins are created).
             {confirmedSummary.giving > 0 && ` ${confirmedSummary.giving} matched giving data from the second file.`}
           </div>
         </div>
@@ -1024,7 +1046,7 @@ function RosterImportPanel({
       </div>
 
       <div className="space-y-2">
-        <p className="text-sm font-medium">Confirm each chapter&apos;s church name and country</p>
+        <p className="text-sm font-medium">Confirm each chapter&apos;s name, sub-zone and country</p>
         <p className="text-xs text-muted-foreground">
           Pre-filled where confident — review every row before importing (some chapter names collapsed from
           multiple spellings found in the file).
@@ -1044,9 +1066,16 @@ function RosterImportPanel({
                 </p>
               </div>
               <Input
+                value={g.subZone}
+                onChange={(e) => updateGroup(g.key, { subZone: e.target.value })}
+                placeholder="Sub-zone"
+                className="h-8 text-sm w-24 shrink-0"
+              />
+              <Input
                 value={g.country}
                 onChange={(e) => updateGroup(g.key, { country: e.target.value })}
                 placeholder="Country"
+                list="zone-countries"
                 className="h-8 text-sm w-36 shrink-0"
               />
             </div>

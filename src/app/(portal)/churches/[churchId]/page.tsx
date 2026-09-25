@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Users, HandCoins, Clock, CalendarDays } from "lucide-react";
+import { Users, HandCoins, Clock, CalendarDays, Copy } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { MemberTable } from "@/components/members/member-table";
-import { getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
+import { RenameChapterDialog } from "@/components/dashboard/rename-chapter-dialog";
+import { GivingCategorySelect } from "@/components/dashboard/giving-category-select";
+import { can, getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
 import { getDisplayCurrency } from "@/lib/currency-server";
 import { formatMoney } from "@/lib/currency";
 import {
@@ -14,13 +17,17 @@ import {
   getCountry,
   getMembersByChurch,
 } from "@/lib/data/analytics";
+import { givingFilterLabel, parseGivingFilter } from "@/lib/giving";
 
 export default async function ChurchPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ churchId: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const { churchId } = await params;
+  const givingFilter = parseGivingFilter((await searchParams).giving);
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
   const ds = await getZoneDataset(profile.zoneId);
@@ -40,7 +47,7 @@ export default async function ChurchPage({
   }
 
   const country = getCountry(ds, church.countryId);
-  const stats = getChurchStats(ds, church.id);
+  const stats = getChurchStats(ds, church.id, givingFilter);
   const members = getMembersByChurch(ds, church.id);
   const subline = [church.city, country?.name, church.pastor].filter(Boolean).join(" · ");
 
@@ -54,22 +61,45 @@ export default async function ChurchPage({
         ]}
       />
 
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{church.name}</h1>
-        {subline && <p className="text-sm text-muted-foreground">{subline}</p>}
+      <div className="flex items-start gap-2">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold tracking-tight">{church.name}</h1>
+          {subline && <p className="text-sm text-muted-foreground">{subline}</p>}
+        </div>
+        {can(profile, "manage_members") && (
+          <RenameChapterDialog churchId={church.id} currentName={church.name} size="default" />
+        )}
+      </div>
+
+      <div className="flex items-center justify-end">
+        <GivingCategorySelect value={givingFilter} />
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard label="Members" value={stats.memberCount.toLocaleString()} icon={Users} />
-        <StatCard label="Total giving" value={formatMoney(stats.totalGiving, currency, rates)} icon={HandCoins} />
-        <StatCard label="Avg. tenure" value={`${stats.avgTenure.toFixed(1)} yrs`} icon={Clock} />
+        <StatCard
+          label={givingFilter === "all" ? "Total giving" : `${givingFilterLabel(givingFilter)} giving`}
+          value={formatMoney(stats.totalGiving, currency, rates)}
+          icon={HandCoins}
+        />
+        <StatCard label="Avg. tenure" value={stats.avgTenure > 0 ? `${stats.avgTenure.toFixed(1)} yrs` : "—"} icon={Clock} />
         <StatCard label="Founded" value={church.foundedYear ? String(church.foundedYear) : "—"} icon={CalendarDays} />
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Members</CardTitle>
-          <CardDescription>Search, filter, or add a member for {church.name}</CardDescription>
+        <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
+          <div>
+            <CardTitle>Members</CardTitle>
+            <CardDescription>Search, filter, or add a member for {church.name}</CardDescription>
+          </div>
+          {can(profile, "manage_members") && (
+            <Button variant="outline" size="sm" className="gap-2 shrink-0" asChild>
+              <Link href="/members/duplicates">
+                <Copy className="h-3.5 w-3.5" />
+                Find duplicates
+              </Link>
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           <MemberTable
@@ -77,6 +107,8 @@ export default async function ChurchPage({
             churchId={church.id}
             countryId={church.countryId}
             churchName={church.name}
+            showGiving={ds.individualGiving}
+            canManage={can(profile, "manage_members")}
           />
         </CardContent>
       </Card>

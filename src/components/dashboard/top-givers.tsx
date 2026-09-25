@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { MemberAvatar } from "@/components/members/member-avatar";
 import { getChurch, memberFullName, type Dataset } from "@/lib/data/analytics";
 import { formatMoney, type CurrencyCode } from "@/lib/currency";
 import type { Member } from "@/lib/data/types";
@@ -38,15 +38,13 @@ export function TopGivers({
             <span className="w-5 text-center text-xs font-semibold text-muted-foreground">
               {i + 1}
             </span>
-            <Avatar className="h-8 w-8">
-              <AvatarFallback
-                className="text-xs font-semibold text-white"
-                style={{ backgroundColor: member.avatarColor }}
-              >
-                {member.firstName[0]}
-                {member.lastName[0]}
-              </AvatarFallback>
-            </Avatar>
+            <MemberAvatar
+              firstName={member.firstName}
+              lastName={member.lastName}
+              avatarColor={member.avatarColor}
+              photoUrl={member.photoUrl}
+              className="h-8 w-8 text-xs"
+            />
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">
                 {memberFullName(member)}

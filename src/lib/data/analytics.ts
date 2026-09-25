@@ -1,4 +1,14 @@
-import type { ActivityItem, CalendarEvent, Church, Country, Member, TrainingProgram } from "./types";
+import type {
+  ActivityItem,
+  CalendarEvent,
+  Church,
+  Country,
+  GivingAggregate,
+  Member,
+  SubZone,
+  TrainingProgram,
+} from "./types";
+import type { GivingFilter } from "@/lib/giving";
 
 export type Dataset = {
   members: Member[];
@@ -7,6 +17,10 @@ export type Dataset = {
   activity: ActivityItem[];
   events: CalendarEvent[];
   trainingPrograms: TrainingProgram[];
+  subZones: SubZone[];
+  giving: GivingAggregate[];
+  // False when the viewer may see totals but not any one person's giving.
+  individualGiving: boolean;
 };
 
 export function getLast12Months(now = new Date()): string[] {
@@ -50,13 +64,37 @@ export function memberFullName(m: Member): string {
   return `${m.firstName} ${m.lastName}`;
 }
 
-export function memberTotalGiving(m: Member): number {
-  return m.giving.reduce((sum, g) => sum + g.amount, 0);
+export function memberTotalGiving(m: Member, filter: GivingFilter = "all"): number {
+  return m.giving.reduce((sum, g) => (filter === "all" || g.category === filter ? sum + g.amount : sum), 0);
 }
 
-export function memberTenureYears(m: Member, now = new Date()): number {
+export function getTotalGiving(ds: Dataset, filter: GivingFilter = "all"): number {
+  return sumGiving(ds.giving, filter);
+}
+
+// Undefined when the join date is unknown (rosters rarely carry one).
+export function memberTenureYears(m: Member, now = new Date()): number | undefined {
+  if (!m.joinDate) return undefined;
   const ms = now.getTime() - new Date(m.joinDate).getTime();
   return ms / (1000 * 60 * 60 * 24 * 365.25);
+}
+
+export function formatTenure(years: number | undefined): string {
+  if (years === undefined) return "—";
+  return years < 0.1 ? "New" : `${years.toFixed(1)} yrs`;
+}
+
+function averageTenure(members: Member[], now: Date): number {
+  const known = members.map((m) => memberTenureYears(m, now)).filter((y): y is number => y !== undefined);
+  return known.length === 0 ? 0 : known.reduce((sum, y) => sum + y, 0) / known.length;
+}
+
+function givingMatches(g: GivingAggregate, filter: GivingFilter): boolean {
+  return filter === "all" || g.category === filter;
+}
+
+function sumGiving(rows: GivingAggregate[], filter: GivingFilter = "all"): number {
+  return rows.reduce((sum, g) => (givingMatches(g, filter) ? sum + g.amount : sum), 0);
 }
 
 export function memberTrainingPoints(m: Member): number {
@@ -73,16 +111,18 @@ export function getTrainingLeaderboard(ds: Dataset, limit = 10) {
 
 export function getZoneStats(ds: Dataset, now = new Date()) {
   const totalMembers = ds.members.length;
-  const totalChurches = ds.churches.length;
+  const totalChurches = ds.churches.filter((c) => !c.isOffice).length;
   const totalCountries = ds.countries.length;
   const thisMonth = getLast12Months(now).at(-1)!;
-  const newThisMonth = ds.members.filter((m) => m.joinDate.slice(0, 7) === thisMonth).length;
+  const newThisMonth = ds.members.filter((m) => m.joinDate?.slice(0, 7) === thisMonth).length;
 
   // Trailing-quarter comparison reads more meaningfully than a single noisy
   // month-over-month join count on a zone this size.
   const months = getLast12Months(now);
   const quarterAgoMonth = months[months.length - 4] ?? months[0];
-  const membersAsOfQuarterAgo = ds.members.filter((m) => m.joinDate.slice(0, 7) <= quarterAgoMonth).length;
+  // A member with no recorded join date is treated as already there rather
+  // than as a new joiner.
+  const membersAsOfQuarterAgo = ds.members.filter((m) => !m.joinDate || m.joinDate.slice(0, 7) <= quarterAgoMonth).length;
   const growthPct =
     membersAsOfQuarterAgo === 0
       ? totalMembers > 0
@@ -90,70 +130,76 @@ export function getZoneStats(ds: Dataset, now = new Date()) {
         : 0
       : Math.round(((totalMembers - membersAsOfQuarterAgo) / membersAsOfQuarterAgo) * 100);
 
-  const totalGiving = ds.members.reduce((sum, m) => sum + memberTotalGiving(m), 0);
+  const totalGiving = getTotalGiving(ds);
   return { totalMembers, totalChurches, totalCountries, newThisMonth, growthPct, totalGiving };
 }
 
 export function getCountryStats(ds: Dataset, countryId: string, now = new Date()) {
   const members = getMembersByCountry(ds, countryId);
   const churches = getChurchesByCountry(ds, countryId);
-  const totalGiving = members.reduce((sum, m) => sum + memberTotalGiving(m), 0);
-  const avgTenure =
-    members.length === 0
-      ? 0
-      : members.reduce((sum, m) => sum + memberTenureYears(m, now), 0) / members.length;
+  const churchIds = new Set(churches.map((c) => c.id));
+  const totalGiving = sumGiving(ds.giving.filter((g) => churchIds.has(g.churchId)));
+  const avgTenure = averageTenure(members, now);
   return {
     memberCount: members.length,
-    churchCount: churches.length,
+    churchCount: churches.filter((c) => !c.isOffice).length,
     totalGiving,
     avgTenure,
   };
 }
 
-export function getChurchStats(ds: Dataset, churchId: string, now = new Date()) {
+export function getChurchStats(ds: Dataset, churchId: string, filter: GivingFilter = "all", now = new Date()) {
   const members = getMembersByChurch(ds, churchId);
-  const totalGiving = members.reduce((sum, m) => sum + memberTotalGiving(m), 0);
-  const avgTenure =
-    members.length === 0
-      ? 0
-      : members.reduce((sum, m) => sum + memberTenureYears(m, now), 0) / members.length;
+  const totalGiving = sumGiving(
+    ds.giving.filter((g) => g.churchId === churchId),
+    filter
+  );
+  const avgTenure = averageTenure(members, now);
   return { memberCount: members.length, totalGiving, avgTenure };
 }
 
-export function getTopGivers(ds: Dataset, limit = 10) {
-  return [...ds.members]
-    .map((m) => ({ member: m, total: memberTotalGiving(m) }))
+export function getTopGivers(ds: Dataset, limit = 10, filter: GivingFilter = "all") {
+  return ds.members
+    .map((m) => ({ member: m, total: memberTotalGiving(m, filter) }))
+    .filter((row) => row.total > 0)
     .sort((a, b) => b.total - a.total)
     .slice(0, limit);
 }
 
-export function getGivingTrendZone(ds: Dataset, now = new Date()) {
+export function getGivingTrendZone(ds: Dataset, filter: GivingFilter = "all", now = new Date()) {
   return getLast12Months(now).map((month) => ({
     month,
-    amount: ds.members.reduce((sum, m) => {
-      const point = m.giving.find((g) => g.month === month);
-      return sum + (point?.amount ?? 0);
-    }, 0),
+    amount: sumGiving(
+      ds.giving.filter((g) => g.month === month),
+      filter
+    ),
   }));
 }
 
-export function getGivingByCountry(ds: Dataset) {
+export function getGivingByCountry(ds: Dataset, filter: GivingFilter = "all") {
+  const countryByChurch = new Map(ds.churches.map((c) => [c.id, c.countryId]));
   return ds.countries
     .map((c) => ({
       countryId: c.id,
       name: c.name,
-      amount: getMembersByCountry(ds, c.id).reduce((sum, m) => sum + memberTotalGiving(m), 0),
+      amount: sumGiving(
+        ds.giving.filter((g) => countryByChurch.get(g.churchId) === c.id),
+        filter
+      ),
     }))
     .sort((a, b) => b.amount - a.amount);
 }
 
-export function getGivingByChurch(ds: Dataset, countryId?: string) {
-  const churches = countryId ? getChurchesByCountry(ds, countryId) : ds.churches;
+export function getGivingByChurch(ds: Dataset, countryId?: string, filter: GivingFilter = "all") {
+  const churches = (countryId ? getChurchesByCountry(ds, countryId) : ds.churches).filter((c) => !c.isOffice);
   return churches
     .map((c) => ({
       churchId: c.id,
       name: c.name,
-      amount: getMembersByChurch(ds, c.id).reduce((sum, m) => sum + memberTotalGiving(m), 0),
+      amount: sumGiving(
+        ds.giving.filter((g) => g.churchId === c.id),
+        filter
+      ),
     }))
     .sort((a, b) => b.amount - a.amount);
 }
@@ -162,6 +208,7 @@ export function getTenureDistribution(members: Member[], now = new Date()) {
   const buckets = { "< 1 year": 0, "1–3 years": 0, "3–5 years": 0, "5+ years": 0 };
   for (const m of members) {
     const years = memberTenureYears(m, now);
+    if (years === undefined) continue;
     if (years < 1) buckets["< 1 year"]++;
     else if (years < 3) buckets["1–3 years"]++;
     else if (years < 5) buckets["3–5 years"]++;
@@ -173,8 +220,8 @@ export function getTenureDistribution(members: Member[], now = new Date()) {
 export function getMembershipGrowth(ds: Dataset, now = new Date()) {
   // Cumulative membership count sampled at each of the last 12 months.
   return getLast12Months(now).map((month) => {
-    const cumulative = ds.members.filter((m) => m.joinDate.slice(0, 7) <= month).length;
-    const newInMonth = ds.members.filter((m) => m.joinDate.slice(0, 7) === month).length;
+    const cumulative = ds.members.filter((m) => !m.joinDate || m.joinDate.slice(0, 7) <= month).length;
+    const newInMonth = ds.members.filter((m) => m.joinDate?.slice(0, 7) === month).length;
     return { month, cumulative, new: newInMonth };
   });
 }
@@ -184,15 +231,12 @@ export function getChurchHealth(ds: Dataset, now = new Date()) {
   const recentMonths = new Set(months.slice(-3));
   const priorMonths = new Set(months.slice(-6, -3));
 
-  return ds.churches.map((church) => {
+  return ds.churches.filter((c) => !c.isOffice).map((church) => {
     const members = getMembersByChurch(ds, church.id);
-    const recentJoins = members.filter((m) => memberTenureYears(m, now) < 0.5).length;
+    const recentJoins = members.filter((m) => (memberTenureYears(m, now) ?? Infinity) < 0.5).length;
 
-    const sumGivingIn = (monthSet: Set<string>) =>
-      members.reduce(
-        (sum, m) => sum + m.giving.filter((g) => monthSet.has(g.month)).reduce((s, g) => s + g.amount, 0),
-        0
-      );
+    const churchGiving = ds.giving.filter((g) => g.churchId === church.id);
+    const sumGivingIn = (monthSet: Set<string>) => sumGiving(churchGiving.filter((g) => monthSet.has(g.month)));
     const recentGiving = sumGivingIn(recentMonths);
     const priorGiving = sumGivingIn(priorMonths);
     const momentum = priorGiving === 0 ? (recentGiving > 0 ? 1 : 0) : (recentGiving - priorGiving) / priorGiving;

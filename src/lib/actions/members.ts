@@ -3,41 +3,21 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getCurrentProfile } from "@/lib/data/get-dataset";
+import { can, getCurrentProfile } from "@/lib/data/get-dataset";
+import {
+  canActOn,
+  isPortfolio,
+  isPosition,
+  loginFor,
+  type Portfolio,
+  type Position,
+} from "@/lib/access";
+import { getAutoAssignedProgramIds } from "@/lib/data/programs-server";
+import { getSiteUrl } from "@/lib/site-url";
 import { logAudit } from "./audit";
 import type { MemberRole } from "@/lib/data/types";
 
-const DEFAULT_TRAININGS = [
-  { name: "New Believers Class", icon: "Heart", points: 10 },
-  { name: "Foundation School", icon: "BookOpen", points: 20 },
-  { name: "Leadership Development", icon: "GraduationCap", points: 30 },
-  { name: "Water Baptism", icon: "Droplet", points: 15 },
-];
-
 const AVATAR_COLORS = ["#7c3aed", "#a21caf", "#9333ea", "#be185d", "#6d28d9", "#c026d3", "#8b5cf6"];
-
-// Every new zone effectively "seeds" these 4 programs the first time a
-// member is created/imported — after that, staff can rename, extend, or
-// add entirely new programs from the Training page, same as this does.
-async function getOrCreateDefaultPrograms(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  zoneId: string
-): Promise<string[]> {
-  const names = DEFAULT_TRAININGS.map((t) => t.name);
-  const { data: existing } = await supabase.from("training_programs").select("id, name").eq("zone_id", zoneId).in("name", names);
-
-  const byName = new Map((existing ?? []).map((p) => [p.name, p.id]));
-  const missing = DEFAULT_TRAININGS.filter((t) => !byName.has(t.name));
-  if (missing.length > 0) {
-    const { data: created } = await supabase
-      .from("training_programs")
-      .insert(missing.map((t) => ({ zone_id: zoneId, name: t.name, icon: t.icon, points: t.points })))
-      .select("id, name");
-    for (const p of created ?? []) byName.set(p.name, p.id);
-  }
-
-  return names.map((n) => byName.get(n)).filter((id): id is string => !!id);
-}
 
 type CreateMemberInput = {
   churchId: string;
@@ -54,6 +34,7 @@ export type ActionResult = { ok: true } | { ok: false; error: string };
 export async function createMember(input: CreateMemberInput): Promise<ActionResult> {
   const profile = await getCurrentProfile();
   if (!profile) return { ok: false, error: "Not signed in." };
+  if (!can(profile, "manage_members")) return { ok: false, error: "Not permitted." };
   if (!input.firstName.trim() || !input.lastName.trim()) {
     return { ok: false, error: "First and last name are required." };
   }
@@ -71,6 +52,8 @@ export async function createMember(input: CreateMemberInput): Promise<ActionResu
       email: input.email?.trim() || null,
       phone: input.phone?.trim() || null,
       role: input.role,
+      // Someone added by hand joined now; roster imports leave this blank.
+      join_date: new Date().toISOString().slice(0, 10),
       avatar_color: AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)],
     })
     .select("id")
@@ -80,7 +63,7 @@ export async function createMember(input: CreateMemberInput): Promise<ActionResu
     return { ok: false, error: error?.message ?? "Could not add member." };
   }
 
-  const programIds = await getOrCreateDefaultPrograms(supabase, profile.zoneId);
+  const programIds = await getAutoAssignedProgramIds(profile.zoneId);
   await supabase.from("trainings").insert(
     programIds.map((program_id) => ({
       member_id: member.id,
@@ -126,7 +109,10 @@ export type ParsedMemberRow = {
   spouseName?: string;
   birthday?: string;
   weddingAnniversary?: string;
-  elevateToAdmin?: boolean;
+  // Leadership position parsed from the roster DESIGNATION column. Recorded
+  // only — a login is issued later, by invite, never in bulk.
+  position?: Position;
+  portfolio?: Portfolio;
 };
 
 export type BulkImportResult = {
@@ -142,6 +128,7 @@ export async function bulkImportMembers(input: {
 }): Promise<BulkImportResult> {
   const profile = await getCurrentProfile();
   if (!profile) return { ok: false, error: "Not signed in." };
+  if (!can(profile, "manage_members")) return { ok: false, error: "Not permitted." };
 
   const supabase = await createClient();
   const errors: { row: number; reason: string }[] = [];
@@ -160,6 +147,17 @@ export async function bulkImportMembers(input: {
   const givingByIndex: (number | undefined)[] = [];
   const givingMonthByIndex: (string | undefined)[] = [];
 
+  // Anyone already in this chapter (same email, or the same name) is skipped
+  // rather than added a second time — re-importing a file is safe.
+  const nameKey = (first: string, last: string) =>
+    `${first} ${last}`.toLowerCase().split(/[^a-z]+/).filter(Boolean).sort().join(" ");
+  const { data: existingMembers } = await supabase
+    .from("members")
+    .select("first_name, last_name, email")
+    .eq("church_id", input.churchId);
+  const seenEmails = new Set((existingMembers ?? []).map((m) => m.email?.trim().toLowerCase()).filter(Boolean));
+  const seenNames = new Set((existingMembers ?? []).map((m) => nameKey(m.first_name, m.last_name)));
+
   input.rows.forEach((row, i) => {
     if (!row.firstName?.trim() && !row.lastName?.trim()) {
       errors.push({ row: i + 1, reason: "Missing first and last name" });
@@ -169,6 +167,15 @@ export async function bulkImportMembers(input: {
       errors.push({ row: i + 1, reason: "Missing first or last name" });
       return;
     }
+    const email = row.email?.trim().toLowerCase();
+    const key = nameKey(row.firstName, row.lastName);
+    if ((email && seenEmails.has(email)) || seenNames.has(key)) {
+      errors.push({ row: i + 1, reason: `${row.firstName.trim()} ${row.lastName.trim()} is already in this chapter` });
+      return;
+    }
+    if (email) seenEmails.add(email);
+    seenNames.add(key);
+
     toInsert.push({
       zone_id: profile.zoneId,
       church_id: input.churchId,
@@ -194,7 +201,7 @@ export async function bulkImportMembers(input: {
     return { ok: false, error: error?.message ?? "Import failed." };
   }
 
-  const programIds = await getOrCreateDefaultPrograms(supabase, profile.zoneId);
+  const programIds = await getAutoAssignedProgramIds(profile.zoneId);
   const trainingRows = inserted.flatMap((m) =>
     programIds.map((program_id) => ({
       member_id: m.id,
@@ -235,19 +242,28 @@ function randomTempPassword(): string {
   return out;
 }
 
-export type InviteMemberResult = { ok: true; tempPassword: string } | { ok: false; error: string };
+export type InviteMemberResult =
+  | { ok: true; emailed: true }
+  | { ok: true; emailed: false; tempPassword: string }
+  | { ok: false; error: string };
 
-// Gives an existing member row a real login (role 'member') to the
-// self-service portal. Staff-only; the member never invites themselves.
+// Gives an existing member row a real login. The login carries the person's
+// position, so a Governor invited here can only ever see their own chapter.
+// You can only invite people below your own position, and only within the
+// scope RLS already lets you see.
+//
+// Sends a real invite email (they set their own password via the link) —
+// falling back to the old show-it-once temp password only if the email
+// can't be sent, e.g. no SMTP provider configured yet in Supabase.
 export async function inviteMemberToPortal(memberId: string): Promise<InviteMemberResult> {
   const profile = await getCurrentProfile();
   if (!profile) return { ok: false, error: "Not signed in." };
-  if (profile.role === "member") return { ok: false, error: "Not permitted." };
+  if (!can(profile, "manage_members")) return { ok: false, error: "Not permitted." };
 
   const supabase = await createClient();
   const { data: member } = await supabase
     .from("members")
-    .select("id, email, first_name, last_name, profile_id, zone_id")
+    .select("id, email, first_name, last_name, profile_id, zone_id, church_id, position, portfolio")
     .eq("id", memberId)
     .single();
 
@@ -256,7 +272,59 @@ export async function inviteMemberToPortal(memberId: string): Promise<InviteMemb
   if (member.profile_id) return { ok: false, error: "This member already has portal access." };
   if (!member.email) return { ok: false, error: "Add an email for this member first." };
 
+  const position = isPosition(member.position) ? member.position : "member";
+  const portfolio = isPortfolio(member.portfolio) ? member.portfolio : null;
+  if (position !== "member" && !canActOn(profile.position, position)) {
+    return { ok: false, error: "You can only give portal access to people below your own position." };
+  }
+
+  const { data: church } = await supabase.from("churches").select("sub_zone_id").eq("id", member.church_id).single();
+  const login = loginFor(position, portfolio);
   const admin = createAdminClient();
+  const fullName = `${member.first_name} ${member.last_name}`;
+
+  // Attaches the zone profile to an auth user just created for this member,
+  // and links the member row to it — shared by both the "emailed" and
+  // "temp password" paths below.
+  async function finishInvite(userId: string): Promise<{ ok: true } | { ok: false; error: string }> {
+    const { error: profileError } = await admin.from("profiles").insert({
+      id: userId,
+      zone_id: profile!.zoneId,
+      role: login.role,
+      full_name: fullName,
+      email: member!.email!,
+      position,
+      portfolio,
+      scope: login.scope,
+      sub_zone_id: church?.sub_zone_id ?? null,
+      church_id: member!.church_id,
+      caps: login.caps,
+    });
+    if (profileError) {
+      await admin.auth.admin.deleteUser(userId);
+      return { ok: false, error: profileError.message };
+    }
+
+    const { error: linkError } = await admin.from("members").update({ profile_id: userId }).eq("id", memberId);
+    if (linkError) return { ok: false, error: linkError.message };
+    return { ok: true };
+  }
+
+  const siteUrl = await getSiteUrl();
+  const invited = await admin.auth.admin.inviteUserByEmail(member.email, {
+    redirectTo: `${siteUrl}/auth/confirm?next=/reset-password`,
+  });
+
+  if (invited.data.user) {
+    const result = await finishInvite(invited.data.user.id);
+    if (!result.ok) return result;
+    await logAudit(profile, "member.invite_to_portal", `Invited ${fullName} to the portal as ${position.replace(/_/g, " ")}`);
+    revalidatePath("/", "layout");
+    return { ok: true, emailed: true };
+  }
+
+  // Most likely no SMTP provider is configured yet — fall back to a
+  // one-time password shown on screen so the leader isn't blocked.
   const tempPassword = randomTempPassword();
   const { data: authUser, error: authError } = await admin.auth.admin.createUser({
     email: member.email,
@@ -264,27 +332,17 @@ export async function inviteMemberToPortal(memberId: string): Promise<InviteMemb
     email_confirm: true,
   });
   if (authError || !authUser.user) {
-    return { ok: false, error: authError?.message ?? "Could not create a login for this member." };
+    return { ok: false, error: authError?.message ?? invited.error?.message ?? "Could not create a login for this member." };
   }
 
-  const { error: profileError } = await admin.from("profiles").insert({
-    id: authUser.user.id,
-    zone_id: profile.zoneId,
-    role: "member",
-    full_name: `${member.first_name} ${member.last_name}`,
-    email: member.email,
-  });
-  if (profileError) {
-    await admin.auth.admin.deleteUser(authUser.user.id);
-    return { ok: false, error: profileError.message };
-  }
+  const result = await finishInvite(authUser.user.id);
+  if (!result.ok) return result;
 
-  const { error: linkError } = await admin.from("members").update({ profile_id: authUser.user.id }).eq("id", memberId);
-  if (linkError) {
-    return { ok: false, error: linkError.message };
-  }
-
-  await logAudit(profile, "member.invite_to_portal", `Invited ${member.first_name} ${member.last_name} to the member portal`);
+  await logAudit(
+    profile,
+    "member.invite_to_portal",
+    `Gave ${fullName} portal access as ${position.replace(/_/g, " ")} (email not sent — shown as a one-time password)`
+  );
   revalidatePath("/", "layout");
-  return { ok: true, tempPassword };
+  return { ok: true, emailed: false, tempPassword };
 }

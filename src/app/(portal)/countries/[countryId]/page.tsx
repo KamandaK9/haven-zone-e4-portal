@@ -5,7 +5,9 @@ import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { BarBreakdownChart } from "@/components/charts/bar-breakdown-chart";
-import { getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
+import { GivingCategorySelect } from "@/components/dashboard/giving-category-select";
+import { can, getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
+import { RenameChapterDialog } from "@/components/dashboard/rename-chapter-dialog";
 import { getDisplayCurrency } from "@/lib/currency-server";
 import { formatMoney } from "@/lib/currency";
 import {
@@ -16,13 +18,17 @@ import {
   getGivingByChurch,
 } from "@/lib/data/analytics";
 import { pluralize } from "@/lib/utils";
+import { givingFilterLabel, parseGivingFilter } from "@/lib/giving";
 
 export default async function CountryPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ countryId: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const { countryId } = await params;
+  const givingFilter = parseGivingFilter((await searchParams).giving);
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
   const ds = await getZoneDataset(profile.zoneId);
@@ -43,7 +49,10 @@ export default async function CountryPage({
 
   const stats = getCountryStats(ds, countryId);
   const churches = getChurchesByCountry(ds, countryId);
-  const giving = getGivingByChurch(ds, countryId);
+  const giving = getGivingByChurch(ds, countryId, givingFilter);
+  const givingByChurchId = new Map(giving.map((g) => [g.churchId, g.amount]));
+  const totalGiving = giving.reduce((sum, g) => sum + g.amount, 0);
+  const canRename = can(profile, "manage_members");
 
   return (
     <div className="space-y-6">
@@ -60,27 +69,31 @@ export default async function CountryPage({
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{country.name}</h1>
           <p className="text-sm text-muted-foreground">
-            {pluralize(stats.churchCount, "church", "churches")} &middot; {pluralize(stats.memberCount, "member")}
+            {pluralize(stats.churchCount, "chapter")} &middot; {pluralize(stats.memberCount, "member")}
           </p>
         </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard label="Members" value={stats.memberCount.toLocaleString()} icon={Users} />
-        <StatCard label="Churches" value={String(stats.churchCount)} icon={ChurchIcon} />
-        <StatCard label="Total giving" value={formatMoney(stats.totalGiving, currency, rates)} icon={HandCoins} />
-        <StatCard label="Avg. tenure" value={`${stats.avgTenure.toFixed(1)} yrs`} icon={Clock} />
+        <StatCard label="Chapters" value={String(stats.churchCount)} icon={ChurchIcon} />
+        <StatCard
+          label={givingFilter === "all" ? "Total giving" : `${givingFilterLabel(givingFilter)} giving`}
+          value={formatMoney(totalGiving, currency, rates)}
+          icon={HandCoins}
+        />
+        <StatCard label="Avg. tenure" value={stats.avgTenure > 0 ? `${stats.avgTenure.toFixed(1)} yrs` : "—"} icon={Clock} />
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Churches in {country.name}</CardTitle>
-          <CardDescription>Click a church to view its members</CardDescription>
+          <CardTitle>Chapters in {country.name}</CardTitle>
+          <CardDescription>Click a chapter to view its members</CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
           {churches.length === 0 && (
             <p className="text-sm text-muted-foreground py-8 text-center border rounded-lg border-dashed">
-              No churches yet. Add some from Zone Setup.
+              No chapters yet. Add some from Zone Setup.
             </p>
           )}
           {churches.map((church) => {
@@ -94,9 +107,12 @@ export default async function CountryPage({
                 href={`/churches/${church.id}`}
                 className="flex items-center justify-between rounded-xl border p-4 hover:border-primary/40 hover:shadow-sm transition-all"
               >
-                <div>
-                  <p className="font-medium text-sm">{church.name}</p>
-                  {subline && <p className="text-xs text-muted-foreground mt-0.5">{subline}</p>}
+                <div className="flex items-center gap-1 min-w-0">
+                  <div className="min-w-0">
+                    <p className="font-medium text-sm truncate">{church.name}</p>
+                    {subline && <p className="text-xs text-muted-foreground mt-0.5">{subline}</p>}
+                  </div>
+                  {canRename && <RenameChapterDialog churchId={church.id} currentName={church.name} />}
                 </div>
                 <div className="flex items-center gap-6">
                   <div className="text-right hidden sm:block">
@@ -104,8 +120,12 @@ export default async function CountryPage({
                     <p className="text-[11px] text-muted-foreground">members</p>
                   </div>
                   <div className="text-right hidden sm:block">
-                    <p className="text-sm font-semibold">{formatMoney(cStats.totalGiving, currency, rates)}</p>
-                    <p className="text-[11px] text-muted-foreground">giving</p>
+                    <p className="text-sm font-semibold">
+                      {formatMoney(givingByChurchId.get(church.id) ?? 0, currency, rates)}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {givingFilter === "all" ? "giving" : givingFilterLabel(givingFilter)}
+                    </p>
                   </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </div>
@@ -118,8 +138,10 @@ export default async function CountryPage({
       {giving.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Giving by church</CardTitle>
-            <CardDescription>12-month total, {country.name}</CardDescription>
+            <CardTitle>
+              <GivingCategorySelect value={givingFilter} />
+            </CardTitle>
+            <CardDescription>By chapter, {country.name}</CardDescription>
           </CardHeader>
           <CardContent>
             <BarBreakdownChart

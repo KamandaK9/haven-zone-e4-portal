@@ -26,5 +26,6 @@ export async function updateOwnContactInfo(input: { email?: string; phone?: stri
   if (error) return { ok: false, error: error.message };
 
   revalidatePath("/me");
+  revalidatePath("/me/profile");
   return { ok: true };
 }

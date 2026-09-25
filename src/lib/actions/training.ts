@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentProfile } from "@/lib/data/get-dataset";
+import { can, getCurrentProfile } from "@/lib/data/get-dataset";
 import { logAudit } from "./audit";
 import { TRAINING_ICON_OPTIONS } from "@/lib/training-icons";
 import type { ActionResult } from "./members";
@@ -13,12 +13,13 @@ export type CreateTrainingProgramInput = {
   videoUrl?: string;
   icon: string;
   points: number;
+  assignToNewMembers?: boolean;
 };
 
 export async function createTrainingProgram(input: CreateTrainingProgramInput): Promise<ActionResult> {
   const profile = await getCurrentProfile();
   if (!profile) return { ok: false, error: "Not signed in." };
-  if (profile.role === "member") return { ok: false, error: "Not permitted." };
+  if (!can(profile, "manage_training")) return { ok: false, error: "Not permitted." };
 
   const name = input.name.trim();
   if (!name) return { ok: false, error: "Name is required." };
@@ -33,6 +34,7 @@ export async function createTrainingProgram(input: CreateTrainingProgramInput): 
     video_url: input.videoUrl?.trim() || null,
     icon,
     points,
+    assign_to_new_members: input.assignToNewMembers === true,
     created_by: profile.userId,
   });
   if (error) return { ok: false, error: error.message };
@@ -42,17 +44,87 @@ export async function createTrainingProgram(input: CreateTrainingProgramInput): 
   return { ok: true };
 }
 
+function cleanProgramFields(input: CreateTrainingProgramInput) {
+  return {
+    name: input.name.trim(),
+    description: input.description?.trim() || null,
+    video_url: input.videoUrl?.trim() || null,
+    icon: TRAINING_ICON_OPTIONS.includes(input.icon) ? input.icon : "BookOpen",
+    points: Number.isFinite(input.points) && input.points >= 0 ? Math.round(input.points) : 10,
+    assign_to_new_members: input.assignToNewMembers === true,
+  };
+}
+
+// Points are read from the program at display time, so changing them here
+// changes everyone's leaderboard total retroactively — the edit dialog says so.
+export async function updateTrainingProgram(programId: string, input: CreateTrainingProgramInput): Promise<ActionResult> {
+  const profile = await getCurrentProfile();
+  if (!profile) return { ok: false, error: "Not signed in." };
+  if (!can(profile, "manage_training")) return { ok: false, error: "Not permitted." };
+
+  const fields = cleanProgramFields(input);
+  if (!fields.name) return { ok: false, error: "Name is required." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("training_programs")
+    .update(fields)
+    .eq("id", programId)
+    .eq("zone_id", profile.zoneId)
+    .select("id");
+  if (error) return { ok: false, error: error.message };
+  if (!data || data.length === 0) return { ok: false, error: "Program not found, or you don't have access to it." };
+
+  await logAudit(profile, "training_program.update", `Edited training program "${fields.name}"`);
+  revalidatePath("/training");
+  revalidatePath("/dashboard");
+  revalidatePath("/me");
+  revalidatePath("/me/training");
+  return { ok: true };
+}
+
+// Deleting a program deletes every member's progress on it (trainings
+// cascades), so it can't be undone.
+export async function deleteTrainingProgram(programId: string): Promise<ActionResult> {
+  const profile = await getCurrentProfile();
+  if (!profile) return { ok: false, error: "Not signed in." };
+  if (!can(profile, "manage_training")) return { ok: false, error: "Not permitted." };
+
+  const supabase = await createClient();
+  const { data: program } = await supabase
+    .from("training_programs")
+    .select("name")
+    .eq("id", programId)
+    .eq("zone_id", profile.zoneId)
+    .maybeSingle();
+  if (!program) return { ok: false, error: "Program not found, or you don't have access to it." };
+
+  const { error } = await supabase.from("training_programs").delete().eq("id", programId).eq("zone_id", profile.zoneId);
+  if (error) return { ok: false, error: error.message };
+
+  await logAudit(profile, "training_program.delete", `Deleted training program "${program.name}"`);
+  revalidatePath("/training");
+  revalidatePath("/dashboard");
+  revalidatePath("/me");
+  revalidatePath("/me/training");
+  return { ok: true };
+}
+
 export type AssignTrainingScope =
   | { type: "zone" }
   | { type: "country"; countryId: string }
   | { type: "church"; churchId: string };
 
-export type AssignTrainingResult = { ok: true; assigned: number } | { ok: false; error: string };
+// `alreadyHad` = people in the chosen group who were skipped because they
+// already have this program.
+export type AssignTrainingResult =
+  | { ok: true; assigned: number; alreadyHad: number }
+  | { ok: false; error: string };
 
 export async function assignTraining(programId: string, scope: AssignTrainingScope): Promise<AssignTrainingResult> {
   const profile = await getCurrentProfile();
   if (!profile) return { ok: false, error: "Not signed in." };
-  if (profile.role === "member") return { ok: false, error: "Not permitted." };
+  if (!can(profile, "manage_training")) return { ok: false, error: "Not permitted." };
 
   const supabase = await createClient();
 
@@ -61,25 +133,44 @@ export async function assignTraining(programId: string, scope: AssignTrainingSco
   if (scope.type === "church") query = query.eq("church_id", scope.churchId);
   const { data: members, error: membersError } = await query;
   if (membersError) return { ok: false, error: membersError.message };
-  if (!members || members.length === 0) return { ok: true, assigned: 0 };
+  if (!members || members.length === 0) return { ok: true, assigned: 0, alreadyHad: 0 };
 
-  const rows = members.map((m) => ({
-    member_id: m.id,
-    zone_id: profile.zoneId,
-    program_id: programId,
-    status: "not_started" as const,
-    assigned_by: profile.userId,
-  }));
+  // Skip anyone already assigned. (Done here rather than with an upsert: the
+  // unique index on (member, program) is partial, and Postgres can't use a
+  // partial index as an ON CONFLICT target — that was the "no unique or
+  // exclusion constraint matching the ON CONFLICT specification" error.)
+  const alreadyAssigned = new Set<string>();
+  const pageSize = 1000;
+  for (let from = 0; ; from += pageSize) {
+    const { data: existing, error: existingError } = await supabase
+      .from("trainings")
+      .select("member_id")
+      .eq("program_id", programId)
+      .range(from, from + pageSize - 1);
+    if (existingError) return { ok: false, error: existingError.message };
+    for (const row of existing ?? []) alreadyAssigned.add(row.member_id);
+    if (!existing || existing.length < pageSize) break;
+  }
 
-  const { error } = await supabase
-    .from("trainings")
-    .upsert(rows, { onConflict: "member_id,program_id", ignoreDuplicates: true });
-  if (error) return { ok: false, error: error.message };
+  const rows = members
+    .filter((m) => !alreadyAssigned.has(m.id))
+    .map((m) => ({
+      member_id: m.id,
+      zone_id: profile.zoneId,
+      program_id: programId,
+      status: "not_started" as const,
+      assigned_by: profile.userId,
+    }));
 
-  await logAudit(profile, "training.assign", `Assigned a training program to ${members.length} member(s)`);
+  for (let i = 0; i < rows.length; i += 500) {
+    const { error } = await supabase.from("trainings").insert(rows.slice(i, i + 500));
+    if (error) return { ok: false, error: error.message };
+  }
+
+  await logAudit(profile, "training.assign", `Assigned a training program to ${rows.length} member(s)`);
   revalidatePath("/training");
   revalidatePath("/dashboard");
-  return { ok: true, assigned: members.length };
+  return { ok: true, assigned: rows.length, alreadyHad: members.length - rows.length };
 }
 
 export async function updateTrainingStatus(trainingId: string, status: "in_progress" | "completed"): Promise<ActionResult> {
@@ -107,5 +198,6 @@ export async function updateTrainingStatus(trainingId: string, status: "in_progr
   revalidatePath("/training");
   revalidatePath(`/members/${data.member_id}`);
   revalidatePath("/me");
+  revalidatePath("/me/training");
   return { ok: true };
 }

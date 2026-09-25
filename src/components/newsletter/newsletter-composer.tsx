@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Send, CheckCircle2, Users2 } from "lucide-react";
+import { Send, CheckCircle2, AlertTriangle, AlertCircle, Users2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,12 +15,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getMembersByChurch, getMembersByCountry, type Dataset } from "@/lib/data/analytics";
+import { sendNewsletter } from "@/lib/actions/newsletter";
+
+type Outcome = { kind: "sent"; sent: number; skipped: number } | { kind: "not-configured"; error: string } | { kind: "error"; error: string };
 
 export function NewsletterComposer({ ds, zoneName }: { ds: Dataset; zoneName: string }) {
   const [group, setGroup] = useState("zone");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
-  const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [outcome, setOutcome] = useState<Outcome | null>(null);
 
   const recipientCount = (() => {
     if (group === "zone") return ds.members.length;
@@ -29,10 +33,17 @@ export function NewsletterComposer({ ds, zoneName }: { ds: Dataset; zoneName: st
     return 0;
   })();
 
-  function handleSend(e: React.FormEvent) {
+  async function handleSend(e: React.FormEvent) {
     e.preventDefault();
-    setSent(true);
-    setTimeout(() => setSent(false), 4000);
+    setSending(true);
+    setOutcome(null);
+    const result = await sendNewsletter({ group, subject, body });
+    setSending(false);
+    if (!result.ok) {
+      setOutcome({ kind: result.notConfigured ? "not-configured" : "error", error: result.error });
+      return;
+    }
+    setOutcome({ kind: "sent", sent: result.sent, skipped: result.skipped });
   }
 
   return (
@@ -40,7 +51,7 @@ export function NewsletterComposer({ ds, zoneName }: { ds: Dataset; zoneName: st
       <Card className="lg:col-span-2">
         <CardHeader>
           <CardTitle>Compose message</CardTitle>
-          <CardDescription>This is a UI-only preview — nothing is actually sent.</CardDescription>
+          <CardDescription>Sends a real email to everyone in the group below who has an email on file.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSend} className="space-y-4">
@@ -92,18 +103,31 @@ export function NewsletterComposer({ ds, zoneName }: { ds: Dataset; zoneName: st
             <div className="flex items-center justify-between pt-2">
               <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                 <Users2 className="h-4 w-4" />
-                {recipientCount.toLocaleString()} recipients
+                {recipientCount.toLocaleString()} in this group
               </div>
-              <Button type="submit" className="gap-2">
+              <Button type="submit" className="gap-2" disabled={sending}>
                 <Send className="h-4 w-4" />
-                Send newsletter
+                {sending ? "Sending…" : "Send newsletter"}
               </Button>
             </div>
 
-            {sent && (
+            {outcome?.kind === "sent" && (
               <div className="flex items-center gap-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-2.5 text-sm">
-                <CheckCircle2 className="h-4 w-4" />
-                Sent to {recipientCount.toLocaleString()} recipients (simulated).
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                Sent to {outcome.sent.toLocaleString()} recipient{outcome.sent === 1 ? "" : "s"}.
+                {outcome.skipped > 0 && ` ${outcome.skipped.toLocaleString()} skipped — no email on file.`}
+              </div>
+            )}
+            {outcome?.kind === "not-configured" && (
+              <div className="flex items-start gap-2 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 px-3 py-2.5 text-sm">
+                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                <span>No email provider is set up yet, so this wasn&apos;t sent. {outcome.error}</span>
+              </div>
+            )}
+            {outcome?.kind === "error" && (
+              <div className="flex items-start gap-2 rounded-lg bg-red-50 text-red-700 border border-red-200 px-3 py-2.5 text-sm">
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                {outcome.error}
               </div>
             )}
           </form>

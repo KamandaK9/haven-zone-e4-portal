@@ -4,19 +4,24 @@ import { Video, Users2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CreateProgramDialog } from "@/components/training/create-program-dialog";
+import { ProgramCardMenu } from "@/components/training/program-card-menu";
 import { AssignTrainingDialog } from "@/components/training/assign-training-dialog";
 import { TrainingLeaderboard } from "@/components/training/training-leaderboard";
-import { getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
+import { can, getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
 import { getTrainingLeaderboard } from "@/lib/data/analytics";
+import { getLessonCountsByProgram } from "@/lib/data/training-lessons";
 import { getTrainingIcon } from "@/lib/training-icons";
+import { pluralize } from "@/lib/utils";
 
 export default async function TrainingPage() {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
   if (profile.role === "member") redirect("/me");
 
+  const canManage = can(profile, "manage_training");
   const ds = await getZoneDataset(profile.zoneId);
   const leaderboard = getTrainingLeaderboard(ds, 10);
+  const lessonCounts = await getLessonCountsByProgram(ds.trainingPrograms.map((p) => p.id));
 
   const statsByProgram = new Map<string, { assigned: number; completed: number }>();
   for (const m of ds.members) {
@@ -37,7 +42,7 @@ export default async function TrainingPage() {
             Programs members work through — assign them, link a video, and track who&apos;s finished.
           </p>
         </div>
-        <CreateProgramDialog />
+        {canManage && <CreateProgramDialog />}
       </div>
 
       {ds.trainingPrograms.length === 0 ? (
@@ -64,9 +69,14 @@ export default async function TrainingPage() {
                       </div>
                       <CardTitle className="text-base leading-tight">{program.name}</CardTitle>
                     </div>
-                    <Badge variant="secondary" className="font-normal shrink-0">
-                      {program.points} pts
-                    </Badge>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Badge variant="secondary" className="font-normal">
+                        {program.points} pts
+                      </Badge>
+                      {canManage && (
+                        <ProgramCardMenu program={program} assigned={stats.assigned} completed={stats.completed} />
+                      )}
+                    </div>
                   </div>
                   {program.description && <CardDescription className="pt-1">{program.description}</CardDescription>}
                 </CardHeader>
@@ -85,7 +95,16 @@ export default async function TrainingPage() {
                     <Users2 className="h-3.5 w-3.5" />
                     {stats.completed}/{stats.assigned} completed
                   </div>
-                  <AssignTrainingDialog program={program} countries={ds.countries} churches={ds.churches} />
+                  {canManage && (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <AssignTrainingDialog program={program} countries={ds.countries} churches={ds.churches} />
+                      <Link href={`/training/${program.id}`} className="text-xs font-medium text-primary hover:underline">
+                        {lessonCounts.get(program.id)
+                          ? `Manage ${pluralize(lessonCounts.get(program.id)!, "lesson")} →`
+                          : "Add lessons →"}
+                      </Link>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             );

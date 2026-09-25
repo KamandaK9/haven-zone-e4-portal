@@ -1,4 +1,6 @@
 import type { LucideIcon } from "lucide-react";
+import type { Capability } from "@/lib/access";
+import { EVENT_SERIES_DEFS } from "@/lib/event-series";
 import { LayoutDashboard, Globe2, BarChart3, BookOpenText, GraduationCap, CalendarDays, Mail, Settings } from "lucide-react";
 
 export type StaffRole = "super_admin" | "admin";
@@ -8,27 +10,34 @@ export type NavItemDef = {
   href: string;
   label: string;
   icon: LucideIcon;
-  roles: StaffRole[];
-  hideable: boolean; // can the Super Admin hide this from their own nav?
+  // Capability needed to see this item; omitted = any leader.
+  cap?: Capability;
+  hideable: boolean; // can the Zonal Director hide this from their own nav?
 };
 
 export const NAV_ITEMS: NavItemDef[] = [
-  { key: "dashboard", href: "/dashboard", label: "Zone Dashboard", icon: LayoutDashboard, roles: ["super_admin", "admin"], hideable: false },
-  { key: "countries", href: "/countries", label: "Countries", icon: Globe2, roles: ["super_admin", "admin"], hideable: false },
-  { key: "reports", href: "/reports", label: "Reports", icon: BarChart3, roles: ["super_admin"], hideable: true },
-  { key: "ledger", href: "/ledger", label: "Ledger", icon: BookOpenText, roles: ["super_admin", "admin"], hideable: true },
-  { key: "training", href: "/training", label: "Training", icon: GraduationCap, roles: ["super_admin", "admin"], hideable: true },
-  { key: "calendar", href: "/calendar", label: "Calendar", icon: CalendarDays, roles: ["super_admin", "admin"], hideable: false },
-  { key: "newsletter", href: "/newsletter", label: "Newsletter", icon: Mail, roles: ["super_admin"], hideable: true },
-  { key: "settings", href: "/settings", label: "Settings", icon: Settings, roles: ["super_admin"], hideable: false },
+  { key: "dashboard", href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, hideable: false },
+  { key: "countries", href: "/countries", label: "Countries", icon: Globe2, hideable: false },
+  { key: "reports", href: "/reports", label: "Reports", icon: BarChart3, cap: "view_reports", hideable: true },
+  { key: "ledger", href: "/ledger", label: "Ledger", icon: BookOpenText, cap: "manage_ledger", hideable: true },
+  { key: "training", href: "/training", label: "Training", icon: GraduationCap, hideable: true },
+  { key: "calendar", href: "/calendar", label: "Calendar", icon: CalendarDays, hideable: false },
+  { key: "newsletter", href: "/newsletter", label: "Newsletter", icon: Mail, cap: "send_newsletter", hideable: true },
+  { key: "settings", href: "/settings", label: "Settings", icon: Settings, cap: "manage_access", hideable: false },
 ];
 
-export function getVisibleNavItems(role: StaffRole, hiddenNavItems: string[]): NavItemDef[] {
+export function getVisibleNavItems(role: StaffRole, caps: string[], hiddenNavItems: string[]): NavItemDef[] {
   return NAV_ITEMS.filter((item) => {
-    if (!item.roles.includes(role)) return false;
-    // Only the Super Admin's own hidden-items preference ever applies —
-    // Assistants get a fixed nav, no personalization.
+    if (item.cap && !caps.includes(item.cap)) return false;
+    // Only a Director's own hidden-items preference ever applies — other
+    // leaders get a nav fixed by their capabilities.
     if (role === "super_admin" && item.hideable && hiddenNavItems.includes(item.key)) return false;
     return true;
   });
 }
+
+// The five annual flagship events, listed under their own heading in the
+// sidebar. Every leader sees them (and members reach them via Events).
+export const EVENT_NAV_ITEMS: { key: string; href: string; label: string; icon: LucideIcon }[] = EVENT_SERIES_DEFS.map(
+  (s) => ({ key: s.slug, href: `/events/${s.slug}`, label: s.shortName, icon: s.icon })
+);

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { TrendingUp, TrendingDown, Scale } from "lucide-react";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { AddLedgerEntryDialog } from "@/components/ledger/add-ledger-entry-dialog";
+import { ImportGivingDialog } from "@/components/ledger/import-giving-dialog";
 import { ImportLedgerDialog } from "@/components/ledger/import-ledger-dialog";
 import { ReconcileDialog } from "@/components/ledger/reconcile-dialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -14,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getCurrentProfile, getLedgerEntries, getReconciliations, getZoneDataset } from "@/lib/data/get-dataset";
+import { can, getCurrentProfile, getLedgerEntries, getReconciliations, getZoneDataset } from "@/lib/data/get-dataset";
 import { getDisplayCurrency } from "@/lib/currency-server";
 import { formatMoney } from "@/lib/currency";
 
@@ -22,6 +23,7 @@ export default async function LedgerPage() {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
   if (profile.role === "member") redirect("/me");
+  if (!can(profile, "manage_ledger")) redirect("/dashboard");
 
   const [ds, entries, reconciliations, { currency, rates }] = await Promise.all([
     getZoneDataset(profile.zoneId),
@@ -58,7 +60,21 @@ export default async function LedgerPage() {
           <p className="text-sm text-muted-foreground">Income and expenses across {ds.zoneName}.</p>
         </div>
         {ds.churches.length > 0 && (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            {can(profile, "import_giving") && (
+              <ImportGivingDialog
+                members={ds.members.map((m) => ({
+                  id: m.id,
+                  firstName: m.firstName,
+                  lastName: m.lastName,
+                  email: m.email,
+                  churchId: m.churchId,
+                }))}
+                churches={ds.churches}
+                currency={currency}
+                rates={rates}
+              />
+            )}
             <ImportLedgerDialog churches={ds.churches} />
             <AddLedgerEntryDialog churches={ds.churches} />
           </div>

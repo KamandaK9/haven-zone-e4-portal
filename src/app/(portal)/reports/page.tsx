@@ -3,40 +3,49 @@ import { Users, Church, Globe2, HandCoins } from "lucide-react";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { TopGivers } from "@/components/dashboard/top-givers";
 import { ChurchHealthList } from "@/components/dashboard/church-health";
+import { GivingCategorySelect } from "@/components/dashboard/giving-category-select";
 import { GivingTrendChart } from "@/components/charts/giving-trend-chart";
 import { BarBreakdownChart } from "@/components/charts/bar-breakdown-chart";
 import { TenureChart } from "@/components/charts/tenure-chart";
 import { GrowthChart } from "@/components/charts/growth-chart";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
+import { can, getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
 import { getDisplayCurrency } from "@/lib/currency-server";
 import { formatMoney } from "@/lib/currency";
+import { givingFilterLabel, parseGivingFilter } from "@/lib/giving";
 import {
   getChurchHealth,
   getGivingByChurch,
   getGivingByCountry,
   getGivingTrendZone,
   getMembershipGrowth,
+  getTotalGiving,
   getTenureDistribution,
   getTopGivers,
   getZoneStats,
 } from "@/lib/data/analytics";
 
-export default async function ReportsPage() {
+export default async function ReportsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const giving = parseGivingFilter((await searchParams).giving);
+  const givingLabel = givingFilterLabel(giving);
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
-  if (profile.role !== "super_admin") redirect("/dashboard");
+  if (!can(profile, "view_reports")) redirect("/dashboard");
   const ds = await getZoneDataset(profile.zoneId);
   const { currency, rates } = await getDisplayCurrency(profile.zoneCurrency);
 
   const stats = getZoneStats(ds);
-  const givingTrend = getGivingTrendZone(ds);
-  const givingByCountry = getGivingByCountry(ds);
-  const givingByChurch = getGivingByChurch(ds);
+  const givingTrend = getGivingTrendZone(ds, giving);
+  const givingByCountry = getGivingByCountry(ds, giving);
+  const givingByChurch = getGivingByChurch(ds, undefined, giving);
   const tenure = getTenureDistribution(ds.members);
   const growth = getMembershipGrowth(ds);
   const health = getChurchHealth(ds);
-  const topGivers = getTopGivers(ds, 15);
+  const topGivers = getTopGivers(ds, 15, giving);
 
   return (
     <div className="space-y-6">
@@ -49,37 +58,45 @@ export default async function ReportsPage() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard label="Total members" value={stats.totalMembers.toLocaleString()} icon={Users} />
-        <StatCard label="Total churches" value={String(stats.totalChurches)} icon={Church} />
+        <StatCard label="Total Chapters" value={String(stats.totalChurches)} icon={Church} />
         <StatCard label="Countries" value={String(stats.totalCountries)} icon={Globe2} />
-        <StatCard label="Total giving" value={formatMoney(stats.totalGiving, currency, rates)} icon={HandCoins} />
+        <StatCard
+          label={giving === "all" ? "Total giving" : `${givingLabel} giving`}
+          value={formatMoney(getTotalGiving(ds, giving), currency, rates)}
+          icon={HandCoins}
+        />
       </div>
 
       <div className="grid lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Tithe &amp; giving trend</CardTitle>
-            <CardDescription>Zone-wide giving over the last 12 months</CardDescription>
+            <CardTitle>
+              <GivingCategorySelect value={giving} />
+            </CardTitle>
+            <CardDescription>Zone-wide, last 12 months</CardDescription>
           </CardHeader>
           <CardContent>
             <GivingTrendChart data={givingTrend} currency={currency} rates={rates} />
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Top givers</CardTitle>
-            <CardDescription>Zone-wide leaderboard</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <TopGivers givers={topGivers} ds={ds} currency={currency} rates={rates} />
-          </CardContent>
-        </Card>
+        {ds.individualGiving && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Top givers</CardTitle>
+              <CardDescription>Zone-wide leaderboard · {givingLabel}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <TopGivers givers={topGivers} ds={ds} currency={currency} rates={rates} />
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4">
         <Card>
           <CardHeader>
             <CardTitle>Giving by country</CardTitle>
-            <CardDescription>Total tithe &amp; giving, 12-month sum</CardDescription>
+            <CardDescription>{givingLabel}, 12-month sum</CardDescription>
           </CardHeader>
           <CardContent>
             <BarBreakdownChart
@@ -94,8 +111,8 @@ export default async function ReportsPage() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Giving by church</CardTitle>
-            <CardDescription>All churches, 12-month sum</CardDescription>
+            <CardTitle>Giving by chapter</CardTitle>
+            <CardDescription>All chapters · {givingLabel}, 12-month sum</CardDescription>
           </CardHeader>
           <CardContent>
             <BarBreakdownChart
@@ -113,7 +130,7 @@ export default async function ReportsPage() {
       <div className="grid lg:grid-cols-2 gap-4">
         <Card>
           <CardHeader>
-            <CardTitle>Time in Haven</CardTitle>
+            <CardTitle>Time in The Haven</CardTitle>
             <CardDescription>Membership tenure distribution, zone-wide</CardDescription>
           </CardHeader>
           <CardContent>
@@ -134,7 +151,7 @@ export default async function ReportsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Zone health summary</CardTitle>
-          <CardDescription>Which churches are growing, flat, or need attention</CardDescription>
+          <CardDescription>Which chapters are growing, flat, or need attention</CardDescription>
         </CardHeader>
         <CardContent>
           <ChurchHealthList rows={health} ds={ds} />

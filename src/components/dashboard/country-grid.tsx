@@ -31,7 +31,7 @@ export function CountryGrid({ countries, ds }: { countries: Country[]; ds: Datas
                   {country.name}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {pluralize(stats.memberCount, "member")} &middot; {pluralize(churches.length, "church", "churches")}
+                  {pluralize(stats.memberCount, "member")} &middot; {pluralize(churches.length, "chapter")}
                 </p>
               </div>
             </div>

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, MapPin, Clock } from "lucide-react";
+import Link from "next/link";
+import { ChevronLeft, ChevronRight, MapPin, Clock, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getChurch, type Dataset } from "@/lib/data/analytics";
 import type { CalendarEvent, CalendarEventType } from "@/lib/data/types";
@@ -12,6 +13,7 @@ const TYPE_STYLES: Record<CalendarEventType, { dot: string; badge: string; label
   training: { dot: "bg-sky-600", badge: "bg-sky-50 text-sky-700 border-sky-200", label: "Training" },
   service: { dot: "bg-amber-600", badge: "bg-amber-50 text-amber-700 border-amber-200", label: "Service" },
   outreach: { dot: "bg-emerald-600", badge: "bg-emerald-50 text-emerald-700 border-emerald-200", label: "Outreach" },
+  flagship: { dot: "bg-fuchsia-700", badge: "bg-fuchsia-50 text-fuchsia-800 border-fuchsia-200", label: "Annual event" },
 };
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -118,9 +120,13 @@ export function MonthCalendar({
             {selectedEvents.map((e) => {
               const church = e.churchId ? getChurch(ds, e.churchId) : undefined;
               return (
-                <div key={e.id} className="rounded-lg border p-3 space-y-1.5">
+                <Link
+                  key={e.id}
+                  href={`/event/${e.id}`}
+                  className="group block rounded-lg border p-3 space-y-1.5 hover:border-primary/40 hover:shadow-sm transition-all"
+                >
                   <div className="flex items-start justify-between gap-2">
-                    <p className="text-sm font-medium leading-snug">{e.title}</p>
+                    <p className="text-sm font-medium leading-snug group-hover:text-primary transition-colors">{e.title}</p>
                     <span className={cn("shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] font-medium", TYPE_STYLES[e.type].badge)}>
                       {TYPE_STYLES[e.type].label}
                     </span>
@@ -133,7 +139,10 @@ export function MonthCalendar({
                       <MapPin className="h-3 w-3" /> {church.name}
                     </div>
                   )}
-                </div>
+                  <div className="flex items-center gap-1 text-xs font-medium text-primary">
+                    View event page <ArrowUpRight className="h-3 w-3" />
+                  </div>
+                </Link>
               );
             })}
           </div>

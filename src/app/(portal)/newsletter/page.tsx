@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation";
 import { NewsletterComposer } from "@/components/newsletter/newsletter-composer";
-import { getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
+import { can, getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
 
 export default async function NewsletterPage() {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
-  if (profile.role !== "super_admin") redirect("/dashboard");
+  if (!can(profile, "send_newsletter")) redirect("/dashboard");
   const ds = await getZoneDataset(profile.zoneId);
 
   return (

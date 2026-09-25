@@ -1,4 +1,6 @@
 import { readAllExcelSheets } from "./read-table-file";
+import { parseDesignation, positionRank, type Portfolio, type Position } from "@/lib/access";
+import { namesAgree, nameKey, normalizePhone } from "@/lib/name-match";
 
 // The source workbook is a hand-maintained org chart, not a flat export:
 // one sheet per sub-zone (SZ1, SZ2, ...) plus three zone-level leadership
@@ -30,24 +32,6 @@ function col(headers: string[], label: string): number {
 function clean(v: string | undefined): string | undefined {
   const t = v?.trim().replace(/\s+/g, " ");
   return t ? t : undefined;
-}
-
-function normalizePhone(phone: string | undefined): string | undefined {
-  if (!phone) return undefined;
-  const digits = phone.replace(/\D/g, "");
-  // Compare by the local subscriber number — country-code/leading-zero
-  // formatting is inconsistent across sheets for the same real number.
-  return digits.length >= 9 ? digits.slice(-9) : digits || undefined;
-}
-
-// Higher-ranking designations win when the same person's row is merged
-// from multiple sheets, and decide portal-role elevation.
-const LEADERSHIP_KEYWORDS = ["director", "secretary", "governor", "dg "];
-
-function isLeadershipTitle(title: string | undefined): boolean {
-  if (!title) return false;
-  const t = title.toLowerCase();
-  return LEADERSHIP_KEYWORDS.some((k) => t.includes(k));
 }
 
 function churchRoleFor(title: string | undefined): "Member" | "Pastor" | "Cell Leader" {
@@ -91,6 +75,25 @@ export function normalizeChapterKey(chapter: string): string {
     .trim();
 }
 
+// "Zonal Office" is where zone-level leaders sit — a home row, not a chapter.
+export function isZonalOffice(chapter: string): boolean {
+  return normalizeChapterKey(chapter) === "zonal office";
+}
+
+// Sheet tabs are the sub-zones ("SZ1", "SZ10"); the DESIGNATION text of sub
+// zone governors also carries it ("Sub Zone Governor - SZ3").
+function subZoneFrom(sheetName: string, designation: string | undefined): string | undefined {
+  const fromSheet = /^SZ\s*(\d+)$/i.exec(sheetName.trim());
+  if (fromSheet) return `SZ${fromSheet[1]}`;
+  const fromDesignation = /\bSZ\s*(\d+)\b/i.exec(designation ?? "");
+  return fromDesignation ? `SZ${fromDesignation[1]}` : undefined;
+}
+
+// A CHAPTER cell that just says "Subzone 2" names the sub-zone, not a chapter.
+function looksLikeSubZoneLabel(chapter: string): boolean {
+  return /^sub\s*-?\s*zone\s*\d*$/i.test(chapter.trim());
+}
+
 export type RosterPerson = {
   firstName: string;
   lastName: string;
@@ -103,7 +106,12 @@ export type RosterPerson = {
   birthday?: string;
   weddingAnniversary?: string;
   chapterRaw: string;
-  elevateToAdmin: boolean;
+  subZone?: string;
+  position: Position;
+  portfolio: Portfolio | null;
+  // Set when the DESIGNATION text wasn't a role we know — kept as a plain
+  // Member and surfaced for review rather than silently promoted.
+  unrecognisedDesignation?: string;
   churchRole: "Member" | "Pastor" | "Cell Leader";
 };
 
@@ -111,6 +119,8 @@ export type ChapterGroup = {
   key: string; // normalizeChapterKey() output — stable id for this group
   suggestedName: string; // longest/most descriptive raw spelling seen
   suggestedCountry: string; // "" if no confident guess
+  suggestedSubZone: string; // "" if the roster doesn't say
+  isOffice: boolean;
   variants: string[]; // every raw spelling that collapsed into this group
   memberCount: number;
 };
@@ -120,6 +130,8 @@ export type RosterParseResult = {
   chapterGroups: ChapterGroup[];
   duplicatesMerged: number;
   skipped: { sheet: string; reason: string }[];
+  positionCounts: Partial<Record<Position, number>>;
+  unrecognised: { name: string; designation: string }[];
 };
 
 export async function parseLeadershipRoster(file: File): Promise<RosterParseResult> {
@@ -129,9 +141,22 @@ export async function parseLeadershipRoster(file: File): Promise<RosterParseResu
   // key: normalized email, or "phone:<digits>" fallback, or a synthetic
   // per-row key when neither is present (can't be deduplicated, but still
   // imported).
-  const byKey = new Map<string, RosterPerson>();
+  // The same person is listed on a summary sheet and again on their sub-zone
+  // sheet, often with a different email, a typo'd number, or an email on one
+  // row and none on the other. So a row is a duplicate if it shares ANY of:
+  // an email, a phone number, or the same name in the same chapter.
+  const list: RosterPerson[] = [];
+  const indexByIdentity = new Map<string, number>();
   let duplicatesMerged = 0;
-  let anonCounter = 0;
+
+  const identitiesOf = (p: RosterPerson): string[] => {
+    const ids: string[] = [];
+    if (p.email) ids.push(`email:${p.email}`);
+    const phone = normalizePhone(p.phone);
+    if (phone) ids.push(`phone:${phone}`);
+    ids.push(`name:${nameKey(p)}|${normalizeChapterKey(p.chapterRaw)}`);
+    return ids;
+  };
 
   for (const sheet of sheets) {
     const idx = {
@@ -153,22 +178,26 @@ export async function parseLeadershipRoster(file: File): Promise<RosterParseResu
       continue;
     }
 
-    // Row 1 (first data row) is sometimes a bare section label — a single
-    // value in column A (e.g. "Sandton") with every other cell blank —
-    // used as the fallback chapter name for rows that leave CHAPTER empty.
+    // Sub-zone sheets are broken into chapters by bare section-label rows — a
+    // single value in column A ("Sandton") with every other cell blank — and
+    // every person beneath one belongs to that chapter, until the next label.
     let sectionLabel: string | undefined;
-    const first = sheet.rows[0];
-    if (first && first[0]?.trim() && first.slice(1).every((c) => !c?.trim())) {
-      sectionLabel = first[0].trim();
-    }
 
     for (const row of sheet.rows) {
+      if (row[0]?.trim() && row.slice(1).every((c) => !c?.trim())) {
+        sectionLabel = row[0].trim();
+        continue;
+      }
+
       const firstName = clean(row[idx.firstName]);
       const lastName = clean(row[idx.lastName]);
-      if (!firstName || !lastName) continue; // header/blank/section-label row
+      if (!firstName || !lastName) continue; // header/blank row
 
-      const chapterRaw =
-        (idx.chapter !== -1 ? clean(row[idx.chapter]) : undefined) ?? sectionLabel;
+      const chapterCell = idx.chapter !== -1 ? clean(row[idx.chapter]) : undefined;
+      const usableChapterCell = chapterCell && !looksLikeSubZoneLabel(chapterCell) ? chapterCell : undefined;
+      // The section label is the bare local name; prefer it over a CHAPTER
+      // cell that may carry a "Haven"/"CE" prefix or a sub-zone label.
+      const chapterRaw = sectionLabel ?? usableChapterCell;
       if (!chapterRaw) {
         skipped.push({ sheet: sheet.sheetName, reason: `${firstName} ${lastName}: no chapter/church identified` });
         continue;
@@ -178,6 +207,7 @@ export async function parseLeadershipRoster(file: File): Promise<RosterParseResu
       const phone = clean(idx.phone !== -1 ? row[idx.phone] : undefined);
       const title = clean(idx.designation !== -1 ? row[idx.designation] : undefined);
 
+      const designation = parseDesignation(title);
       const person: RosterPerson = {
         firstName,
         lastName,
@@ -190,58 +220,98 @@ export async function parseLeadershipRoster(file: File): Promise<RosterParseResu
         birthday: clean(idx.birthday !== -1 ? row[idx.birthday] : undefined),
         weddingAnniversary: clean(idx.anniversary !== -1 ? row[idx.anniversary] : undefined),
         chapterRaw,
-        elevateToAdmin: isLeadershipTitle(title),
+        subZone: subZoneFrom(sheet.sheetName, title),
+        position: designation.position,
+        portfolio: designation.portfolio,
+        unrecognisedDesignation: designation.unrecognised ? title : undefined,
         churchRole: churchRoleFor(title),
       };
 
-      const normPhone = normalizePhone(phone);
-      const key = email ?? (normPhone ? `phone:${normPhone}` : `row:${anonCounter++}`);
-
-      const existing = byKey.get(key);
-      if (!existing) {
-        byKey.set(key, person);
+      const identities = identitiesOf(person);
+      const existingIndex = identities
+        .map((id) => indexByIdentity.get(id))
+        .find((idx) => idx !== undefined && namesAgree(list[idx], person));
+      if (existingIndex === undefined) {
+        list.push(person);
+        for (const id of identities) indexByIdentity.set(id, list.length - 1);
         continue;
       }
 
       duplicatesMerged++;
-      // Prefer whichever occurrence carries a real chapter (the sub-zone
-      // sheet), but union in any field the other occurrence has that this
-      // one is missing, and keep the more senior title/role found.
-      const preferNew = !existing.chapterRaw && !!chapterRaw;
-      const base = preferNew ? person : existing;
-      const other = preferNew ? existing : person;
-      byKey.set(key, {
+      // Keep the first-seen row as the base, but union in any field the other
+      // occurrence has that this one is missing, and keep the more senior
+      // position found.
+      const base = list[existingIndex];
+      const other = person;
+      const otherSenior = positionRank(other.position) < positionRank(base.position);
+      const merged: RosterPerson = {
         ...base,
+        email: base.email ?? other.email,
+        phone: base.phone ?? other.phone,
         kcHandle: base.kcHandle ?? other.kcHandle,
         profession: base.profession ?? other.profession,
         spouseName: base.spouseName ?? other.spouseName,
         birthday: base.birthday ?? other.birthday,
         weddingAnniversary: base.weddingAnniversary ?? other.weddingAnniversary,
         title: base.title ?? other.title,
-        elevateToAdmin: base.elevateToAdmin || other.elevateToAdmin,
+        subZone: base.subZone ?? other.subZone,
+        position: otherSenior ? other.position : base.position,
+        portfolio: otherSenior ? other.portfolio : base.portfolio,
+        unrecognisedDesignation:
+          base.unrecognisedDesignation && other.unrecognisedDesignation ? base.unrecognisedDesignation : undefined,
         churchRole: base.churchRole !== "Member" ? base.churchRole : other.churchRole,
-      });
+      };
+      list[existingIndex] = merged;
+      // Everything either row is known by now points at the merged person.
+      for (const id of [...identities, ...identitiesOf(merged)]) indexByIdentity.set(id, existingIndex);
     }
   }
 
-  const people = [...byKey.values()];
+  const people = list;
 
   // Group raw chapter spellings for the wizard's review table.
   const groups = new Map<string, ChapterGroup>();
+  const subZoneVotes = new Map<string, Map<string, number>>();
   for (const p of people) {
     const key = normalizeChapterKey(p.chapterRaw);
     let group = groups.get(key);
     if (!group) {
-      group = { key, suggestedName: p.chapterRaw, suggestedCountry: guessCountry(p.chapterRaw), variants: [], memberCount: 0 };
+      group = {
+        key,
+        suggestedName: p.chapterRaw,
+        suggestedCountry: guessCountry(p.chapterRaw),
+        suggestedSubZone: "",
+        isOffice: isZonalOffice(p.chapterRaw),
+        variants: [],
+        memberCount: 0,
+      };
       groups.set(key, group);
+    }
+    if (p.subZone) {
+      const votes = subZoneVotes.get(key) ?? new Map<string, number>();
+      votes.set(p.subZone, (votes.get(p.subZone) ?? 0) + 1);
+      subZoneVotes.set(key, votes);
     }
     if (!group.variants.includes(p.chapterRaw)) group.variants.push(p.chapterRaw);
     if (p.chapterRaw.length > group.suggestedName.length) group.suggestedName = p.chapterRaw;
     group.memberCount++;
   }
 
+  // A chapter belongs to whichever sub-zone most of its people are listed under.
+  for (const [key, votes] of subZoneVotes) {
+    const top = [...votes.entries()].sort((a, b) => b[1] - a[1])[0];
+    if (top) groups.get(key)!.suggestedSubZone = top[0];
+  }
+
+  const positionCounts: Partial<Record<Position, number>> = {};
+  for (const p of people) positionCounts[p.position] = (positionCounts[p.position] ?? 0) + 1;
+
   return {
     people,
+    positionCounts,
+    unrecognised: people
+      .filter((p) => p.unrecognisedDesignation)
+      .map((p) => ({ name: `${p.firstName} ${p.lastName}`, designation: p.unrecognisedDesignation! })),
     chapterGroups: [...groups.values()].sort((a, b) => a.suggestedName.localeCompare(b.suggestedName)),
     duplicatesMerged,
     skipped,

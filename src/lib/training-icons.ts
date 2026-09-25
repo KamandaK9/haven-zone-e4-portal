@@ -65,3 +65,15 @@ export function getTrainingLevel(points: number): (typeof TRAINING_LEVELS)[numbe
   }
   return level;
 }
+
+// How far into the current level a member is, for a progress ring/bar —
+// null `next`/`pointsToNext` once they've hit the top tier.
+export function getLevelProgress(points: number) {
+  const level = getTrainingLevel(points);
+  const index = TRAINING_LEVELS.indexOf(level);
+  const next = TRAINING_LEVELS[index + 1] as (typeof TRAINING_LEVELS)[number] | undefined;
+  if (!next) return { level, next: null, pointsToNext: null, progressPct: 100 };
+  const span = next.min - level.min;
+  const progressPct = span > 0 ? Math.min(100, Math.round(((points - level.min) / span) * 100)) : 100;
+  return { level, next, pointsToNext: next.min - points, progressPct };
+}

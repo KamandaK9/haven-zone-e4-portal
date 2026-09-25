@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Haven Zone E4 Portal",
-  description: "Member management and analytics for Haven Zone E4",
+  title: "The Haven Zone E4 Portal",
+  description: "Member management and analytics for The Haven Zone E4",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

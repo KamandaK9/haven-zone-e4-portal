@@ -31,7 +31,7 @@ export function AssignTrainingDialog({
   const [scope, setScope] = useState("zone");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [assigned, setAssigned] = useState<number | null>(null);
+  const [assigned, setAssigned] = useState<{ added: number; alreadyHad: number } | null>(null);
 
   function reset() {
     setScope("zone");
@@ -54,7 +54,7 @@ export function AssignTrainingDialog({
       setError(result.error);
       return;
     }
-    setAssigned(result.assigned);
+    setAssigned({ added: result.assigned, alreadyHad: result.alreadyHad });
     router.refresh();
   }
 
@@ -83,7 +83,22 @@ export function AssignTrainingDialog({
             <div className="rounded-full bg-emerald-100 p-3">
               <CheckCircle2 className="h-6 w-6 text-emerald-600" />
             </div>
-            <p className="text-sm font-medium">Assigned to {assigned} member{assigned === 1 ? "" : "s"}</p>
+            <div className="space-y-1">
+              <p className="text-sm font-medium">
+                {assigned.added > 0
+                  ? `Assigned to ${assigned.added.toLocaleString()} member${assigned.added === 1 ? "" : "s"}`
+                  : assigned.alreadyHad > 0
+                    ? "Nothing new to assign"
+                    : "No members found in that group"}
+              </p>
+              {assigned.alreadyHad > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {assigned.added > 0
+                    ? `${assigned.alreadyHad.toLocaleString()} already had it.`
+                    : `Everyone in this group (${assigned.alreadyHad.toLocaleString()}) already has this training.`}
+                </p>
+              )}
+            </div>
           </div>
         ) : (
           <div className="py-2">

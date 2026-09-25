@@ -3,13 +3,11 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { ParsedMemberRow } from "./members";
 import type { MemberRole } from "@/lib/data/types";
+import { flagForCountry } from "@/lib/zone-countries";
+import { getAutoAssignedProgramIds } from "@/lib/data/programs-server";
+import { ensureEventSeries } from "@/lib/data/events";
+import { CAPABILITIES, effectiveCapabilities, type Portfolio, type Position } from "@/lib/access";
 
-const DEFAULT_TRAININGS = [
-  { name: "New Believers Class", icon: "Heart", points: 10 },
-  { name: "Foundation School", icon: "BookOpen", points: 20 },
-  { name: "Leadership Development", icon: "GraduationCap", points: 30 },
-  { name: "Water Baptism", icon: "Droplet", points: 15 },
-];
 const AVATAR_COLORS = ["#7c3aed", "#a21caf", "#9333ea", "#be185d", "#6d28d9", "#c026d3", "#8b5cf6"];
 
 function chunk<T>(items: T[], size: number): T[][] {
@@ -25,6 +23,9 @@ type SetupPayload = {
   churchesByCountryIndex: Record<number, { name: string }[]>;
   assistants: { name: string; email: string }[];
   importedMembers?: { countryName: string; churchName: string; member: ParsedMemberRow }[];
+  // Keyed `${countryName}::${churchName}`. Sub-zone and Zonal-Office flags come
+  // from the roster import's review step.
+  churchMeta?: Record<string, { subZoneName?: string; isOffice?: boolean }>;
 };
 
 type AssistantCredential = { name: string; email: string; tempPassword: string };
@@ -37,29 +38,6 @@ export type CompleteZoneSetupResult =
       importedCount: number;
     }
   | { ok: false; error: string };
-
-const FLAG_BY_NAME: Record<string, string> = {
-  zambia: "🇿🇲",
-  zimbabwe: "🇿🇼",
-  malawi: "🇲🇼",
-  botswana: "🇧🇼",
-  mozambique: "🇲🇿",
-  "south africa": "🇿🇦",
-  nigeria: "🇳🇬",
-  ghana: "🇬🇭",
-  kenya: "🇰🇪",
-  uganda: "🇺🇬",
-  tanzania: "🇹🇿",
-  namibia: "🇳🇦",
-  angola: "🇦🇴",
-  "united kingdom": "🇬🇧",
-  "united states": "🇺🇸",
-  canada: "🇨🇦",
-};
-
-function flagForCountry(name: string): string {
-  return FLAG_BY_NAME[name.trim().toLowerCase()] ?? "🏳️";
-}
 
 function randomTempPassword(): string {
   // 12 random chars from a set that avoids visually-ambiguous characters.
@@ -112,9 +90,33 @@ export async function completeZoneSetup(payload: SetupPayload): Promise<Complete
     full_name: superAdminName,
     email: superAdminEmail,
     phone: payload.superAdmin.phone.trim() || null,
+    // Whoever runs setup is the Zonal Director.
+    position: "zonal_director",
+    scope: "zone",
+    caps: [...CAPABILITIES],
   });
   if (profileError) {
     return { ok: false, error: profileError.message };
+  }
+
+  // 4a. Sub-zones (SZ1, SZ2, ...) named in the roster review step.
+  const subZoneIdByName = new Map<string, string>();
+  const subZoneNames = [
+    ...new Set(
+      Object.values(payload.churchMeta ?? {})
+        .map((m) => m.subZoneName?.trim())
+        .filter((n): n is string => !!n)
+    ),
+  ];
+  if (subZoneNames.length > 0) {
+    const { data: subZones, error: subZoneError } = await admin
+      .from("sub_zones")
+      .insert(subZoneNames.map((name) => ({ zone_id: zoneId, name })))
+      .select("id, name");
+    if (subZoneError || !subZones) {
+      return { ok: false, error: subZoneError?.message ?? "Could not create sub-zones." };
+    }
+    for (const z of subZones) subZoneIdByName.set(z.name, z.id);
   }
 
   // 4. Countries + churches. Track name -> id so imported member rows (keyed
@@ -139,7 +141,18 @@ export async function completeZoneSetup(payload: SetupPayload): Promise<Complete
     if (churchInputs.length > 0) {
       const { data: churches, error: churchError } = await admin
         .from("churches")
-        .insert(churchInputs.map((c) => ({ zone_id: zoneId, country_id: country.id, name: c.name.trim() })))
+        .insert(
+          churchInputs.map((c) => {
+            const meta = payload.churchMeta?.[`${name}::${c.name.trim()}`];
+            return {
+              zone_id: zoneId,
+              country_id: country.id,
+              name: c.name.trim(),
+              sub_zone_id: meta?.subZoneName ? (subZoneIdByName.get(meta.subZoneName.trim()) ?? null) : null,
+              is_office: meta?.isOffice === true,
+            };
+          })
+        )
         .select("id, name");
       if (churchError || !churches) {
         return { ok: false, error: churchError?.message ?? "Could not create churches." };
@@ -148,14 +161,11 @@ export async function completeZoneSetup(payload: SetupPayload): Promise<Complete
     }
   }
 
-  // Collected here (rather than in step 5 below) so both manually-entered
-  // assistants and leadership rows elevated during import share one list.
   const assistantCredentials: AssistantCredential[] = [];
 
   // 4b. Imported members, if the wizard's import step supplied any —
   // resolved against the countries/churches just created above.
   let importedCount = 0;
-  let elevatedCount = 0;
   if (payload.importedMembers && payload.importedMembers.length > 0) {
     type MemberInsert = {
       zone_id: string;
@@ -166,6 +176,8 @@ export async function completeZoneSetup(payload: SetupPayload): Promise<Complete
       email: string | null;
       phone: string | null;
       role: MemberRole;
+      position: Position;
+      portfolio: Portfolio | null;
       avatar_color: string;
       title: string | null;
       kc_handle: string | null;
@@ -177,7 +189,6 @@ export async function completeZoneSetup(payload: SetupPayload): Promise<Complete
     const toInsert: MemberInsert[] = [];
     const givingByRow: (number | undefined)[] = [];
     const givingMonthByRow: (string | undefined)[] = [];
-    const elevateByRow: boolean[] = [];
 
     for (const row of payload.importedMembers) {
       const countryId = countryIdByName.get(row.countryName);
@@ -192,6 +203,8 @@ export async function completeZoneSetup(payload: SetupPayload): Promise<Complete
         email: row.member.email ?? null,
         phone: row.member.phone ?? null,
         role: row.member.role ?? "Member",
+        position: row.member.position ?? "member",
+        portfolio: row.member.portfolio ?? null,
         avatar_color: AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)],
         title: row.member.title ?? null,
         kc_handle: row.member.kcHandle ?? null,
@@ -202,14 +215,9 @@ export async function completeZoneSetup(payload: SetupPayload): Promise<Complete
       });
       givingByRow.push(row.member.givingTotal && row.member.givingTotal > 0 ? row.member.givingTotal : undefined);
       givingMonthByRow.push((row.member.givingDate ?? new Date().toISOString().slice(0, 10)).slice(0, 7));
-      elevateByRow.push(row.member.elevateToAdmin === true);
     }
 
-    const { data: defaultPrograms } = await admin
-      .from("training_programs")
-      .insert(DEFAULT_TRAININGS.map((t) => ({ zone_id: zoneId, name: t.name, icon: t.icon, points: t.points })))
-      .select("id");
-    const defaultProgramIds = (defaultPrograms ?? []).map((p) => p.id);
+    const defaultProgramIds = await getAutoAssignedProgramIds(zoneId);
 
     for (const batch of chunk(toInsert, 400)) {
       const { data: inserted, error: memberError } = await admin.from("members").insert(batch).select("id, email, first_name, last_name");
@@ -238,46 +246,14 @@ export async function completeZoneSetup(payload: SetupPayload): Promise<Complete
         await admin.from("giving_entries").insert(givingRows);
       }
 
-      // Leadership rows (Governors/Secretaries/etc.) get a real Assistant
-      // login, same mechanism as manually-entered assistants below — just
-      // triggered by the roster's DESIGNATION column instead of a form.
+      // Positions are recorded on the member rows, but no logins are created
+      // here — someone at the right level invites each leader when they
+      // actually need access. The one exception is the person running setup:
+      // link their own member row (if they're in the roster) to their login.
       for (let i = 0; i < inserted.length; i++) {
-        if (!elevateByRow[offset + i]) continue;
-        const m = inserted[i];
-        const email = m.email?.trim().toLowerCase();
-        if (!email) continue; // can't create a login without one
-
-        // Already the account created in step 1 (e.g. the Zonal Director
-        // signing themself up) — link instead of creating a duplicate.
-        if (email === superAdminEmail) {
-          await admin.from("members").update({ profile_id: authUser.user.id }).eq("id", m.id);
-          continue;
+        if (inserted[i].email?.trim().toLowerCase() === superAdminEmail) {
+          await admin.from("members").update({ profile_id: authUser.user.id }).eq("id", inserted[i].id);
         }
-        if (assistantCredentials.some((a) => a.email === email)) continue; // duplicate email across rows
-
-        const tempPassword = randomTempPassword();
-        const { data: loginUser, error: loginError } = await admin.auth.admin.createUser({
-          email,
-          password: tempPassword,
-          email_confirm: true,
-        });
-        if (loginError || !loginUser.user) continue; // don't fail the whole import over one bad row
-
-        const { error: loginProfileError } = await admin.from("profiles").insert({
-          id: loginUser.user.id,
-          zone_id: zoneId,
-          role: "admin",
-          full_name: `${m.first_name} ${m.last_name}`,
-          email,
-        });
-        if (loginProfileError) {
-          await admin.auth.admin.deleteUser(loginUser.user.id);
-          continue;
-        }
-
-        await admin.from("members").update({ profile_id: loginUser.user.id }).eq("id", m.id);
-        assistantCredentials.push({ name: `${m.first_name} ${m.last_name}`, email, tempPassword });
-        elevatedCount++;
       }
     }
 
@@ -285,7 +261,7 @@ export async function completeZoneSetup(payload: SetupPayload): Promise<Complete
       await admin.from("activity").insert({
         zone_id: zoneId,
         type: "new_member",
-        message: `${importedCount} members imported during zone setup${elevatedCount > 0 ? ` (${elevatedCount} given Assistant access)` : ""}`,
+        message: `${importedCount} members imported during zone setup`,
       });
     }
   }
@@ -312,9 +288,12 @@ export async function completeZoneSetup(payload: SetupPayload): Promise<Complete
     const { error: assistantProfileError } = await admin.from("profiles").insert({
       id: assistantUser.user.id,
       zone_id: zoneId,
-      role: "admin",
+      role: "super_admin",
       full_name: name,
       email,
+      position: "assistant_zonal_director",
+      scope: "zone",
+      caps: effectiveCapabilities("assistant_zonal_director", null),
     });
     if (assistantProfileError) {
       assistantCredentials.push({ name, email, tempPassword: "" });
@@ -323,6 +302,9 @@ export async function completeZoneSetup(payload: SetupPayload): Promise<Complete
 
     assistantCredentials.push({ name, email, tempPassword });
   }
+
+  // 5b. The five annual flagship events (Zonal Convention, Camp Meeting, ...).
+  await ensureEventSeries(zoneId);
 
   // 6. Mark zone ready.
   const { error: completeError } = await admin.from("zones").update({ setup_complete: true }).eq("id", zoneId);

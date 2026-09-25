@@ -10,7 +10,7 @@ export function BrandMark({ className = "", size = 40 }: { className?: string; s
   return (
     <Image
       src="/logo-mark.png"
-      alt="Haven"
+      alt="The Haven"
       width={INTRINSIC_WIDTH}
       height={INTRINSIC_HEIGHT}
       className={`shrink-0 object-contain ${className}`}

@@ -1,15 +1,18 @@
+import { sumByMonth } from "@/lib/giving";
+import { POSITION_LABELS } from "@/lib/access";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Mail, Phone, Calendar, HandCoins, Clock, CheckCircle2, Video } from "lucide-react";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { StatCard } from "@/components/dashboard/stat-card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { MemberGivingChart } from "@/components/charts/member-giving-chart";
 import { InviteMemberButton } from "@/components/members/invite-member-button";
+import { MemberAvatar } from "@/components/members/member-avatar";
+import { MemberPhotoUpload } from "@/components/members/member-photo-upload";
 import { TrainingStatusButton } from "@/components/training/training-status-button";
-import { getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
+import { can, getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
 import { getDisplayCurrency } from "@/lib/currency-server";
 import { formatMoney } from "@/lib/currency";
 import {
@@ -17,6 +20,7 @@ import {
   getCountry,
   getMember,
   memberFullName,
+  formatTenure,
   memberTenureYears,
   memberTotalGiving,
   memberTrainingPoints,
@@ -76,19 +80,29 @@ export default async function MemberPage({
       />
 
       <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-        <Avatar className="h-16 w-16">
-          <AvatarFallback
-            className="text-lg font-semibold text-white"
-            style={{ backgroundColor: member.avatarColor }}
-          >
-            {member.firstName[0]}
-            {member.lastName[0]}
-          </AvatarFallback>
-        </Avatar>
+        {can(profile, "manage_members") ? (
+          <MemberPhotoUpload
+            memberId={member.id}
+            firstName={member.firstName}
+            lastName={member.lastName}
+            avatarColor={member.avatarColor}
+            photoUrl={member.photoUrl}
+          />
+        ) : (
+          <MemberAvatar
+            firstName={member.firstName}
+            lastName={member.lastName}
+            avatarColor={member.avatarColor}
+            photoUrl={member.photoUrl}
+            className="h-16 w-16 text-lg"
+          />
+        )}
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-semibold tracking-tight">{memberFullName(member)}</h1>
-            <Badge variant="secondary" className="font-normal">{member.title || member.role}</Badge>
+            <Badge variant="secondary" className="font-normal">
+              {member.position !== "member" ? POSITION_LABELS[member.position] : member.title || member.role}
+            </Badge>
           </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-sm text-muted-foreground">
             <Link href={`/churches/${member.churchId}`} className="hover:text-primary transition-colors">
@@ -99,7 +113,9 @@ export default async function MemberPage({
             </span>
             <span className="flex items-center gap-1">
               <Calendar className="h-3.5 w-3.5" />
-              Joined {new Date(member.joinDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+              {member.joinDate
+                ? `Joined ${new Date(member.joinDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`
+                : "Join date not recorded"}
             </span>
           </div>
           {(member.email || member.phone) && (
@@ -130,30 +146,36 @@ export default async function MemberPage({
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard label="Total giving" value={formatMoney(totalGiving, currency, rates)} icon={HandCoins} />
-        <StatCard label="Time in Haven" value={tenure < 0.1 ? "New" : `${tenure.toFixed(1)} yrs`} icon={Clock} />
+        {ds.individualGiving && (
+          <StatCard label="Total giving" value={formatMoney(totalGiving, currency, rates)} icon={HandCoins} />
+        )}
+        <StatCard label="Time in The Haven" value={formatTenure(tenure)} icon={Clock} />
         <StatCard label="Trainings complete" value={`${completed}/${member.trainings.length}`} icon={CheckCircle2} />
-        <StatCard
-          label="Avg. gift"
-          value={formatMoney(member.giving.length ? totalGiving / member.giving.length : 0, currency, rates)}
-          icon={HandCoins}
-        />
+        {ds.individualGiving && (
+          <StatCard
+            label="Avg. gift"
+            value={formatMoney(member.giving.length ? totalGiving / member.giving.length : 0, currency, rates)}
+            icon={HandCoins}
+          />
+        )}
       </div>
 
       <div className="grid lg:grid-cols-3 gap-4">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Giving history</CardTitle>
-            <CardDescription>Last 12 months</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {member.giving.length > 0 ? (
-              <MemberGivingChart data={member.giving} currency={currency} rates={rates} />
-            ) : (
-              <p className="text-sm text-muted-foreground py-10 text-center">No giving recorded yet.</p>
-            )}
-          </CardContent>
-        </Card>
+        {ds.individualGiving && (
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle>Giving history</CardTitle>
+              <CardDescription>Last 12 months</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {member.giving.length > 0 ? (
+                <MemberGivingChart data={sumByMonth(member.giving)} currency={currency} rates={rates} />
+              ) : (
+                <p className="text-sm text-muted-foreground py-10 text-center">No giving recorded yet.</p>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader className="flex flex-row items-start justify-between space-y-0">

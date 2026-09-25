@@ -21,7 +21,9 @@ export default function LandingPage() {
 
 function LoginForm() {
   const router = useRouter();
-  const isMember = useSearchParams().get("from") === "member";
+  const params = useSearchParams();
+  const isMember = params.get("from") === "member";
+  const authError = params.get("authError") === "1";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -58,17 +60,17 @@ function LoginForm() {
             <BrandMark size={32} />
           </div>
           <div>
-            <p className="font-semibold leading-tight">Haven Zone Portal</p>
+            <p className="font-semibold leading-tight">The Haven Zone Portal</p>
             <p className="text-xs text-primary-foreground/70 leading-tight">Member Management</p>
           </div>
         </div>
 
         <div className="relative space-y-6 max-w-md">
           <h1 className="text-4xl font-semibold leading-tight tracking-tight">
-            One view of every church, every member, every country in your zone.
+            One view of every chapter, every member, every country in your zone.
           </h1>
           <p className="text-primary-foreground/80 text-[15px] leading-relaxed">
-            Track membership growth, tithe and giving analytics, and training
+            Track membership growth, PCO, dues and special-project giving, and training
             progress across the zone — from a single dashboard built for
             leadership.
           </p>
@@ -76,7 +78,7 @@ function LoginForm() {
           <div className="grid grid-cols-3 gap-4 pt-4">
             <StatBlock icon={Users2} label="Members" />
             <StatBlock icon={Globe2} label="Countries" />
-            <StatBlock icon={TrendingUp} label="Churches" />
+            <StatBlock icon={TrendingUp} label="Chapters" />
           </div>
         </div>
 
@@ -90,7 +92,7 @@ function LoginForm() {
           <div className="flex flex-col items-center gap-3 lg:hidden">
             <BrandMark size={44} />
             <div className="text-center">
-              <p className="font-semibold">Haven Zone Portal</p>
+              <p className="font-semibold">The Haven Zone Portal</p>
               <p className="text-xs text-muted-foreground">Member Management</p>
             </div>
           </div>
@@ -120,7 +122,12 @@ function LoginForm() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="password">Password</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="password">Password</Label>
+                    <Link href="/forgot-password" className="text-xs font-medium text-primary hover:underline">
+                      Forgot password?
+                    </Link>
+                  </div>
                   <Input
                     id="password"
                     type="password"
@@ -136,10 +143,10 @@ function LoginForm() {
                 </Button>
               </form>
 
-              {error && (
+              {(error || authError) && (
                 <div className="mt-4 flex items-center gap-2 rounded-lg bg-red-50 text-red-700 border border-red-200 px-3 py-2.5 text-xs">
                   <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                  {error}
+                  {error ?? "That link has expired or was already used. Request a new one below."}
                 </div>
               )}
 

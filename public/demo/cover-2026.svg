@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="700" viewBox="0 0 1600 700">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7a2456"/>
+      <stop offset="1" stop-color="#3b0f3a"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="700" fill="url(#g)"/>
+  <circle cx="1312.0" cy="175.0" r="224.0" fill="#ffffff" fill-opacity="0.08"/>
+  <circle cx="240.0" cy="630.0" r="280.0" fill="#ffffff" fill-opacity="0.07"/>
+  <text x="800.0" y="350.0" font-family="Helvetica, Arial, sans-serif" font-size="59.50000000000001" font-weight="700" fill="#ffffff" text-anchor="middle">Zonal Convention 2026</text>
+  <text x="800.0" y="427.0" font-family="Helvetica, Arial, sans-serif" font-size="31.5" fill="#ffffff" fill-opacity="0.75" text-anchor="middle">Sample cover picture</text>
+</svg>

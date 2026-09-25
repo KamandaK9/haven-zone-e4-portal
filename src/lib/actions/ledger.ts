@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentProfile } from "@/lib/data/get-dataset";
+import { can, getCurrentProfile } from "@/lib/data/get-dataset";
 import { logAudit } from "./audit";
 import type { LedgerEntryType } from "@/lib/data/types";
 import type { ActionResult } from "./members";
@@ -19,7 +19,7 @@ type CreateLedgerEntryInput = {
 export async function createLedgerEntry(input: CreateLedgerEntryInput): Promise<ActionResult> {
   const profile = await getCurrentProfile();
   if (!profile) return { ok: false, error: "Not signed in." };
-  if (profile.role === "member") return { ok: false, error: "Not permitted." };
+  if (!can(profile, "manage_ledger")) return { ok: false, error: "Not permitted." };
   if (!input.category.trim() || !(input.amount > 0)) {
     return { ok: false, error: "Category and a positive amount are required." };
   }
@@ -50,7 +50,7 @@ export async function bulkImportLedgerEntries(
 ): Promise<BulkLedgerImportResult> {
   const profile = await getCurrentProfile();
   if (!profile) return { ok: false, error: "Not signed in." };
-  if (profile.role === "member") return { ok: false, error: "Not permitted." };
+  if (!can(profile, "manage_ledger")) return { ok: false, error: "Not permitted." };
   if (rows.length === 0) return { ok: true, inserted: 0 };
 
   const supabase = await createClient();

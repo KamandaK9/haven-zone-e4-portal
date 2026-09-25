@@ -1,11 +1,12 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { History } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { NavVisibilityForm } from "@/components/settings/nav-visibility-form";
 import { CurrencySelectForm } from "@/components/settings/currency-select-form";
 import { restartWizardAction } from "@/lib/actions/auth";
-import { getCurrentProfile, getAuditLog } from "@/lib/data/get-dataset";
+import { can, getCurrentProfile, getAuditLog } from "@/lib/data/get-dataset";
 
 const ACTION_LABELS: Record<string, string> = {
   "member.create": "Added member",
@@ -14,15 +15,34 @@ const ACTION_LABELS: Record<string, string> = {
   "ledger_entry.create": "Ledger entry",
   "ledger_entry.bulk_import": "Ledger import",
   "training_program.create": "New training program",
+  "training_program.update": "Edited training program",
+  "training_program.delete": "Deleted training program",
+  "access.update": "Access changed",
+  "access.recompute": "Permissions refreshed",
+  "giving.bulk_import": "Giving import",
+  "event.create": "New event edition",
+  "event.update": "Edited event page",
+  "event.delete": "Deleted event",
+  "event.series_update": "Edited event overview",
+  "event.media_add": "Added event media",
+  "event.media_remove": "Removed event media",
+  "event.cover": "Changed event cover",
   "training.assign": "Assigned training",
   "training.update_status": "Training status",
   "settings.update_currency": "Currency changed",
+  "church.rename": "Renamed a chapter",
+  "member.merge": "Merged duplicate members",
+  "member.photo": "Changed a profile photo",
+  "training_lesson.create": "Added a lesson",
+  "training_lesson.update": "Edited a lesson",
+  "training_lesson.delete": "Deleted a lesson",
+  "newsletter.send": "Sent a newsletter",
 };
 
 export default async function SettingsPage() {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
-  if (profile.role !== "super_admin") redirect("/dashboard");
+  if (!can(profile, "manage_access")) redirect("/dashboard");
 
   const auditLog = await getAuditLog(profile.zoneId, 30);
 
@@ -32,6 +52,20 @@ export default async function SettingsPage() {
         <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
         <p className="text-sm text-muted-foreground">Personalize your own view of the portal.</p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Team &amp; access</CardTitle>
+          <CardDescription>
+            See every leader, what they can see and do, and change it — position sets the defaults.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/settings/access">Manage team access</Link>
+          </Button>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

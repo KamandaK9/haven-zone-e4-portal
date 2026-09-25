@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentProfile } from "@/lib/data/get-dataset";
+import { can, getCurrentProfile } from "@/lib/data/get-dataset";
 import { logAudit } from "./audit";
 
 type CreateReconciliationInput = {
@@ -19,7 +19,7 @@ export type ReconciliationResult =
 export async function createReconciliation(input: CreateReconciliationInput): Promise<ReconciliationResult> {
   const profile = await getCurrentProfile();
   if (!profile) return { ok: false, error: "Not signed in." };
-  if (profile.role === "member") return { ok: false, error: "Not permitted." };
+  if (!can(profile, "manage_ledger")) return { ok: false, error: "Not permitted." };
   if (!Number.isFinite(input.actualBalance)) return { ok: false, error: "Enter a valid balance." };
 
   const supabase = await createClient();

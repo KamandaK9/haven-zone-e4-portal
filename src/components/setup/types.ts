@@ -1,3 +1,5 @@
+import type { Portfolio, Position } from "@/lib/access";
+
 export type WizardCountry = {
   name: string;
   churches: string[];
@@ -26,7 +28,8 @@ export type ImportedMemberRow = {
     spouseName?: string;
     birthday?: string;
     weddingAnniversary?: string;
-    elevateToAdmin?: boolean;
+    position?: Position;
+    portfolio?: Portfolio;
   };
 };
 
@@ -41,6 +44,9 @@ export type WizardState = {
   assistants: WizardAssistant[];
   importFileName: string | null;
   importedMembers: ImportedMemberRow[];
+  // Keyed `${country}::${chapter}` — sub-zone and Zonal-Office flags from the
+  // roster import's review step.
+  churchMeta: Record<string, { subZoneName?: string; isOffice?: boolean }>;
 };
 
 export const STEP_LABELS = [

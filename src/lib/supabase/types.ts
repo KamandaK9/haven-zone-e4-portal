@@ -11,16 +11,33 @@ export type LessonStatus = "not_started" | "in_progress" | "completed";
 export type MemberRole = "Member" | "Worker" | "Cell Leader" | "Pastor";
 export type ProfileRole = "super_admin" | "admin" | "member";
 export type ActivityType = "new_member" | "training_complete" | "giving" | "baptism" | "event";
-export type CalendarEventType = "meeting" | "training" | "service" | "outreach";
+export type CalendarEventType = "meeting" | "training" | "service" | "outreach" | "flagship";
+export type EventMediaKind = "image" | "video" | "file";
 export type LedgerEntryType = "income" | "expense";
+export type ProfileScope = "zone" | "sub_zone" | "chapter" | "self";
+export type GivingCategory = "pco" | "dues" | "special_project" | "meta";
 
 export type Database = {
   public: {
     Tables: {
       zones: {
-        Row: { id: string; name: string; setup_complete: boolean; display_currency: string; created_at: string };
-        Insert: { id?: string; name: string; setup_complete?: boolean; display_currency?: string; created_at?: string };
-        Update: Partial<{ name: string; setup_complete: boolean; display_currency: string }>;
+        Row: {
+          id: string;
+          name: string;
+          setup_complete: boolean;
+          display_currency: string;
+          default_programs_seeded: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          setup_complete?: boolean;
+          display_currency?: string;
+          default_programs_seeded?: boolean;
+          created_at?: string;
+        };
+        Update: Partial<{ name: string; setup_complete: boolean; display_currency: string; default_programs_seeded: boolean }>;
         Relationships: [];
       };
       profiles: {
@@ -32,6 +49,14 @@ export type Database = {
           email: string;
           phone: string | null;
           hidden_nav_items: string[];
+          position: string;
+          portfolio: string | null;
+          scope: ProfileScope;
+          sub_zone_id: string | null;
+          church_id: string | null;
+          caps: string[];
+          granted_caps: string[];
+          revoked_caps: string[];
           created_at: string;
         };
         Insert: {
@@ -42,9 +67,31 @@ export type Database = {
           email: string;
           phone?: string | null;
           hidden_nav_items?: string[];
+          position?: string;
+          portfolio?: string | null;
+          scope?: ProfileScope;
+          sub_zone_id?: string | null;
+          church_id?: string | null;
+          caps?: string[];
+          granted_caps?: string[];
+          revoked_caps?: string[];
           created_at?: string;
         };
-        Update: Partial<{ full_name: string; email: string; phone: string | null; hidden_nav_items: string[] }>;
+        Update: Partial<{
+          full_name: string;
+          email: string;
+          phone: string | null;
+          hidden_nav_items: string[];
+          role: ProfileRole;
+          position: string;
+          portfolio: string | null;
+          scope: ProfileScope;
+          sub_zone_id: string | null;
+          church_id: string | null;
+          caps: string[];
+          granted_caps: string[];
+          revoked_caps: string[];
+        }>;
         Relationships: [
           {
             foreignKeyName: "profiles_zone_id_fkey";
@@ -61,6 +108,12 @@ export type Database = {
         Update: Partial<{ name: string; flag: string }>;
         Relationships: [];
       };
+      sub_zones: {
+        Row: { id: string; zone_id: string; name: string };
+        Insert: { id?: string; zone_id: string; name: string };
+        Update: Partial<{ name: string }>;
+        Relationships: [];
+      };
       churches: {
         Row: {
           id: string;
@@ -70,6 +123,8 @@ export type Database = {
           city: string | null;
           founded_year: number | null;
           pastor: string | null;
+          sub_zone_id: string | null;
+          is_office: boolean;
         };
         Insert: {
           id?: string;
@@ -79,8 +134,17 @@ export type Database = {
           city?: string | null;
           founded_year?: number | null;
           pastor?: string | null;
+          sub_zone_id?: string | null;
+          is_office?: boolean;
         };
-        Update: Partial<{ name: string; city: string | null; founded_year: number | null; pastor: string | null }>;
+        Update: Partial<{
+          name: string;
+          city: string | null;
+          founded_year: number | null;
+          pastor: string | null;
+          sub_zone_id: string | null;
+          is_office: boolean;
+        }>;
         Relationships: [];
       };
       members: {
@@ -93,8 +157,10 @@ export type Database = {
           last_name: string;
           email: string | null;
           phone: string | null;
-          join_date: string;
+          join_date: string | null;
           role: MemberRole;
+          position: string;
+          portfolio: string | null;
           avatar_color: string;
           profile_id: string | null;
           title: string | null;
@@ -103,6 +169,8 @@ export type Database = {
           spouse_name: string | null;
           birthday: string | null;
           wedding_anniversary: string | null;
+          photo_url: string | null;
+          photo_path: string | null;
           created_at: string;
         };
         Insert: {
@@ -114,8 +182,10 @@ export type Database = {
           last_name: string;
           email?: string | null;
           phone?: string | null;
-          join_date?: string;
+          join_date?: string | null;
           role?: MemberRole;
+          position?: string;
+          portfolio?: string | null;
           avatar_color?: string;
           profile_id?: string | null;
           title?: string | null;
@@ -124,6 +194,8 @@ export type Database = {
           spouse_name?: string | null;
           birthday?: string | null;
           wedding_anniversary?: string | null;
+          photo_url?: string | null;
+          photo_path?: string | null;
           created_at?: string;
         };
         Update: Partial<{
@@ -133,8 +205,10 @@ export type Database = {
           last_name: string;
           email: string | null;
           phone: string | null;
-          join_date: string;
+          join_date: string | null;
           role: MemberRole;
+          position: string;
+          portfolio: string | null;
           avatar_color: string;
           profile_id: string | null;
           title: string | null;
@@ -143,13 +217,16 @@ export type Database = {
           spouse_name: string | null;
           birthday: string | null;
           wedding_anniversary: string | null;
+          photo_url: string | null;
+          photo_path: string | null;
         }>;
         Relationships: [];
       };
       giving_entries: {
-        Row: { id: string; member_id: string; zone_id: string; month: string; amount: number };
-        Insert: { id?: string; member_id: string; zone_id: string; month: string; amount: number };
-        Update: Partial<{ month: string; amount: number }>;
+        Row: { id: string; member_id: string; zone_id: string; month: string; amount: number; category: GivingCategory | null };
+        Insert: { id?: string; member_id: string; zone_id: string; month: string; amount: number; category?: GivingCategory | null };
+        // member_id is mutable only for the duplicate-member merge tool — never as part of a normal edit.
+        Update: Partial<{ member_id: string; month: string; amount: number; category: GivingCategory | null }>;
         Relationships: [
           {
             foreignKeyName: "giving_entries_member_id_fkey";
@@ -183,7 +260,8 @@ export type Database = {
           assigned_at?: string;
           completed_at?: string | null;
         };
-        Update: Partial<{ status: LessonStatus; completed_at: string | null }>;
+        // member_id is mutable only for the duplicate-member merge tool — never as part of a normal edit.
+        Update: Partial<{ member_id: string; status: LessonStatus; completed_at: string | null }>;
         Relationships: [
           {
             foreignKeyName: "trainings_member_id_fkey";
@@ -210,6 +288,7 @@ export type Database = {
           video_url: string | null;
           icon: string;
           points: number;
+          assign_to_new_members: boolean;
           created_by: string | null;
           created_at: string;
         };
@@ -221,10 +300,91 @@ export type Database = {
           video_url?: string | null;
           icon?: string;
           points?: number;
+          assign_to_new_members?: boolean;
           created_by?: string | null;
           created_at?: string;
         };
-        Update: Partial<{ name: string; description: string | null; video_url: string | null; icon: string; points: number }>;
+        Update: Partial<{
+          name: string;
+          description: string | null;
+          video_url: string | null;
+          icon: string;
+          points: number;
+          assign_to_new_members: boolean;
+        }>;
+        Relationships: [];
+      };
+      training_lessons: {
+        Row: {
+          id: string;
+          program_id: string;
+          zone_id: string;
+          kind: "video" | "quiz";
+          title: string;
+          description: string | null;
+          video_url: string | null;
+          duration_label: string | null;
+          pass_threshold: number | null;
+          sort_order: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          program_id: string;
+          zone_id: string;
+          kind?: "video" | "quiz";
+          title: string;
+          description?: string | null;
+          video_url?: string | null;
+          duration_label?: string | null;
+          pass_threshold?: number | null;
+          sort_order?: number;
+          created_at?: string;
+        };
+        Update: Partial<{
+          title: string;
+          description: string | null;
+          video_url: string | null;
+          duration_label: string | null;
+          pass_threshold: number | null;
+          sort_order: number;
+        }>;
+        Relationships: [];
+      };
+      training_quiz_questions: {
+        Row: { id: string; lesson_id: string; zone_id: string; question: string; options: string[]; correct_index: number; sort_order: number };
+        Insert: {
+          id?: string;
+          lesson_id: string;
+          zone_id: string;
+          question: string;
+          options: string[];
+          correct_index: number;
+          sort_order?: number;
+        };
+        Update: Partial<{ question: string; options: string[]; correct_index: number; sort_order: number }>;
+        Relationships: [];
+      };
+      training_lesson_progress: {
+        Row: {
+          id: string;
+          member_id: string;
+          lesson_id: string;
+          zone_id: string;
+          completed: boolean;
+          completed_at: string | null;
+          quiz_score: number | null;
+        };
+        Insert: {
+          id?: string;
+          member_id: string;
+          lesson_id: string;
+          zone_id: string;
+          completed?: boolean;
+          completed_at?: string | null;
+          quiz_score?: number | null;
+        };
+        Update: Partial<{ completed: boolean; completed_at: string | null; quiz_score: number | null }>;
         Relationships: [];
       };
       audit_log: {
@@ -269,6 +429,12 @@ export type Database = {
         Update: Partial<{ type: ActivityType; message: string; church_id: string | null; timestamp: string }>;
         Relationships: [];
       };
+      event_series: {
+        Row: { id: string; zone_id: string; slug: string; name: string; description: string | null; sort_order: number };
+        Insert: { id?: string; zone_id: string; slug: string; name: string; description?: string | null; sort_order?: number };
+        Update: Partial<{ name: string; description: string | null; sort_order: number }>;
+        Relationships: [];
+      };
       events: {
         Row: {
           id: string;
@@ -279,6 +445,12 @@ export type Database = {
           type: CalendarEventType;
           church_id: string | null;
           country_id: string | null;
+          description: string | null;
+          end_date: string | null;
+          location: string | null;
+          cover_url: string | null;
+          cover_path: string | null;
+          series_id: string | null;
         };
         Insert: {
           id?: string;
@@ -289,6 +461,12 @@ export type Database = {
           type: CalendarEventType;
           church_id?: string | null;
           country_id?: string | null;
+          description?: string | null;
+          end_date?: string | null;
+          location?: string | null;
+          cover_url?: string | null;
+          cover_path?: string | null;
+          series_id?: string | null;
         };
         Update: Partial<{
           title: string;
@@ -297,7 +475,38 @@ export type Database = {
           type: CalendarEventType;
           church_id: string | null;
           country_id: string | null;
+          description: string | null;
+          end_date: string | null;
+          location: string | null;
+          cover_url: string | null;
+          cover_path: string | null;
         }>;
+        Relationships: [];
+      };
+      event_media: {
+        Row: {
+          id: string;
+          event_id: string;
+          zone_id: string;
+          kind: EventMediaKind;
+          url: string;
+          storage_path: string | null;
+          title: string | null;
+          sort_order: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          event_id: string;
+          zone_id: string;
+          kind: EventMediaKind;
+          url: string;
+          storage_path?: string | null;
+          title?: string | null;
+          sort_order?: number;
+          created_at?: string;
+        };
+        Update: Partial<{ title: string | null; sort_order: number }>;
         Relationships: [];
       };
       ledger_entries: {
@@ -373,6 +582,23 @@ export type Database = {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      quiz_questions_for_member: {
+        Args: { p_lesson_id: string };
+        Returns: { id: string; question: string; options: string[]; sort_order: number }[];
+      };
+      quiz_question_counts: {
+        Args: { p_lesson_ids: string[] };
+        Returns: { lesson_id: string; count: number }[];
+      };
+      can_edit_event: {
+        Args: { e_series: string | null; e_church: string | null };
+        Returns: boolean;
+      };
+      giving_totals_in_scope: {
+        Args: Record<string, never>;
+        Returns: { church_id: string; month: string; category: string | null; amount: number }[];
+      };
+    };
   };
 };

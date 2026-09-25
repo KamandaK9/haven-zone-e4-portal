@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentProfile } from "@/lib/data/get-dataset";
+import { can, getCurrentProfile } from "@/lib/data/get-dataset";
 import { logAudit } from "./audit";
 import { CURRENCIES } from "@/lib/currency";
 import type { ActionResult } from "./members";
@@ -27,7 +27,7 @@ export async function updateHiddenNavItems(hiddenNavItems: string[]): Promise<Ac
 export async function updateDisplayCurrency(currency: string): Promise<ActionResult> {
   const profile = await getCurrentProfile();
   if (!profile) return { ok: false, error: "Not signed in." };
-  if (profile.role !== "super_admin") return { ok: false, error: "Not permitted." };
+  if (!can(profile, "manage_access")) return { ok: false, error: "Not permitted." };
   if (!CURRENCIES.some((c) => c.code === currency)) return { ok: false, error: "Unknown currency." };
 
   const supabase = await createClient();

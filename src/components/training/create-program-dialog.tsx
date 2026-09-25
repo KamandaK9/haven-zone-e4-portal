@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,29 +15,41 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
-import { createTrainingProgram } from "@/lib/actions/training";
+import { createTrainingProgram, updateTrainingProgram } from "@/lib/actions/training";
 import { TRAINING_ICON_OPTIONS, getTrainingIcon } from "@/lib/training-icons";
+import type { TrainingProgram } from "@/lib/data/types";
 import { cn } from "@/lib/utils";
 
-export function CreateProgramDialog() {
+// One form for both creating a program and editing an existing one. Controlled
+// (open/onOpenChange) so the card menu can open it for Edit.
+export function ProgramFormDialog({
+  program,
+  open,
+  onOpenChange,
+}: {
+  program?: TrainingProgram;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [videoUrl, setVideoUrl] = useState("");
-  const [icon, setIcon] = useState(TRAINING_ICON_OPTIONS[0]);
-  const [points, setPoints] = useState("10");
+  const editing = !!program;
+  const [name, setName] = useState(program?.name ?? "");
+  const [description, setDescription] = useState(program?.description ?? "");
+  const [videoUrl, setVideoUrl] = useState(program?.videoUrl ?? "");
+  const [icon, setIcon] = useState(program?.icon ?? TRAINING_ICON_OPTIONS[0]);
+  const [points, setPoints] = useState(String(program?.points ?? 10));
+  const [assignToNewMembers, setAssignToNewMembers] = useState(program?.assignToNewMembers ?? false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function reset() {
-    setName("");
-    setDescription("");
-    setVideoUrl("");
-    setIcon(TRAINING_ICON_OPTIONS[0]);
-    setPoints("10");
+    setName(program?.name ?? "");
+    setDescription(program?.description ?? "");
+    setVideoUrl(program?.videoUrl ?? "");
+    setIcon(program?.icon ?? TRAINING_ICON_OPTIONS[0]);
+    setPoints(String(program?.points ?? 10));
+    setAssignToNewMembers(program?.assignToNewMembers ?? false);
     setError(null);
   }
 
@@ -45,13 +58,15 @@ export function CreateProgramDialog() {
     setSubmitting(true);
     setError(null);
 
-    const result = await createTrainingProgram({
+    const input = {
       name,
       description: description || undefined,
       videoUrl: videoUrl || undefined,
       icon,
       points: Number(points),
-    });
+      assignToNewMembers,
+    };
+    const result = program ? await updateTrainingProgram(program.id, input) : await createTrainingProgram(input);
 
     if (!result.ok) {
       setError(result.error);
@@ -59,8 +74,8 @@ export function CreateProgramDialog() {
       return;
     }
 
-    setOpen(false);
-    reset();
+    onOpenChange(false);
+    if (!editing) reset();
     setSubmitting(false);
     router.refresh();
   }
@@ -69,21 +84,19 @@ export function CreateProgramDialog() {
     <Dialog
       open={open}
       onOpenChange={(v) => {
-        setOpen(v);
+        onOpenChange(v);
         if (!v) reset();
       }}
     >
-      <DialogTrigger asChild>
-        <Button size="sm" className="gap-2">
-          <Plus className="h-4 w-4" />
-          New program
-        </Button>
-      </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>New training program</DialogTitle>
-            <DialogDescription>Optionally link a video members can watch as part of it.</DialogDescription>
+            <DialogTitle>{editing ? "Edit training program" : "New training program"}</DialogTitle>
+            <DialogDescription>
+              {editing
+                ? "Changes apply to everyone assigned to it. Changing the points updates every member's total, including points they've already earned."
+                : "Optionally link a video members can watch as part of it."}
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
@@ -122,18 +135,18 @@ export function CreateProgramDialog() {
             <div className="space-y-1.5">
               <Label>Icon</Label>
               <div className="grid grid-cols-9 gap-1.5">
-                {TRAINING_ICON_OPTIONS.map((name) => {
-                  const Icon = getTrainingIcon(name);
+                {TRAINING_ICON_OPTIONS.map((iconName) => {
+                  const Icon = getTrainingIcon(iconName);
                   return (
                     <button
-                      key={name}
+                      key={iconName}
                       type="button"
-                      onClick={() => setIcon(name)}
+                      onClick={() => setIcon(iconName)}
                       className={cn(
                         "flex items-center justify-center rounded-lg border p-2 transition-colors",
-                        icon === name ? "border-primary bg-accent text-primary" : "border-border hover:bg-muted/50"
+                        icon === iconName ? "border-primary bg-accent text-primary" : "border-border hover:bg-muted/50"
                       )}
-                      aria-label={name}
+                      aria-label={iconName}
                     >
                       <Icon className="h-4 w-4" />
                     </button>
@@ -141,6 +154,20 @@ export function CreateProgramDialog() {
                 })}
               </div>
             </div>
+
+            <label className="flex items-start gap-2.5 text-sm cursor-pointer">
+              <Checkbox
+                checked={assignToNewMembers}
+                onCheckedChange={(v) => setAssignToNewMembers(v === true)}
+                className="mt-0.5"
+              />
+              <span>
+                Assign to new members automatically
+                <span className="block text-xs text-muted-foreground">
+                  Anyone added or imported from now on is enrolled in this program.
+                </span>
+              </span>
+            </label>
           </div>
 
           {error && (
@@ -151,15 +178,28 @@ export function CreateProgramDialog() {
           )}
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             <Button type="submit" disabled={submitting || !name.trim()}>
-              {submitting ? "Creating…" : "Create program"}
+              {submitting ? "Saving…" : editing ? "Save changes" : "Create program"}
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+export function CreateProgramDialog() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button size="sm" className="gap-2" onClick={() => setOpen(true)}>
+        <Plus className="h-4 w-4" />
+        New program
+      </Button>
+      <ProgramFormDialog open={open} onOpenChange={setOpen} />
+    </>
   );
 }

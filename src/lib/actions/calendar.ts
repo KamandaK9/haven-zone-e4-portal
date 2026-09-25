@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentProfile } from "@/lib/data/get-dataset";
+import { can, getCurrentProfile } from "@/lib/data/get-dataset";
 import type { CalendarEventType } from "@/lib/data/types";
 import type { ActionResult } from "./members";
 
@@ -18,7 +18,7 @@ type CreateEventInput = {
 export async function createCalendarEvent(input: CreateEventInput): Promise<ActionResult> {
   const profile = await getCurrentProfile();
   if (!profile) return { ok: false, error: "Not signed in." };
-  if (profile.role === "member") return { ok: false, error: "Not permitted." };
+  if (!can(profile, "manage_calendar")) return { ok: false, error: "Not permitted." };
   if (!input.title.trim() || !input.date || !input.time) {
     return { ok: false, error: "Title, date, and time are required." };
   }

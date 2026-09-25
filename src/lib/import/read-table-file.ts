@@ -2,6 +2,29 @@ import type { CellValue } from "exceljs";
 
 export type TableFile = { headers: string[]; rows: string[][] };
 
+// Excel cells aren't always plain values: hyperlinked emails, rich text and
+// formulas all come back as objects, which String() turns into
+// "[object Object]".
+function cellToString(v: CellValue): string {
+  if (v == null) return "";
+  if (v instanceof Date) return v.toISOString().slice(0, 10);
+  if (typeof v === "object") {
+    if ("richText" in v) return v.richText.map((part) => part.text).join("");
+    if ("text" in v) return cellToString(v.text as CellValue); // hyperlink
+    if ("result" in v) return cellToString(v.result as CellValue); // formula
+    if ("error" in v) return "";
+  }
+  return String(v);
+}
+
+// row.values is 1-indexed with a leading empty slot, and is *sparse* when the
+// first columns are blank — Array.from fills those holes with "" (a plain
+// .map would skip them and leave undefined behind).
+function rowToStrings(values: CellValue[] | { [key: string]: CellValue }): string[] {
+  const arr = Array.isArray(values) ? values : Object.values(values);
+  return Array.from(arr.slice(1), cellToString);
+}
+
 async function readCsv(file: File): Promise<TableFile> {
   const Papa = (await import("papaparse")).default;
   const text = await file.text();
@@ -17,15 +40,7 @@ async function readExcel(file: File): Promise<TableFile> {
   const sheet = workbook.worksheets[0];
   if (!sheet) return { headers: [], rows: [] };
 
-  const toStringRow = (values: CellValue[] | { [key: string]: CellValue }): string[] => {
-    const arr = Array.isArray(values) ? values : Object.values(values);
-    // ExcelJS row.values is 1-indexed with a leading empty slot — drop it.
-    return arr.slice(1).map((v) => {
-      if (v == null) return "";
-      if (v instanceof Date) return v.toISOString().slice(0, 10);
-      return String(v);
-    });
-  };
+  const toStringRow = rowToStrings;
 
   const headers = toStringRow(sheet.getRow(1).values);
   const rows: string[][] = [];
@@ -50,14 +65,7 @@ export async function readAllExcelSheets(file: File): Promise<SheetTable[]> {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(await file.arrayBuffer());
 
-  const toStringRow = (values: CellValue[] | { [key: string]: CellValue }): string[] => {
-    const arr = Array.isArray(values) ? values : Object.values(values);
-    return arr.slice(1).map((v) => {
-      if (v == null) return "";
-      if (v instanceof Date) return v.toISOString().slice(0, 10);
-      return String(v);
-    });
-  };
+  const toStringRow = rowToStrings;
 
   return workbook.worksheets.map((sheet) => {
     const headers = toStringRow(sheet.getRow(1).values);
