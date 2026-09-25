@@ -8,11 +8,21 @@ export const tenant: TenantConfig = {
   portalName: "The Haven Zone Portal",
   description: "Member management and analytics for The Haven Zone E4",
   defaultOrgName: "The Haven Zone E4",
+  adminNameExample: "e.g. Pastor John Kamanda",
+  defaultCurrency: "USD",
+  login: {
+    headline: "One view of every chapter, every member, every country in your zone.",
+    blurb:
+      "Track membership growth, PCO, dues and special-project giving, and training progress across the zone — from a single dashboard built for leadership.",
+  },
+  affiliation: "An arm of Christ Embassy",
   emailPlaceholder: "you@havenzonee4.org",
   // public/logo-mark.png is cropped from the real Haven logo — mark only,
   // the baked-in text removed.
   logo: { src: "/logo-mark.png", alt: "The Haven", width: 345, height: 414 },
   chartPrimary: "#7c3aed",
+  chartRamp: ["#c4b5fd", "#a78bfa", "#8b5cf6", "#7c3aed"],
+  avatarColors: ["#7c3aed", "#a21caf", "#9333ea", "#be185d", "#6d28d9", "#c026d3", "#8b5cf6"],
 
   // The nine countries The Haven Zone E4 covers.
   countries: [
@@ -36,7 +46,11 @@ export const tenant: TenantConfig = {
     { slug: "special-programmes", name: "Special Programmes", shortName: "Special Programmes", icon: Sparkles },
   ],
 
-  lessonExamples: { video: "e.g. Welcome to Haven Zone E4", quiz: "e.g. Haven Orientation quiz" },
+  lessonExamples: {
+    video: "e.g. Welcome to Haven Zone E4",
+    quiz: "e.g. Haven Orientation quiz",
+    videoHosts: "YouTube, Vimeo, KingsChat, etc.",
+  },
 
   roster: {
     // Leadership-summary sheets prefix chapters with "Haven"/"CE"/"Christ

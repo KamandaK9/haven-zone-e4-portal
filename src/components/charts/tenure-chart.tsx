@@ -2,10 +2,7 @@
 
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartTooltip } from "./chart-tooltip";
-import { CHART_GRID, CHART_MUTED_TEXT } from "@/lib/chart-colors";
-
-// Ordinal purple ramp, light → dark, each step clears 2:1 contrast on white.
-const TENURE_RAMP = ["#c4b5fd", "#a78bfa", "#8b5cf6", "#7c3aed"];
+import { BRAND_RAMP, CHART_GRID, CHART_MUTED_TEXT } from "@/lib/chart-colors";
 
 export function TenureChart({ data }: { data: { bucket: string; count: number }[] }) {
   return (
@@ -22,7 +19,7 @@ export function TenureChart({ data }: { data: { bucket: string; count: number }[
         <Tooltip content={(props) => <ChartTooltip {...props} />} cursor={{ fill: "var(--muted)" }} />
         <Bar dataKey="count" name="Members" radius={[4, 4, 0, 0]} maxBarSize={56}>
           {data.map((_, i) => (
-            <Cell key={i} fill={TENURE_RAMP[i % TENURE_RAMP.length]} />
+            <Cell key={i} fill={BRAND_RAMP[i % BRAND_RAMP.length]} />
           ))}
         </Bar>
       </BarChart>

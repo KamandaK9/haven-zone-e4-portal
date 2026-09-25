@@ -20,6 +20,7 @@ import { createTrainingProgram, updateTrainingProgram } from "@/lib/actions/trai
 import { TRAINING_ICON_OPTIONS, getTrainingIcon } from "@/lib/training-icons";
 import type { TrainingProgram } from "@/lib/data/types";
 import { cn } from "@/lib/utils";
+import { tenant } from "@/tenant";
 
 // One form for both creating a program and editing an existing one. Controlled
 // (open/onOpenChange) so the card menu can open it for Edit.
@@ -123,7 +124,7 @@ export function ProgramFormDialog({
                 type="url"
                 value={videoUrl}
                 onChange={(e) => setVideoUrl(e.target.value)}
-                placeholder="optional — YouTube, Vimeo, KingsChat, etc."
+                placeholder={`optional — ${tenant.lessonExamples.videoHosts}`}
               />
             </div>
 

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { randomAvatarColor } from "@/lib/avatar-color";
 import { can, getCurrentProfile } from "@/lib/data/get-dataset";
 import {
   canActOn,
@@ -16,8 +17,6 @@ import { getAutoAssignedProgramIds } from "@/lib/data/programs-server";
 import { getSiteUrl } from "@/lib/site-url";
 import { logAudit } from "./audit";
 import type { MemberRole } from "@/lib/data/types";
-
-const AVATAR_COLORS = ["#7c3aed", "#a21caf", "#9333ea", "#be185d", "#6d28d9", "#c026d3", "#8b5cf6"];
 
 type CreateMemberInput = {
   churchId: string;
@@ -54,7 +53,7 @@ export async function createMember(input: CreateMemberInput): Promise<ActionResu
       role: input.role,
       // Someone added by hand joined now; roster imports leave this blank.
       join_date: new Date().toISOString().slice(0, 10),
-      avatar_color: AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)],
+      avatar_color: randomAvatarColor(),
     })
     .select("id")
     .single();
@@ -186,7 +185,7 @@ export async function bulkImportMembers(input: {
       phone: row.phone?.trim() || null,
       join_date: row.joinDate,
       role: row.role ?? "Member",
-      avatar_color: AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)],
+      avatar_color: randomAvatarColor(),
     });
     givingByIndex.push(row.givingTotal && row.givingTotal > 0 ? row.givingTotal : undefined);
     givingMonthByIndex.push((row.givingDate ?? new Date().toISOString().slice(0, 10)).slice(0, 7));

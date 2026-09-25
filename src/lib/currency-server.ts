@@ -1,7 +1,8 @@
 import "server-only";
 import { isCurrencyCode, type CurrencyCode } from "./currency";
+import { tenant } from "@/tenant";
 
-const DEFAULT_CURRENCY: CurrencyCode = "USD";
+const DEFAULT_CURRENCY: CurrencyCode = tenant.defaultCurrency;
 
 // exchangerate-api.com's free tier (no key) — refreshed daily, and one of
 // the few free providers that covers Southern/East African currencies

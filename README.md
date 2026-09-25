@@ -16,7 +16,7 @@ organisation a deployment is built for, the **tenant** (here: The Haven).
 | | Where | What |
 |---|---|---|
 | Contract | `src/lib/tenant.ts` | The `TenantConfig` type — everything core is allowed to ask a tenant for. |
-| Tenant | `src/tenant/index.ts` | The Haven's values: name, portal name, logo, countries, flagship event series, lesson placeholders, roster-import hints, chart colour. |
+| Tenant | `src/tenant/index.ts` | The Haven's values: names and copy, logo, colours, default currency, countries, flagship event series, lesson placeholders, roster-import hints. |
 | Tenant theme | `src/tenant/theme.css` | The `:root` / `.dark` colour tokens, imported by `src/app/globals.css`. |
 | Tenant assets | `public/` | The logo referenced by `tenant.logo`. |
 | Core | everything else | Generic; knows nothing about The Haven. |
@@ -118,14 +118,21 @@ Core stays as it is; you write a new tenant.
 
 1. **Replace `src/tenant/index.ts`.** Export `tenant: TenantConfig` (from
    `@/lib/tenant`). TypeScript tells you what's missing:
-   - `name`, `portalName`, `description`, `defaultOrgName`, `emailPlaceholder`
+   - `name`, `portalName`, `description`, `defaultOrgName`, `emailPlaceholder`,
+     `adminNameExample`
+   - `login.headline` / `login.blurb` — the login page's marketing panel;
+     `affiliation` — parent-organisation line under it (`null` to hide)
+   - `defaultCurrency` — display currency a new org starts with
    - `logo` — put the image in `public/` and give its intrinsic size
    - `chartPrimary` — single-series chart colour; match `--primary`
+   - `chartRamp` — ordinal chart ramp, light → dark; `avatarColors` — palette
+     for members' initials avatars
    - `countries` — pre-listed on the setup wizard, with flags
    - `eventSeries` — flagship recurring events (slug, names, lucide icon). The
      slug is the URL and the key existing `event_series` rows are matched on,
      so don't change slugs after launch.
-   - `lessonExamples` — placeholder lesson titles
+   - `lessonExamples` — placeholder lesson titles, and the video hosts the org
+     uses (`videoHosts`)
    - `roster.chapterPrefixes` / `roster.countryGuesses` — hints for the
      leadership-roster import (use empty arrays if they don't apply)
 2. **Replace `src/tenant/theme.css`** with the client's `:root` and `.dark`

@@ -82,7 +82,7 @@ export function VideoLessonDialog({
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="lessonVideo">Video link</Label>
-            <Input id="lessonVideo" type="url" value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="YouTube, Vimeo, KingsChat, etc." />
+            <Input id="lessonVideo" type="url" value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder={tenant.lessonExamples.videoHosts} />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="lessonDuration">Duration (optional)</Label>

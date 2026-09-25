@@ -331,7 +331,7 @@ function StepZoneBasics({
           <Label htmlFor="adminName">Your name</Label>
           <Input
             id="adminName"
-            placeholder="e.g. Pastor John Kamanda"
+            placeholder={tenant.adminNameExample}
             value={wizard.adminName}
             onChange={(e) => setWizard((w) => ({ ...w, adminName: e.target.value }))}
           />

@@ -2,15 +2,15 @@
 
 import { randomInt } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { randomAvatarColor } from "@/lib/avatar-color";
 import { hasCompletedZone, setupKeyMatches } from "@/lib/setup-gate";
 import type { ParsedMemberRow } from "./members";
 import type { MemberRole } from "@/lib/data/types";
 import { flagForCountry } from "@/lib/country-flags";
+import { tenant } from "@/tenant";
 import { getAutoAssignedProgramIds } from "@/lib/data/programs-server";
 import { ensureEventSeries } from "@/lib/data/events";
 import { CAPABILITIES, effectiveCapabilities, type Portfolio, type Position } from "@/lib/access";
-
-const AVATAR_COLORS = ["#7c3aed", "#a21caf", "#9333ea", "#be185d", "#6d28d9", "#c026d3", "#8b5cf6"];
 
 function chunk<T>(items: T[], size: number): T[][] {
   const out: T[][] = [];
@@ -84,7 +84,7 @@ export async function completeZoneSetup(payload: SetupPayload): Promise<Complete
   // 2. Zone.
   const { data: zone, error: zoneError } = await admin
     .from("zones")
-    .insert({ name: zoneName, setup_complete: false })
+    .insert({ name: zoneName, setup_complete: false, display_currency: tenant.defaultCurrency })
     .select("id")
     .single();
   if (zoneError || !zone) {
@@ -216,7 +216,7 @@ export async function completeZoneSetup(payload: SetupPayload): Promise<Complete
         role: row.member.role ?? "Member",
         position: row.member.position ?? "member",
         portfolio: row.member.portfolio ?? null,
-        avatar_color: AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)],
+        avatar_color: randomAvatarColor(),
         title: row.member.title ?? null,
         kc_handle: row.member.kcHandle ?? null,
         profession: row.member.profession ?? null,

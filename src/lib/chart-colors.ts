@@ -14,6 +14,8 @@ export const CATEGORICAL = [
 
 // The tenant's brand colour, used for single-series/sequential encodings.
 export const BRAND_PRIMARY = tenant.chartPrimary;
+// Ordinal ramp, light → dark.
+export const BRAND_RAMP = tenant.chartRamp;
 
 export const STATUS = {
   good: "#0ca30c",
