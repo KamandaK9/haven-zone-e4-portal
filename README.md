@@ -1,34 +1,48 @@
-# Stratum — The Haven Zone Portal
+# Stratum
 
-Member management and analytics for The Haven Zone E4: members, chapters and
-countries, giving and ledger, training courses, events and a member
-self-service portal. Built on Next.js (App Router) and Supabase.
+A member-management portal for church networks and similar membership
+organisations: a leadership hierarchy with scoped permissions, members and
+chapters, giving and ledger, training courses with hosted video, events,
+livestreams with live chat, a handbook that ties the organisation's rules to
+live data, chapter records (cells, minutes, correspondence, bank advices,
+cheques), a Help button with a support inbox, and a member self-service
+portal. Built on Next.js (App Router) and Supabase.
+
+This repo is the **core**. It ships with an example tenant ("Example Church")
+so it runs out of the box; each client gets its own repo made from this one
+(see [A new client](#a-new-client)).
 
 > This repo uses a Next.js version with breaking changes from older releases.
 > Read [AGENTS.md](AGENTS.md) and the guides in `node_modules/next/dist/docs/`
 > before changing framework-level code.
 
-## Stratum vs. tenant
-
-The codebase is split into a reusable core, **Stratum**, and the
-organisation a deployment is built for, the **tenant** (here: The Haven).
+## Core vs. tenant
 
 | | Where | What |
 |---|---|---|
 | Contract | `src/lib/tenant.ts` | The `TenantConfig` type — everything core is allowed to ask a tenant for. |
-| Tenant | `src/tenant/index.ts` | The Haven's values: names and copy, logo, colours, default currency, countries, flagship event series, lesson placeholders, roster-import hints. |
+| Tenant | `src/tenant/index.ts` | Names and copy, logo, colours, default currency, countries, flagship event series, lesson placeholders, roster-import hints, bank accounts, cell level names, meeting types. |
+| Tenant handbook | `src/tenant/handbook/` | The organisation's operating manual as typed data (optional). |
 | Tenant theme | `src/tenant/theme.css` | The `:root` / `.dark` colour tokens, imported by `src/app/globals.css`. |
-| Tenant assets | `public/` | The logo referenced by `tenant.logo`. |
-| Core | everything else | Generic; knows nothing about The Haven. |
+| Tenant lint names | `src/tenant/lint.json` | Names core code must never contain. |
+| Tenant assets | `public/brand/` | The logo referenced by `tenant.logo`. |
+| Core | everything else | Generic; knows nothing about any one organisation. |
 
 The rule: **core reads the tenant only via `import { tenant } from "@/tenant"`**.
 ESLint enforces it outside `src/tenant/`:
 
 - no deep imports into the tenant folder (`@/tenant/...` or a relative path to it);
-- no string, JSX, template or regex literal matching `/Haven/i`.
+- no string, JSX, template or regex literal containing a name from
+  `src/tenant/lint.json`.
 
 "Powered by Stratum KamTech" on the login page is the platform's own brand and
 stays in core.
+
+**Still organisation-shaped in core** (fine for church networks; worth
+generalising before a very different client): the leadership positions and
+their default permissions (`src/lib/access.ts`), the zone → sub-zone →
+chapter structure (`zones`, `sub_zones`, `churches` tables), and the
+leadership-roster spreadsheet importer.
 
 ## Getting started
 
@@ -68,6 +82,7 @@ See [`.env.example`](.env.example).
 | `MUX_TOKEN_ID`, `MUX_TOKEN_SECRET`, `MUX_SIGNING_KEY`, `MUX_PRIVATE_KEY` | for Mux | Server-only. Configures the Mux video host. |
 | `MUX_WEBHOOK_SECRET` | recommended with Mux | Server-only. Verifies Mux webhooks at `/api/video/mux/webhook`. |
 | `RESEND_API_KEY`, `RESEND_FROM_EMAIL` | for newsletters | Newsletter page only. Invites and password resets use Supabase's own SMTP settings (configured in the Supabase dashboard). |
+| `SUPPORT_EMAIL` | optional | Where Help-button requests are emailed (needs the Resend settings). Without it they're kept in Settings → Support requests only. |
 
 ## First-time setup (the setup key)
 
@@ -181,40 +196,53 @@ npx supabase migration repair --status applied <baseline-timestamp>
 Local development against a local stack: `npx supabase start`, then
 `npx supabase db reset` to apply migrations and the seed.
 
-## Building for a new client
+## A new client
 
-Core stays as it is; you write a new tenant.
+Each client gets **their own repo, deployment and database**, made from this
+one — and keeps receiving Stratum updates.
 
-1. **Replace `src/tenant/index.ts`.** Export `tenant: TenantConfig` (from
-   `@/lib/tenant`). TypeScript tells you what's missing:
-   - `name`, `portalName`, `description`, `defaultOrgName`, `emailPlaceholder`,
-     `adminNameExample`
-   - `login.headline` / `login.blurb` — the login page's marketing panel;
-     `affiliation` — parent-organisation line under it (`null` to hide)
-   - `defaultCurrency` — display currency a new org starts with
-   - `logo` — put the image in `public/` and give its intrinsic size
-   - `chartPrimary` — single-series chart colour; match `--primary`
-   - `chartRamp` — ordinal chart ramp, light → dark; `avatarColors` — palette
-     for members' initials avatars
-   - `countries` — pre-listed on the setup wizard, with flags
-   - `eventSeries` — flagship recurring events (slug, names, lucide icon). The
-     slug is the URL and the key existing `event_series` rows are matched on,
-     so don't change slugs after launch.
-   - `lessonExamples` — placeholder lesson titles, and the video hosts the org
-     uses (`videoHosts`)
-   - `captionLanguage` — language uploaded videos are auto-captioned in
-     (`"en"`, `"pt"`, …, `"auto"`), or `null` for none
-   - `roster.chapterPrefixes` / `roster.countryGuesses` — hints for the
-     leadership-roster import (use empty arrays if they don't apply)
-2. **Replace `src/tenant/theme.css`** with the client's `:root` and `.dark`
-   colour tokens (same variable names).
-3. **Swap assets** in `public/` (logo, `src/app/favicon.ico`).
-4. **New Supabase project**: link it, `db push` the migrations, set the env
-   vars (including a fresh `SETUP_KEY`), deploy, and run `/setup?key=...`.
-5. Run `npm run lint && npm run typecheck && npm run build`. Consider adding
-   the new client's name to the `no-restricted-syntax` pattern in
-   `eslint.config.mjs` (it currently bans `/Haven/i`) so their copy can't leak
-   into core either.
+### Start the client repo
 
-One deployment serves one organisation; a new client gets its own deployment
-and database.
+```bash
+git clone https://github.com/KamandaK9/stratum.git <client>-portal
+cd <client>-portal
+git remote rename origin upstream            # Stratum
+git remote add origin <the client's new GitHub repo>
+git config merge.ours.driver true            # see "Pulling Stratum updates"
+```
+
+Then make it theirs, in one commit:
+
+1. **`src/tenant/index.ts`** — export `tenant: TenantConfig` (from
+   `@/lib/tenant`). TypeScript tells you what's missing. Slugs in
+   `eventSeries` and keys in `records.bankAccounts` are stored in the
+   database, so don't change them after launch.
+2. **`src/tenant/handbook/`** — their operating manual (or remove `handbook`
+   from the tenant to hide the Handbook).
+3. **`src/tenant/theme.css`** — their colour tokens (same variable names).
+4. **`src/tenant/lint.json`** — their name(s), so it can't leak into core.
+5. **`public/brand/`** — their logo; also `src/app/favicon.ico`.
+6. `README.md`, `supabase/seed.sql`, and the `name` in `package.json` /
+   `project_id` in `supabase/config.toml`.
+7. New Supabase project: link it, `db push` the migrations, set the env vars
+   (including a fresh `SETUP_KEY`), deploy, and run `/setup?key=...`.
+8. `npm run lint && npm run typecheck && npm test && npm run build`.
+
+### Pulling Stratum updates
+
+Build core features here, in Stratum. In each client repo:
+
+```bash
+git fetch upstream
+git merge upstream/main
+```
+
+`.gitattributes` marks the tenant's own files (`src/tenant/**`,
+`public/brand/**`, `supabase/seed.sql`, `README.md`) as `merge=ours`: when
+both sides changed one, the client's version wins. That needs
+`git config merge.ours.driver true` once per clone. If an update adds a field
+to `TenantConfig`, the merge still succeeds and `npm run typecheck` points at
+what the client's tenant needs to add.
+
+Apply new migrations to the client's database after merging
+(`npx supabase db push`).

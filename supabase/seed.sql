@@ -1,6 +1,6 @@
 -- Sample content so the annual-event pages have something to show.
 -- Loaded by `supabase db reset` (see config.toml [db.seed]), or paste into
--- the Supabase SQL editor. Adds two "The Haven Zonal Convention"
+-- the Supabase SQL editor. Adds two "Annual Conference"
 -- editions (the newest is featured, the older one appears under "Past
 -- editions") with a cover, pictures, a resource file and two videos.
 -- The pictures/file are placeholders served from /public/demo.
@@ -21,9 +21,9 @@ begin
   end if;
 
   insert into event_series (zone_id, slug, name, sort_order)
-  values (z, 'zonal-convention', 'The Haven Zonal Convention', 2)
+  values (z, 'annual-conference', 'Annual Conference', 0)
   on conflict (zone_id, slug) do nothing;
-  select id into s from event_series where zone_id = z and slug = 'zonal-convention';
+  select id into s from event_series where zone_id = z and slug = 'annual-conference';
 
   update event_series
   set description = 'Sample text - edit or replace it with "Edit overview". The Zonal Convention brings the zone together each year for teaching, worship and fellowship.'
@@ -39,14 +39,14 @@ begin
   values
   (
     '5a1d0000-0000-4000-8000-000000000001', z,
-    'The Haven Zonal Convention 2026', '2026-08-13', '2026-08-16', 'All day', 'flagship',
+    'Annual Conference 2026', '2026-08-13', '2026-08-16', 'All day', 'flagship',
     'Sample City, Southern Africa',
     E'Sample content - replace it with what this convention was really about.\n\nFour days of teaching, worship and fellowship bringing chapters from across the zone together. Leaders and members from every country gathered for the main sessions, breakout meetings for governors and their teams, and a closing service on the final evening.\n\nUse "Edit page" to change this text, swap the cover, and add your own pictures, resources and videos.',
     '/demo/cover-2026.svg', s
   ),
   (
     '5a1d0000-0000-4000-8000-000000000002', z,
-    'The Haven Zonal Convention 2025', '2025-08-14', '2025-08-17', 'All day', 'flagship',
+    'Annual Conference 2025', '2025-08-14', '2025-08-17', 'All day', 'flagship',
     'Sample City, Southern Africa',
     'Sample content - last year''s edition. It shows up under "Past editions" and opens its own page when tapped.',
     '/demo/cover-2025.svg', s
