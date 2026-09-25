@@ -17,6 +17,8 @@ export type EventMediaKind = "image" | "video" | "file";
 export type LedgerEntryType = "income" | "expense";
 export type ProfileScope = "zone" | "sub_zone" | "chapter" | "self";
 export type GivingCategory = "pco" | "dues" | "special_project" | "meta";
+export type ChapterRecordKind = "minutes" | "correspondence" | "bank_advice";
+export type ChequeStatus = "issued" | "cleared" | "cancelled" | "void";
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
@@ -180,6 +182,7 @@ export type Database = {
           wedding_anniversary: string | null;
           photo_url: string | null;
           photo_path: string | null;
+          cell_id: string | null;
           created_at: string;
         };
         Insert: {
@@ -205,6 +208,7 @@ export type Database = {
           wedding_anniversary?: string | null;
           photo_url?: string | null;
           photo_path?: string | null;
+          cell_id?: string | null;
           created_at?: string;
         };
         Update: Partial<{
@@ -228,6 +232,7 @@ export type Database = {
           wedding_anniversary: string | null;
           photo_url: string | null;
           photo_path: string | null;
+          cell_id: string | null;
         }>;
         Relationships: [];
       };
@@ -616,6 +621,165 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+      cells: {
+        Row: {
+          id: string;
+          zone_id: string;
+          church_id: string;
+          parent_id: string | null;
+          name: string;
+          leader_member_id: string | null;
+          meeting_day: string | null;
+          meeting_place: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          zone_id: string;
+          church_id: string;
+          parent_id?: string | null;
+          name: string;
+          leader_member_id?: string | null;
+          meeting_day?: string | null;
+          meeting_place?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<{
+          parent_id: string | null;
+          name: string;
+          leader_member_id: string | null;
+          meeting_day: string | null;
+          meeting_place: string | null;
+        }>;
+        Relationships: [];
+      };
+      chapter_records: {
+        Row: {
+          id: string;
+          zone_id: string;
+          church_id: string;
+          kind: ChapterRecordKind;
+          title: string;
+          record_date: string;
+          body: string | null;
+          meeting_type: string | null;
+          event_id: string | null;
+          direction: "in" | "out" | null;
+          counterparty: string | null;
+          reference: string | null;
+          account: string | null;
+          amount: number | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          zone_id: string;
+          church_id: string;
+          kind: ChapterRecordKind;
+          title: string;
+          record_date: string;
+          body?: string | null;
+          meeting_type?: string | null;
+          event_id?: string | null;
+          direction?: "in" | "out" | null;
+          counterparty?: string | null;
+          reference?: string | null;
+          account?: string | null;
+          amount?: number | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<{
+          title: string;
+          record_date: string;
+          body: string | null;
+          meeting_type: string | null;
+          event_id: string | null;
+          direction: "in" | "out" | null;
+          counterparty: string | null;
+          reference: string | null;
+          account: string | null;
+          amount: number | null;
+          updated_at: string;
+        }>;
+        Relationships: [];
+      };
+      chapter_record_files: {
+        Row: {
+          id: string;
+          record_id: string;
+          zone_id: string;
+          storage_path: string;
+          file_name: string;
+          mime_type: string;
+          size_bytes: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          record_id: string;
+          zone_id: string;
+          storage_path: string;
+          file_name: string;
+          mime_type: string;
+          size_bytes: number;
+          created_at?: string;
+        };
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      cheques: {
+        Row: {
+          id: string;
+          zone_id: string;
+          church_id: string;
+          account: string;
+          cheque_number: string;
+          issue_date: string;
+          payee: string;
+          amount: number;
+          purpose: string | null;
+          status: ChequeStatus;
+          ledger_entry_id: string | null;
+          stub_path: string | null;
+          stub_file_name: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          zone_id: string;
+          church_id: string;
+          account: string;
+          cheque_number: string;
+          issue_date: string;
+          payee: string;
+          amount: number;
+          purpose?: string | null;
+          status?: ChequeStatus;
+          ledger_entry_id?: string | null;
+          stub_path?: string | null;
+          stub_file_name?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<{
+          account: string;
+          cheque_number: string;
+          issue_date: string;
+          payee: string;
+          amount: number;
+          purpose: string | null;
+          status: ChequeStatus;
+          ledger_entry_id: string | null;
+          stub_path: string | null;
+          stub_file_name: string | null;
+        }>;
+        Relationships: [];
       };
     };
     Views: Record<string, never>;

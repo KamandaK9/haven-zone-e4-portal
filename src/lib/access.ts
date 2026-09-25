@@ -73,6 +73,7 @@ export const CAPABILITIES = [
   "view_reports",
   "manage_access",
   "manage_events",
+  "manage_records",
 ] as const;
 export type Capability = (typeof CAPABILITIES)[number];
 
@@ -90,6 +91,7 @@ export const CAPABILITY_LABELS: Record<Capability, string> = {
   view_reports: "View reports",
   manage_access: "Manage team access",
   manage_events: "Edit annual event pages",
+  manage_records: "Keep minutes, correspondence & records",
 };
 
 export function isPosition(value: unknown): value is Position {
@@ -145,6 +147,10 @@ export function defaultCapabilities(position: Position, portfolio: Portfolio | n
   // The annual event pages are edited by Zonal Secretaries and above (not
   // their Deputies); the Director can grant it to anyone else.
   if (position === "zonal_secretary") caps.add("manage_events");
+  // Minutes, correspondence and the like: the secretarial side of every
+  // office from Governor up. Keep in step with the backfill in
+  // supabase/migrations/20260926120000_chapter_records.sql.
+  if (position === "zonal_secretary" || position === "sub_zone_governor" || position === "governor") caps.add("manage_records");
 
   if (position === "zonal_secretary" || position === "deputy_zonal_secretary") {
     if (portfolio === "finance") {
@@ -152,7 +158,7 @@ export function defaultCapabilities(position: Position, portfolio: Portfolio | n
     } else if (portfolio === "programs") {
       for (const c of ["manage_training", "manage_calendar", "send_newsletter"] as const) caps.add(c);
     } else if (portfolio === "administration" || portfolio === "operations") {
-      for (const c of ["manage_members", "manage_calendar", "send_newsletter"] as const) caps.add(c);
+      for (const c of ["manage_members", "manage_calendar", "send_newsletter", "manage_records"] as const) caps.add(c);
     }
   } else if (position === "sub_zone_governor" || position === "governor") {
     caps.add("manage_members");
@@ -163,6 +169,7 @@ export function defaultCapabilities(position: Position, portfolio: Portfolio | n
     } else if (portfolio === "administration" || portfolio === "operations") {
       caps.add("manage_members");
       caps.add("manage_calendar");
+      caps.add("manage_records");
     }
   }
   return [...caps];

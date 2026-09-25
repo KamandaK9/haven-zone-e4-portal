@@ -69,5 +69,15 @@ export const tenant: TenantConfig = {
     ],
   },
 
+  records: {
+    // The SOP's two chapter accounts.
+    bankAccounts: [
+      { key: "local_project", label: "Local Project Account" },
+      { key: "global_ministry", label: "Global Ministry Account" },
+    ],
+    cellLevels: { upper: "Senior cell", upperPlural: "Senior cells", lower: "Cell", lowerPlural: "Cells" },
+    meetingTypes: ["General Executive Assembly (GEA)", "Monthly General Meeting", "Executive meeting", "Cell leaders' meeting"],
+  },
+
   handbook,
 };

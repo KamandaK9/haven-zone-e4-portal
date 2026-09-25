@@ -62,6 +62,16 @@ export type TenantConfig = {
     // Chapter-name keywords → country, offered as editable guesses on import.
     countryGuesses: readonly (readonly [country: string, keywords: readonly string[]])[];
   };
+  // Chapter record-keeping (Records page and the cells directory).
+  records: {
+    // The bank accounts a chapter operates; cheques and bank advices are filed
+    // against one. Keys are stored, so don't rename them once in use.
+    bankAccounts: readonly { key: string; label: string }[];
+    // Names for the two levels below a chapter (e.g. Senior cell / Cell).
+    cellLevels: { upper: string; upperPlural: string; lower: string; lowerPlural: string };
+    // Suggested meeting types for minutes (free text is allowed too).
+    meetingTypes: readonly string[];
+  };
   // The org's operating manual, rendered at /handbook. Omit to hide the
   // Handbook entirely.
   handbook?: HandbookContent;
