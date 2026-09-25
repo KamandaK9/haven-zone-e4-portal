@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import type { CurrencyCode } from "@/lib/currency";
+import type { HandbookContent } from "@/lib/handbook/types";
 
 // The contract between Stratum (everything outside src/tenant/) and the
 // organisation a deployment is built for (src/tenant/). Core code reads the
@@ -61,4 +62,7 @@ export type TenantConfig = {
     // Chapter-name keywords → country, offered as editable guesses on import.
     countryGuesses: readonly (readonly [country: string, keywords: readonly string[]])[];
   };
+  // The org's operating manual, rendered at /handbook. Omit to hide the
+  // Handbook entirely.
+  handbook?: HandbookContent;
 };

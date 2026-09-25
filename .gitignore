@@ -45,3 +45,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Source documents transcribed into src/tenant/ — not shipped
+*.docx

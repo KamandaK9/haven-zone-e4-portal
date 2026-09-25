@@ -1,5 +1,6 @@
 import { Landmark, Globe2, Users, Tent, Sparkles } from "lucide-react";
 import type { TenantConfig } from "@/lib/tenant";
+import { handbook } from "./handbook";
 
 // The Haven Zone E4. Everything that makes this deployment The Haven rather
 // than a generic Stratum portal lives in this folder; see src/lib/tenant.ts.
@@ -67,4 +68,6 @@ export const tenant: TenantConfig = {
       ["Malawi", ["malawi"]],
     ],
   },
+
+  handbook,
 };
