@@ -1,5 +1,6 @@
 import type { GivingCategory } from "@/lib/giving";
 import type { Portfolio, Position } from "@/lib/access";
+import type { LessonVideoStatus } from "@/lib/supabase/types";
 
 export type Country = {
   id: string;
@@ -109,6 +110,13 @@ export type CourseLesson = {
   passThreshold?: number; // kind: "quiz"
   sortOrder: number;
   questionCount?: number; // kind: "quiz"
+  // An uploaded, privately-streamed video (kind: "video"). Takes precedence
+  // over videoUrl once present.
+  hostedVideo?: {
+    status: LessonVideoStatus;
+    playbackId?: string;
+    durationSeconds?: number;
+  };
 };
 
 export type LessonProgress = {
@@ -116,6 +124,7 @@ export type LessonProgress = {
   completed: boolean;
   completedAt?: string;
   quizScore?: number;
+  watchedSeconds: number; // hosted video lessons
 };
 
 // A quiz question as a learner sees it — no answer key.

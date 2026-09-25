@@ -48,6 +48,9 @@ export type TenantConfig = {
   countries: readonly { name: string; flag: string }[];
   // Recurring flagship event series seeded for every org, in sidebar order.
   eventSeries: readonly EventSeriesDef[];
+  // Language hosted lesson videos are auto-captioned in ("en", "pt", ... or
+  // "auto" to detect per video); null turns auto-captions off.
+  captionLanguage: string | null;
   // Placeholders in the lesson editors: example titles, and the video hosts
   // the org actually uses (shown on video-URL inputs).
   lessonExamples: { video: string; quiz: string; videoHosts: string };

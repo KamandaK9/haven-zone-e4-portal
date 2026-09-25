@@ -9,6 +9,7 @@
 
 export type LessonStatus = "not_started" | "in_progress" | "completed";
 export type MemberRole = "Member" | "Worker" | "Cell Leader" | "Pastor";
+export type LessonVideoStatus = "uploading" | "processing" | "ready" | "errored";
 export type ProfileRole = "super_admin" | "admin" | "member";
 export type ActivityType = "new_member" | "training_complete" | "giving" | "baptism" | "event";
 export type CalendarEventType = "meeting" | "training" | "service" | "outreach" | "flagship";
@@ -327,6 +328,12 @@ export type Database = {
           pass_threshold: number | null;
           sort_order: number;
           created_at: string;
+          video_provider: "mux" | null;
+          video_upload_id: string | null;
+          video_asset_id: string | null;
+          video_playback_id: string | null;
+          video_status: LessonVideoStatus | null;
+          duration_seconds: number | null;
         };
         Insert: {
           id?: string;
@@ -340,6 +347,12 @@ export type Database = {
           pass_threshold?: number | null;
           sort_order?: number;
           created_at?: string;
+          video_provider?: "mux" | null;
+          video_upload_id?: string | null;
+          video_asset_id?: string | null;
+          video_playback_id?: string | null;
+          video_status?: LessonVideoStatus | null;
+          duration_seconds?: number | null;
         };
         Update: Partial<{
           title: string;
@@ -348,6 +361,12 @@ export type Database = {
           duration_label: string | null;
           pass_threshold: number | null;
           sort_order: number;
+          video_provider: "mux" | null;
+          video_upload_id: string | null;
+          video_asset_id: string | null;
+          video_playback_id: string | null;
+          video_status: LessonVideoStatus | null;
+          duration_seconds: number | null;
         }>;
         Relationships: [];
       };
@@ -374,6 +393,8 @@ export type Database = {
           completed: boolean;
           completed_at: string | null;
           quiz_score: number | null;
+          watched_seconds: number;
+          last_watch_report_at: string | null;
         };
         Insert: {
           id?: string;
@@ -383,8 +404,16 @@ export type Database = {
           completed?: boolean;
           completed_at?: string | null;
           quiz_score?: number | null;
+          watched_seconds?: number;
+          last_watch_report_at?: string | null;
         };
-        Update: Partial<{ completed: boolean; completed_at: string | null; quiz_score: number | null }>;
+        Update: Partial<{
+          completed: boolean;
+          completed_at: string | null;
+          quiz_score: number | null;
+          watched_seconds: number;
+          last_watch_report_at: string | null;
+        }>;
         Relationships: [];
       };
       audit_log: {

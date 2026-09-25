@@ -40,6 +40,14 @@ export async function getCourseLessons(programId: string): Promise<CourseLesson[
     passThreshold: l.pass_threshold ?? undefined,
     sortOrder: l.sort_order,
     questionCount: l.kind === "quiz" ? (counts.get(l.id) ?? 0) : undefined,
+    hostedVideo:
+      l.kind === "video" && l.video_provider && l.video_status
+        ? {
+            status: l.video_status,
+            playbackId: l.video_playback_id ?? undefined,
+            durationSeconds: l.duration_seconds ?? undefined,
+          }
+        : undefined,
   }));
 }
 
@@ -59,14 +67,20 @@ export async function getLessonProgress(memberId: string, lessonIds: string[]): 
   const supabase = await createClient();
   const { data } = await supabase
     .from("training_lesson_progress")
-    .select("lesson_id, completed, completed_at, quiz_score")
+    .select("lesson_id, completed, completed_at, quiz_score, watched_seconds")
     .eq("member_id", memberId)
     .in("lesson_id", lessonIds);
 
   return new Map(
     (data ?? []).map((p) => [
       p.lesson_id,
-      { lessonId: p.lesson_id, completed: p.completed, completedAt: p.completed_at ?? undefined, quizScore: p.quiz_score ?? undefined },
+      {
+        lessonId: p.lesson_id,
+        completed: p.completed,
+        completedAt: p.completed_at ?? undefined,
+        quizScore: p.quiz_score ?? undefined,
+        watchedSeconds: Number(p.watched_seconds ?? 0),
+      },
     ])
   );
 }

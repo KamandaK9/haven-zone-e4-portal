@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, CheckCircle2, ListChecks, Video } from "lucide-react";
+import { HostedVideoPlayer } from "@/components/training/hosted-video-player";
 import { LessonCompleteButton } from "@/components/training/lesson-complete-button";
 import { QuizPlayer } from "@/components/training/quiz-player";
 import { TrainingStatusButton } from "@/components/training/training-status-button";
@@ -9,6 +10,8 @@ import { getMember } from "@/lib/data/analytics";
 import { getCourseLessons, getLessonProgress, getQuizQuestionsForMember } from "@/lib/data/training-lessons";
 import { videoEmbedUrl } from "@/lib/event-media";
 import { cn } from "@/lib/utils";
+import { isHostedVideoEnabled, signPlaybackTokens, type PlaybackTokens } from "@/lib/video/mux";
+import { formatDuration } from "@/lib/video/watch";
 
 export default async function MemberCoursePage({
   params,
@@ -71,6 +74,13 @@ export default async function MemberCoursePage({
   const next = lessons[currentIndex + 1];
   const currentProgress = progress.get(current.id);
 
+  // Short-lived tokens for this viewing (the video is privately streamed).
+  const hosted = current.hostedVideo;
+  const playbackTokens =
+    hosted?.status === "ready" && hosted.playbackId && isHostedVideoEnabled()
+      ? await signPlaybackTokens(hosted.playbackId)
+      : null;
+
   return (
     <div className="space-y-4">
       <Link href="/me/training" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
@@ -83,6 +93,9 @@ export default async function MemberCoursePage({
             <VideoLesson
               lesson={current}
               completed={currentProgress?.completed ?? false}
+              watchedSeconds={currentProgress?.watchedSeconds ?? 0}
+              playbackTokens={playbackTokens}
+              viewerId={profile.linkedMemberId}
               nextHref={next ? `/me/training/${programId}?lesson=${next.id}` : undefined}
             />
           ) : (
@@ -138,7 +151,9 @@ export default async function MemberCoursePage({
                     <p className={cn("font-medium leading-snug", active && "text-primary")}>{l.title}</p>
                     <p className="text-[11px] text-muted-foreground flex items-center gap-1">
                       <Icon className="h-3 w-3" />
-                      {l.kind === "quiz" ? `${l.questionCount ?? 0} question${l.questionCount === 1 ? "" : "s"}` : l.durationLabel || "Video"}
+                      {l.kind === "quiz"
+                        ? `${l.questionCount ?? 0} question${l.questionCount === 1 ? "" : "s"}`
+                        : lessonDurationLabel(l)}
                     </p>
                   </div>
                 </Link>
@@ -151,43 +166,79 @@ export default async function MemberCoursePage({
   );
 }
 
+type Lesson = Awaited<ReturnType<typeof getCourseLessons>>[number];
+
+// A hosted video knows its real length; otherwise fall back to whatever the
+// author typed.
+function lessonDurationLabel(lesson: Lesson): string {
+  const seconds = lesson.hostedVideo?.durationSeconds;
+  return seconds ? formatDuration(seconds) : lesson.durationLabel || "Video";
+}
+
 function VideoLesson({
   lesson,
   completed,
+  watchedSeconds,
+  playbackTokens,
+  viewerId,
   nextHref,
 }: {
-  lesson: Awaited<ReturnType<typeof getCourseLessons>>[number];
+  lesson: Lesson;
   completed: boolean;
+  watchedSeconds: number;
+  playbackTokens: PlaybackTokens | null;
+  viewerId: string;
   nextHref?: string;
 }) {
+  const hosted = lesson.hostedVideo;
   const embed = lesson.videoUrl ? videoEmbedUrl(lesson.videoUrl) : null;
+  const playable = hosted?.status === "ready" && hosted.playbackId && hosted.durationSeconds && playbackTokens;
 
   return (
     <div className="space-y-4">
-      <div className="aspect-video overflow-hidden rounded-2xl bg-black">
-        {embed ? (
-          <iframe
-            src={embed}
-            title={lesson.title}
-            className="h-full w-full"
-            loading="lazy"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
-        ) : lesson.videoUrl ? (
-          <a
-            href={lesson.videoUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="flex h-full w-full flex-col items-center justify-center gap-2 text-white/80 hover:text-white transition-colors"
-          >
-            <Video className="h-10 w-10" />
-            <span className="text-sm font-medium">Watch video ↗</span>
-          </a>
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-white/40 text-sm">No video for this lesson</div>
-        )}
-      </div>
+      {playable ? (
+        <HostedVideoPlayer
+          lessonId={lesson.id}
+          title={lesson.title}
+          playbackId={hosted.playbackId!}
+          tokens={playbackTokens}
+          durationSeconds={hosted.durationSeconds!}
+          initialWatchedSeconds={watchedSeconds}
+          initiallyCompleted={completed}
+          viewerId={viewerId}
+        />
+      ) : hosted ? (
+        <div className="aspect-video flex items-center justify-center rounded-2xl bg-black text-white/60 text-sm px-6 text-center">
+          {hosted.status === "errored"
+            ? "This video couldn't be processed. Ask your admin to upload it again."
+            : "This video is still being prepared — check back in a few minutes."}
+        </div>
+      ) : (
+        <div className="aspect-video overflow-hidden rounded-2xl bg-black">
+          {embed ? (
+            <iframe
+              src={embed}
+              title={lesson.title}
+              className="h-full w-full"
+              loading="lazy"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          ) : lesson.videoUrl ? (
+            <a
+              href={lesson.videoUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="flex h-full w-full flex-col items-center justify-center gap-2 text-white/80 hover:text-white transition-colors"
+            >
+              <Video className="h-10 w-10" />
+              <span className="text-sm font-medium">Watch video ↗</span>
+            </a>
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-white/40 text-sm">No video for this lesson</div>
+          )}
+        </div>
+      )}
 
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -195,7 +246,8 @@ function VideoLesson({
           {lesson.description && <p className="text-sm text-muted-foreground mt-1 max-w-xl">{lesson.description}</p>}
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <LessonCompleteButton lessonId={lesson.id} completed={completed} />
+          {/* Hosted videos complete by watching them (see HostedVideoPlayer). */}
+          {!hosted && <LessonCompleteButton lessonId={lesson.id} completed={completed} />}
           {nextHref && (
             <a href={nextHref} className="rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-muted/60 transition-colors">
               Next lesson →

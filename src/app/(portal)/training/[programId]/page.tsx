@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { LessonListEditor } from "@/components/training/lesson-list-editor";
 import { can, getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
 import { getCourseLessons, getQuizQuestionsForAuthor } from "@/lib/data/training-lessons";
+import { isHostedVideoEnabled } from "@/lib/video/mux";
 
 export default async function CourseEditorPage({
   params,
@@ -47,7 +48,12 @@ export default async function CourseEditorPage({
           <CardDescription>Members go through these in order, on their own Training page.</CardDescription>
         </CardHeader>
         <CardContent>
-          <LessonListEditor programId={programId} lessons={lessons} quizQuestionsByLesson={quizQuestionsByLesson} />
+          <LessonListEditor
+            programId={programId}
+            lessons={lessons}
+            quizQuestionsByLesson={quizQuestionsByLesson}
+            hostedVideoEnabled={isHostedVideoEnabled()}
+          />
         </CardContent>
       </Card>
     </div>

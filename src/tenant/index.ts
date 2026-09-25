@@ -46,6 +46,7 @@ export const tenant: TenantConfig = {
     { slug: "special-programmes", name: "Special Programmes", shortName: "Special Programmes", icon: Sparkles },
   ],
 
+  captionLanguage: "en",
   lessonExamples: {
     video: "e.g. Welcome to Haven Zone E4",
     quiz: "e.g. Haven Orientation quiz",

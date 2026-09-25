@@ -16,17 +16,36 @@ import { VideoLessonDialog } from "./video-lesson-dialog";
 import { QuizLessonDialog } from "./quiz-lesson-dialog";
 import { deleteLesson, moveLesson } from "@/lib/actions/training-lessons";
 import type { CourseLesson } from "@/lib/data/types";
+import { formatDuration } from "@/lib/video/watch";
 
 type EditableQuestion = { question: string; options: string[]; correctIndex: number };
+
+const HOSTED_STATUS: Record<string, string> = {
+  uploading: "uploading…",
+  processing: "processing…",
+  errored: "processing failed",
+};
+
+function videoSummary(lesson: CourseLesson): string {
+  const hosted = lesson.hostedVideo;
+  if (hosted) {
+    return hosted.status === "ready"
+      ? `Uploaded video${hosted.durationSeconds ? ` · ${formatDuration(hosted.durationSeconds)}` : ""}`
+      : `Uploaded video · ${HOSTED_STATUS[hosted.status]}`;
+  }
+  return lesson.durationLabel ? `Video · ${lesson.durationLabel}` : "Video";
+}
 
 export function LessonListEditor({
   programId,
   lessons,
   quizQuestionsByLesson,
+  hostedVideoEnabled,
 }: {
   programId: string;
   lessons: CourseLesson[];
   quizQuestionsByLesson: Record<string, EditableQuestion[]>;
+  hostedVideoEnabled: boolean;
 }) {
   const router = useRouter();
   const [videoDialog, setVideoDialog] = useState<{ open: boolean; lesson?: CourseLesson }>({ open: false });
@@ -70,9 +89,7 @@ export function LessonListEditor({
                   <p className="text-xs text-muted-foreground">
                     {lesson.kind === "quiz"
                       ? `Quiz · ${lesson.questionCount ?? 0} question${lesson.questionCount === 1 ? "" : "s"} · pass with ${lesson.passThreshold ?? "—"}`
-                      : lesson.durationLabel
-                        ? `Video · ${lesson.durationLabel}`
-                        : "Video"}
+                      : videoSummary(lesson)}
                   </p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
@@ -135,6 +152,9 @@ export function LessonListEditor({
       </div>
 
       <VideoLessonDialog
+        // Remount per lesson so the form starts from that lesson's values.
+        key={videoDialog.lesson?.id ?? "new"}
+        hostedVideoEnabled={hostedVideoEnabled}
         programId={programId}
         lesson={videoDialog.lesson}
         open={videoDialog.open}
