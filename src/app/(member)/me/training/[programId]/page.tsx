@@ -10,7 +10,8 @@ import { getMember } from "@/lib/data/analytics";
 import { getCourseLessons, getLessonProgress, getQuizQuestionsForMember } from "@/lib/data/training-lessons";
 import { videoEmbedUrl } from "@/lib/event-media";
 import { cn } from "@/lib/utils";
-import { isHostedVideoEnabled, signPlaybackTokens, type PlaybackTokens } from "@/lib/video/mux";
+import { isVideoProviderId, type PlaybackSource } from "@/lib/video/provider";
+import { getVideoProvider } from "@/lib/video/providers";
 import { formatDuration } from "@/lib/video/watch";
 
 export default async function MemberCoursePage({
@@ -74,11 +75,14 @@ export default async function MemberCoursePage({
   const next = lessons[currentIndex + 1];
   const currentProgress = progress.get(current.id);
 
-  // Short-lived tokens for this viewing (the video is privately streamed).
+  // Short-lived playback for this viewing (the video is privately streamed),
+  // from whichever host the lesson's video lives on.
   const hosted = current.hostedVideo;
-  const playbackTokens =
-    hosted?.status === "ready" && hosted.playbackId && isHostedVideoEnabled()
-      ? await signPlaybackTokens(hosted.playbackId)
+  const playbackSource =
+    hosted?.status === "ready" && hosted.playbackId && isVideoProviderId(hosted.provider)
+      ? await getVideoProvider(hosted.provider)
+          .playbackSource(hosted.playbackId)
+          .catch(() => null)
       : null;
 
   return (
@@ -94,7 +98,7 @@ export default async function MemberCoursePage({
               lesson={current}
               completed={currentProgress?.completed ?? false}
               watchedSeconds={currentProgress?.watchedSeconds ?? 0}
-              playbackTokens={playbackTokens}
+              playbackSource={playbackSource}
               viewerId={profile.linkedMemberId}
               nextHref={next ? `/me/training/${programId}?lesson=${next.id}` : undefined}
             />
@@ -179,20 +183,20 @@ function VideoLesson({
   lesson,
   completed,
   watchedSeconds,
-  playbackTokens,
+  playbackSource,
   viewerId,
   nextHref,
 }: {
   lesson: Lesson;
   completed: boolean;
   watchedSeconds: number;
-  playbackTokens: PlaybackTokens | null;
+  playbackSource: PlaybackSource | null;
   viewerId: string;
   nextHref?: string;
 }) {
   const hosted = lesson.hostedVideo;
   const embed = lesson.videoUrl ? videoEmbedUrl(lesson.videoUrl) : null;
-  const playable = hosted?.status === "ready" && hosted.playbackId && hosted.durationSeconds && playbackTokens;
+  const playable = hosted?.status === "ready" && hosted.durationSeconds && playbackSource;
 
   return (
     <div className="space-y-4">
@@ -200,8 +204,7 @@ function VideoLesson({
         <HostedVideoPlayer
           lessonId={lesson.id}
           title={lesson.title}
-          playbackId={hosted.playbackId!}
-          tokens={playbackTokens}
+          source={playbackSource}
           durationSeconds={hosted.durationSeconds!}
           initialWatchedSeconds={watchedSeconds}
           initiallyCompleted={completed}

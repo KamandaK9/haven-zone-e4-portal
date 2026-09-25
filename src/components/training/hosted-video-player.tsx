@@ -6,9 +6,8 @@ import MuxPlayer from "@mux/mux-player-react/lazy";
 import { CheckCircle2 } from "lucide-react";
 import { reportLessonWatch } from "@/lib/actions/training-lessons";
 import { WATCH_COMPLETE_RATIO, WATCH_REPORT_INTERVAL_SECONDS } from "@/lib/video/watch";
+import type { PlaybackSource } from "@/lib/video/provider";
 import { tenant } from "@/tenant";
-
-type Tokens = { playback?: string; thumbnail?: string; storyboard?: string };
 
 // Plays a lesson's hosted video and reports how much of it was actually
 // played (seeking ahead doesn't count). The lesson completes on the server
@@ -16,8 +15,7 @@ type Tokens = { playback?: string; thumbnail?: string; storyboard?: string };
 export function HostedVideoPlayer({
   lessonId,
   title,
-  playbackId,
-  tokens,
+  source,
   durationSeconds,
   initialWatchedSeconds,
   initiallyCompleted,
@@ -25,8 +23,7 @@ export function HostedVideoPlayer({
 }: {
   lessonId: string;
   title: string;
-  playbackId: string;
-  tokens: Tokens;
+  source: PlaybackSource;
   durationSeconds: number;
   initialWatchedSeconds: number;
   initiallyCompleted: boolean;
@@ -80,20 +77,24 @@ export function HostedVideoPlayer({
   return (
     <div className="space-y-2">
       <div className="aspect-video overflow-hidden rounded-2xl bg-black">
-        <MuxPlayer
-          playbackId={playbackId}
-          tokens={tokens}
-          streamType="on-demand"
-          accentColor={tenant.chartPrimary}
-          metadataVideoId={lessonId}
-          metadataVideoTitle={title}
-          metadataViewerUserId={viewerId}
-          className="h-full w-full"
-          onTimeUpdate={onTimeUpdate}
-          onSeeking={() => (lastTime.current = null)}
-          onPause={flush}
-          onEnded={flush}
-        />
+        {/* One branch per host; each is a standard media element, so the
+            same watch tracking works for all of them. */}
+        {source.kind === "mux" && (
+          <MuxPlayer
+            playbackId={source.playbackId}
+            tokens={source.tokens}
+            streamType="on-demand"
+            accentColor={tenant.chartPrimary}
+            metadataVideoId={lessonId}
+            metadataVideoTitle={title}
+            metadataViewerUserId={viewerId}
+            className="h-full w-full"
+            onTimeUpdate={onTimeUpdate}
+            onSeeking={() => (lastTime.current = null)}
+            onPause={flush}
+            onEnded={flush}
+          />
+        )}
       </div>
       {completed ? (
         <p className="flex items-center gap-1.5 text-xs font-medium text-emerald-700">

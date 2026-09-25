@@ -6,7 +6,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { can, getCurrentProfile } from "@/lib/data/get-dataset";
 import { getSiteUrl } from "@/lib/site-url";
-import { createDirectUpload, deleteAsset, isHostedVideoEnabled } from "@/lib/video/mux";
+import { isVideoProviderId, type UploadTarget } from "@/lib/video/provider";
+import { activeVideoProvider, getVideoProvider } from "@/lib/video/providers";
 import { syncLessonVideo } from "@/lib/video/lesson-video-sync";
 import { WATCH_COMPLETE_RATIO, WATCH_REPORT_INTERVAL_SECONDS } from "@/lib/video/watch";
 import type { LessonVideoStatus } from "@/lib/supabase/types";
@@ -51,6 +52,11 @@ async function recomputeTrainingStatus(supabase: SupabaseClient, memberId: strin
     .from("trainings")
     .update({ status, completed_at: status === "completed" ? (training.completed_at ?? new Date().toISOString()) : null })
     .eq("id", training.id);
+}
+
+// Deletes a lesson's hosted video from whichever host it lives on.
+async function deleteHostedVideo(provider: string | null, assetId: string | null): Promise<void> {
+  if (assetId && isVideoProviderId(provider)) await getVideoProvider(provider).deleteAsset(assetId);
 }
 
 // ── Learner actions ─────────────────────────────────────────────────────
@@ -394,14 +400,14 @@ export async function deleteLesson(lessonId: string): Promise<ActionResult> {
   const supabase = await createClient();
   const { data: lesson } = await supabase
     .from("training_lessons")
-    .select("program_id, title, video_asset_id")
+    .select("program_id, title, video_provider, video_asset_id")
     .eq("id", lessonId)
     .maybeSingle();
   if (!lesson) return { ok: false, error: "Lesson not found." };
 
   const { error } = await supabase.from("training_lessons").delete().eq("id", lessonId);
   if (error) return { ok: false, error: error.message };
-  if (lesson.video_asset_id) await deleteAsset(lesson.video_asset_id);
+  await deleteHostedVideo(lesson.video_provider, lesson.video_asset_id);
 
   await logAudit(auth.profile, "training_lesson.delete", `Deleted the lesson "${lesson.title}"`);
   refreshTrainingPages(lesson.program_id);
@@ -443,25 +449,26 @@ export async function moveLesson(lessonId: string, direction: "up" | "down"): Pr
 // Replaces — and deletes — any video the lesson already had.
 export async function createLessonVideoUpload(
   lessonId: string
-): Promise<{ ok: true; uploadUrl: string } | { ok: false; error: string }> {
+): Promise<{ ok: true; target: UploadTarget } | { ok: false; error: string }> {
   const auth = await requireAuthor();
   if (!auth.ok) return auth;
-  if (!isHostedVideoEnabled()) return { ok: false, error: "Video uploads aren't set up on this deployment." };
+  const provider = activeVideoProvider();
+  if (!provider) return { ok: false, error: "Video uploads aren't set up on this deployment." };
 
   const supabase = await createClient();
   const { data: lesson } = await supabase
     .from("training_lessons")
-    .select("id, program_id, kind, title, video_asset_id")
+    .select("id, program_id, kind, title, video_provider, video_asset_id")
     .eq("id", lessonId)
     .maybeSingle();
   if (!lesson) return { ok: false, error: "Lesson not found." };
   if (lesson.kind !== "video") return { ok: false, error: "Only video lessons can have an uploaded video." };
 
-  // The browser uploads cross-origin, so Mux needs to allow this page's origin.
+  // The browser uploads cross-origin, so the host needs to allow this page's origin.
   const origin = (await headers()).get("origin") ?? (await getSiteUrl());
-  let upload: { uploadId: string; url: string };
+  let upload: { uploadId: string; target: UploadTarget };
   try {
-    upload = await createDirectUpload(lessonId, origin);
+    upload = await provider.createUpload({ lessonId, corsOrigin: origin });
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Could not start the upload." };
   }
@@ -469,7 +476,7 @@ export async function createLessonVideoUpload(
   const { error } = await supabase
     .from("training_lessons")
     .update({
-      video_provider: "mux",
+      video_provider: provider.id,
       video_upload_id: upload.uploadId,
       video_asset_id: null,
       video_playback_id: null,
@@ -478,21 +485,21 @@ export async function createLessonVideoUpload(
     })
     .eq("id", lessonId);
   if (error) return { ok: false, error: error.message };
-  if (lesson.video_asset_id) await deleteAsset(lesson.video_asset_id);
+  // The old video may be on a different host if the deployment switched.
+  await deleteHostedVideo(lesson.video_provider, lesson.video_asset_id);
 
   await logAudit(auth.profile, "training_lesson.video_upload", `Uploaded a video for "${lesson.title}"`);
   refreshTrainingPages(lesson.program_id);
-  return { ok: true, uploadUrl: upload.url };
+  return { ok: true, target: upload.target };
 }
 
-// Asks Mux where an in-flight video has got to. Webhooks normally do this;
+// Asks the video host where an in-flight video has got to. Webhooks normally do this;
 // this covers deployments without them (e.g. local development).
 export async function refreshLessonVideo(
   lessonId: string
 ): Promise<{ ok: true; status: LessonVideoStatus | null } | { ok: false; error: string }> {
   const auth = await requireAuthor();
   if (!auth.ok) return auth;
-  if (!isHostedVideoEnabled()) return { ok: false, error: "Video uploads aren't set up on this deployment." };
 
   // Read through RLS first so staff can only poke lessons in their own zone.
   const supabase = await createClient();
@@ -515,7 +522,7 @@ export async function removeLessonVideo(lessonId: string): Promise<ActionResult>
   const supabase = await createClient();
   const { data: lesson } = await supabase
     .from("training_lessons")
-    .select("program_id, title, video_asset_id")
+    .select("program_id, title, video_provider, video_asset_id")
     .eq("id", lessonId)
     .maybeSingle();
   if (!lesson) return { ok: false, error: "Lesson not found." };
@@ -532,7 +539,7 @@ export async function removeLessonVideo(lessonId: string): Promise<ActionResult>
     })
     .eq("id", lessonId);
   if (error) return { ok: false, error: error.message };
-  if (lesson.video_asset_id) await deleteAsset(lesson.video_asset_id);
+  await deleteHostedVideo(lesson.video_provider, lesson.video_asset_id);
 
   await logAudit(auth.profile, "training_lesson.video_remove", `Removed the uploaded video from "${lesson.title}"`);
   refreshTrainingPages(lesson.program_id);

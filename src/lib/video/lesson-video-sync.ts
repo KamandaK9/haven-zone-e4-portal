@@ -2,40 +2,34 @@ import "server-only";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { LessonVideoStatus } from "@/lib/supabase/types";
-import { getAsset, getUpload } from "./mux";
+import { isVideoProviderId, type VideoProviderId } from "./provider";
+import { getVideoProvider } from "./providers";
+import type { AssetState, UploadState } from "./providers/types";
 
 // Moves a lesson's hosted video through uploading → processing → ready (or
-// errored) as Mux reports progress. Called from the Mux webhook and, as a
-// fallback when webhooks aren't set up (e.g. local dev), from the editor's
-// "check status" and the learner page. Service-role client: webhooks have
-// no user session.
-
-type UploadState = { id: string; status: "waiting" | "asset_created" | "errored" | "cancelled" | "timed_out"; asset_id?: string };
-type AssetState = {
-  id: string;
-  status: "preparing" | "ready" | "errored";
-  upload_id?: string;
-  duration?: number;
-  playback_ids?: { id: string; policy: string }[];
-};
+// errored) as its host reports progress. Called from the provider's
+// webhook and, as a fallback when webhooks aren't set up (e.g. local dev),
+// from the editor's "check status". Service-role client: webhooks have no
+// user session.
 
 function refreshLessonPages() {
   revalidatePath("/training", "layout");
   revalidatePath("/me/training", "layout");
 }
 
-export async function applyUploadState(upload: UploadState): Promise<void> {
+export async function applyUploadState(provider: VideoProviderId, upload: UploadState): Promise<void> {
   const admin = createAdminClient();
   const { data: lesson } = await admin
     .from("training_lessons")
     .select("id, video_status")
-    .eq("video_upload_id", upload.id)
+    .eq("video_provider", provider)
+    .eq("video_upload_id", upload.uploadId)
     .maybeSingle();
   if (!lesson || lesson.video_status !== "uploading") return;
 
-  if (upload.status === "asset_created" && upload.asset_id) {
-    await admin.from("training_lessons").update({ video_asset_id: upload.asset_id, video_status: "processing" }).eq("id", lesson.id);
-  } else if (upload.status === "errored" || upload.status === "cancelled" || upload.status === "timed_out") {
+  if (upload.status === "asset_created" && upload.assetId) {
+    await admin.from("training_lessons").update({ video_asset_id: upload.assetId, video_status: "processing" }).eq("id", lesson.id);
+  } else if (upload.status === "failed") {
     await admin.from("training_lessons").update({ video_status: "errored" }).eq("id", lesson.id);
   } else {
     return;
@@ -43,54 +37,61 @@ export async function applyUploadState(upload: UploadState): Promise<void> {
   refreshLessonPages();
 }
 
-export async function applyAssetState(asset: AssetState): Promise<void> {
+export async function applyAssetState(provider: VideoProviderId, asset: AssetState): Promise<void> {
   const admin = createAdminClient();
-  // Matched by upload id as well as asset id: the asset.ready webhook can
-  // arrive before upload.asset_created has been processed. A lesson whose
+  // Matched by upload id as well as asset id: the "asset ready" event can
+  // arrive before "upload finished" has been processed. A lesson whose
   // video was replaced meanwhile has a different upload id, so a stale
   // asset never attaches to it.
-  const filter = asset.upload_id ? `video_asset_id.eq.${asset.id},video_upload_id.eq.${asset.upload_id}` : `video_asset_id.eq.${asset.id}`;
-  const { data: lesson } = await admin.from("training_lessons").select("id").or(filter).maybeSingle();
+  let query = admin.from("training_lessons").select("id").eq("video_provider", provider);
+  query = asset.uploadId
+    ? query.or(`video_asset_id.eq.${asset.assetId},video_upload_id.eq.${asset.uploadId}`)
+    : query.eq("video_asset_id", asset.assetId);
+  const { data: lesson } = await query.maybeSingle();
   if (!lesson) return;
 
-  if (asset.status === "ready") {
-    const playbackId = asset.playback_ids?.find((p) => p.policy === "signed")?.id;
-    if (!playbackId) {
-      await admin.from("training_lessons").update({ video_asset_id: asset.id, video_status: "errored" }).eq("id", lesson.id);
-    } else {
-      await admin
-        .from("training_lessons")
-        .update({
-          video_asset_id: asset.id,
-          video_playback_id: playbackId,
-          duration_seconds: asset.duration ?? null,
-          video_status: "ready",
-        })
-        .eq("id", lesson.id);
-    }
-  } else if (asset.status === "errored") {
-    await admin.from("training_lessons").update({ video_asset_id: asset.id, video_status: "errored" }).eq("id", lesson.id);
+  if (asset.status === "ready" && asset.playbackId) {
+    await admin
+      .from("training_lessons")
+      .update({
+        video_asset_id: asset.assetId,
+        video_playback_id: asset.playbackId,
+        duration_seconds: asset.durationSeconds ?? null,
+        video_status: "ready",
+      })
+      .eq("id", lesson.id);
+  } else if (asset.status === "processing") {
+    await admin.from("training_lessons").update({ video_asset_id: asset.assetId, video_status: "processing" }).eq("id", lesson.id);
   } else {
-    await admin.from("training_lessons").update({ video_asset_id: asset.id, video_status: "processing" }).eq("id", lesson.id);
+    // errored, or "ready" without anything playable
+    await admin.from("training_lessons").update({ video_asset_id: asset.assetId, video_status: "errored" }).eq("id", lesson.id);
   }
   refreshLessonPages();
 }
 
-// Pulls the current state from Mux for one lesson that's still in flight.
+// Pulls the current state from the host for one lesson that's still in flight.
 export async function syncLessonVideo(lessonId: string): Promise<LessonVideoStatus | null> {
   const admin = createAdminClient();
   const read = async () =>
-    (await admin.from("training_lessons").select("video_status, video_upload_id, video_asset_id").eq("id", lessonId).maybeSingle()).data;
+    (
+      await admin
+        .from("training_lessons")
+        .select("video_provider, video_status, video_upload_id, video_asset_id")
+        .eq("id", lessonId)
+        .maybeSingle()
+    ).data;
 
   let lesson = await read();
-  if (!lesson?.video_status) return null;
+  if (!lesson?.video_status || !isVideoProviderId(lesson.video_provider)) return null;
+  const providerId = lesson.video_provider;
+  const provider = getVideoProvider(providerId);
 
   if (lesson.video_status === "uploading" && lesson.video_upload_id) {
-    await applyUploadState(await getUpload(lesson.video_upload_id));
+    await applyUploadState(providerId, await provider.getUpload(lesson.video_upload_id));
     lesson = await read();
   }
   if (lesson?.video_status === "processing" && lesson.video_asset_id) {
-    await applyAssetState(await getAsset(lesson.video_asset_id));
+    await applyAssetState(providerId, await provider.getAsset(lesson.video_asset_id));
     lesson = await read();
   }
   return lesson?.video_status ?? null;

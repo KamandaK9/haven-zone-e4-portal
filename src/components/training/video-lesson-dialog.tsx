@@ -24,15 +24,25 @@ import {
   updateVideoLesson,
 } from "@/lib/actions/training-lessons";
 import type { LessonVideoStatus } from "@/lib/supabase/types";
+import type { UploadTarget } from "@/lib/video/provider";
 import { canRecord } from "@/lib/video/recording";
 import { formatDuration } from "@/lib/video/watch";
 import { LessonRecorder } from "./lesson-recorder";
 import type { CourseLesson } from "@/lib/data/types";
 import { tenant } from "@/tenant";
 
-// Sends the file straight to the video host in resumable chunks — a dropped
-// connection retries the current chunk instead of starting over.
-function uploadFile(url: string, file: File, onProgress: (pct: number) => void): Promise<void> {
+// Sends the file straight to the video host, in whatever way the host's
+// upload target asks for.
+function uploadFile(target: UploadTarget, file: File, onProgress: (pct: number) => void): Promise<void> {
+  switch (target.protocol) {
+    case "chunked-put":
+      return uploadChunked(target.url, file, onProgress);
+  }
+}
+
+// Resumable chunks — a dropped connection retries the current chunk
+// instead of starting over.
+function uploadChunked(url: string, file: File, onProgress: (pct: number) => void): Promise<void> {
   return new Promise((resolve, reject) => {
     const upload = UpChunk.createUpload({ endpoint: url, file, chunkSize: 5120 }); // KB
     upload.on("progress", (e) => onProgress(Math.round(e.detail as number)));
@@ -130,7 +140,7 @@ export function VideoLessonDialog({
       }
       setUploadPct(0);
       try {
-        await uploadFile(started.uploadUrl, file, setUploadPct);
+        await uploadFile(started.target, file, setUploadPct);
       } catch (e) {
         setBusy(false);
         setUploadPct(null);

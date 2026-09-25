@@ -43,6 +43,7 @@ export async function getCourseLessons(programId: string): Promise<CourseLesson[
     hostedVideo:
       l.kind === "video" && l.video_provider && l.video_status
         ? {
+            provider: l.video_provider,
             status: l.video_status,
             playbackId: l.video_playback_id ?? undefined,
             durationSeconds: l.duration_seconds ?? undefined,

@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { LessonListEditor } from "@/components/training/lesson-list-editor";
 import { can, getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
 import { getCourseLessons, getQuizQuestionsForAuthor } from "@/lib/data/training-lessons";
-import { isHostedVideoEnabled } from "@/lib/video/mux";
+import { isHostedVideoEnabled } from "@/lib/video/providers";
 
 export default async function CourseEditorPage({
   params,

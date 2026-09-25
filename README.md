@@ -64,8 +64,9 @@ See [`.env.example`](.env.example).
 | `SUPABASE_SERVICE_ROLE_KEY` | yes | Server-only. Used for setup and account bootstrap; bypasses RLS. |
 | `SETUP_KEY` | for setup | Server-only. Gates `/setup` — see below. Leave empty to disable setup. |
 | `NEXT_PUBLIC_SITE_URL` | recommended | Base URL for email links (invites, password resets). Falls back to the request host. |
-| `MUX_TOKEN_ID`, `MUX_TOKEN_SECRET`, `MUX_SIGNING_KEY`, `MUX_PRIVATE_KEY` | for hosted video | Server-only. Enables uploading training videos — see [Hosted training video](#hosted-training-video). |
-| `MUX_WEBHOOK_SECRET` | recommended with Mux | Server-only. Verifies Mux webhooks at `/api/mux/webhook`. |
+| `VIDEO_PROVIDER` | optional | Which video host new uploads go to (`mux`). Defaults to the first one configured — see [Hosted training video](#hosted-training-video). |
+| `MUX_TOKEN_ID`, `MUX_TOKEN_SECRET`, `MUX_SIGNING_KEY`, `MUX_PRIVATE_KEY` | for Mux | Server-only. Configures the Mux video host. |
+| `MUX_WEBHOOK_SECRET` | recommended with Mux | Server-only. Verifies Mux webhooks at `/api/video/mux/webhook`. |
 | `RESEND_API_KEY`, `RESEND_FROM_EMAIL` | for newsletters | Newsletter page only. Invites and password resets use Supabase's own SMTP settings (configured in the Supabase dashboard). |
 
 ## First-time setup (the setup key)
@@ -86,19 +87,17 @@ the page is not what protects it. With `SETUP_KEY` unset, setup is disabled.
 ## Hosted training video
 
 A Stratum feature, available to every tenant. Video lessons can take an
-uploaded video instead of a pasted YouTube/Vimeo link, hosted on
-[Mux](https://www.mux.com) (its free plan covers 10 videos; pay-as-you-go after).
+uploaded or in-portal-recorded video instead of a pasted YouTube/Vimeo link.
 
 - **Upload or record**: the lesson editor takes a video file, or records one
   right there in the browser — camera, screen, or screen with the presenter
   in a corner bubble (screen options are desktop-only). Recordings have a
   countdown, pause/resume, a mic level meter, camera/mic pickers, a review
   step with "record again", and stop automatically at 45 minutes. Either
-  way, the file goes straight from the browser to Mux in resumable 5 MB
-  chunks — it never passes through this server.
-- **Private playback**: videos use Mux's signed playback policy. The member's
-  course page mints a short-lived token per viewing, so a copied link doesn't
-  play elsewhere.
+  way, the file goes straight from the browser to the video host — it never
+  passes through this server.
+- **Private playback**: the member's course page gets short-lived playback
+  credentials per viewing, so a copied link doesn't play elsewhere.
 - **Watch to complete**: the player reports played time (seeking ahead doesn't
   count) every 15 seconds; the lesson completes itself at 90% watched. The
   server credits time no faster than real time allows (up to 2× speed), and
@@ -106,23 +105,50 @@ uploaded video instead of a pasted YouTube/Vimeo link, hosted on
   time or completing a hosted lesson directly. Staff can still mark a member
   complete (e.g. they watched it together in person).
 - **Captions**: generated automatically in `tenant.captionLanguage` (`null`
-  turns them off).
+  turns them off), where the host supports it.
 - **Duration** comes from the video itself.
 
 Pasted links keep working exactly as before (members mark those complete
-themselves), and with the `MUX_*` variables unset the upload option doesn't
-appear at all.
+themselves), and with no video host configured the upload/record options
+don't appear at all.
 
-**One Mux environment per client deployment.** Each deployment needs its
-own webhook URL and signing keys, which Mux scopes to an environment — so
-when you set up a new client, create a new environment in the Mux dashboard
-(or have the client use their own Mux account, so hosting is billed to them).
+### Video hosts
 
-Setup: create a Mux account → an access token (Mux Video read + write) and a
-URL signing key → set the four `MUX_*` variables. Then add a webhook for
-`https://<your-domain>/api/mux/webhook` and set `MUX_WEBHOOK_SECRET`. Without a
-webhook (e.g. local dev), use "Check status" in the lesson editor once a video
-has processed.
+Hosting is pluggable, so each client deployment can use whichever host
+suits it. Available now:
+
+| Host | `VIDEO_PROVIDER` | Notes |
+|---|---|---|
+| [Mux](https://www.mux.com) | `mux` | Free plan covers 10 videos, pay-as-you-go after. Signed playback, auto-captions, adaptive streaming. |
+
+`VIDEO_PROVIDER` picks the host for new uploads (default: the first one whose
+env vars are set). Each lesson remembers its host, so switching a deployment
+to another host doesn't break videos already uploaded.
+
+Each host's webhook goes to `https://<your-domain>/api/video/<provider>/webhook`.
+Without a webhook (e.g. local dev), use "Check status" in the lesson editor
+once a video has processed.
+
+**Mux setup**: create an account → an access token (Mux Video read + write)
+and a URL signing key → set the four `MUX_*` variables. Add a webhook for
+`https://<your-domain>/api/video/mux/webhook` and set `MUX_WEBHOOK_SECRET`.
+Use **one Mux environment per client deployment** (webhooks and signing keys
+are scoped to an environment), or have the client use their own Mux account
+so hosting is billed to them.
+
+**Adding a host** (e.g. Bunny Stream, Cloudflare Stream):
+
+1. Write `src/lib/video/providers/<host>.ts` implementing `VideoProvider`
+   (`src/lib/video/providers/types.ts`): create an upload, report upload and
+   video status, delete, mint playback, verify webhooks.
+2. Register it in `src/lib/video/providers/index.ts` and add its id to
+   `VIDEO_PROVIDER_IDS` in `src/lib/video/provider.ts`.
+3. If it uploads differently (e.g. tus) or plays differently (e.g. plain HLS),
+   add a variant to `UploadTarget` / `PlaybackSource` and a branch in the
+   lesson editor's `uploadFile` / `HostedVideoPlayer`. TypeScript flags every
+   place that needs one.
+4. Add a migration extending the `training_lessons.video_provider` check
+   constraint.
 
 ## Database migrations
 

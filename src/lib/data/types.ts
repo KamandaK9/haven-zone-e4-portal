@@ -113,6 +113,7 @@ export type CourseLesson = {
   // An uploaded, privately-streamed video (kind: "video"). Takes precedence
   // over videoUrl once present.
   hostedVideo?: {
+    provider: string;
     status: LessonVideoStatus;
     playbackId?: string;
     durationSeconds?: number;
