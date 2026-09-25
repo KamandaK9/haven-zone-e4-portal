@@ -96,6 +96,19 @@ export type Member = {
   birthday?: string;
   weddingAnniversary?: string;
   photoUrl?: string;
+  cellId?: string;
+};
+
+// A group below a chapter; parentId unset = the upper level (e.g. a senior
+// cell), otherwise a cell within that group.
+export type Cell = {
+  id: string;
+  churchId: string;
+  parentId?: string;
+  name: string;
+  leaderMemberId?: string;
+  meetingDay?: string;
+  meetingPlace?: string;
 };
 
 // A course's content — a video to watch or a graded quiz — in order.

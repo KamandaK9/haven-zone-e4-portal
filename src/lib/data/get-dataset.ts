@@ -133,6 +133,8 @@ type MemberRow = {
   birthday: string | null;
   wedding_anniversary: string | null;
   photo_url: string | null;
+  // Absent until the chapter-records migration has been applied.
+  cell_id?: string | null;
   giving_entries: { month: string; amount: number; category: string | null }[] | null;
   trainings:
     | {
@@ -289,6 +291,7 @@ export async function getZoneDataset(zoneId: string): Promise<Dataset & { zoneNa
         }
       : {}),
     photoUrl: m.photo_url ?? undefined,
+    cellId: m.cell_id ?? undefined,
   }));
 
   const activity: ActivityItem[] = (activityRes.data ?? []).map((a) => ({

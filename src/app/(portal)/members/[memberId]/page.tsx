@@ -13,6 +13,7 @@ import { MemberAvatar } from "@/components/members/member-avatar";
 import { MemberPhotoUpload } from "@/components/members/member-photo-upload";
 import { TrainingStatusButton } from "@/components/training/training-status-button";
 import { can, getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
+import { getChapterCells } from "@/lib/data/cells";
 import { getDisplayCurrency } from "@/lib/currency-server";
 import { formatMoney } from "@/lib/currency";
 import {
@@ -61,6 +62,7 @@ export default async function MemberPage({
   }
 
   const church = getChurch(ds, member.churchId);
+  const cell = member.cellId ? (await getChapterCells(member.churchId)).cells.find((c) => c.id === member.cellId) : undefined;
   const country = getCountry(ds, member.countryId);
   const totalGiving = memberTotalGiving(member);
   const tenure = memberTenureYears(member);
@@ -109,6 +111,11 @@ export default async function MemberPage({
             <Link href={`/churches/${member.churchId}`} className="hover:text-primary transition-colors">
               {church?.name}
             </Link>
+            {cell && (
+              <Link href={`/churches/${member.churchId}#cells`} className="hover:text-primary transition-colors">
+                {cell.name}
+              </Link>
+            )}
             <span className="flex items-center gap-1">
               {country?.flag} {country?.name}
             </span>

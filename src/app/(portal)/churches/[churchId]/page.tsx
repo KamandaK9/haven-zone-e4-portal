@@ -6,9 +6,11 @@ import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { MemberTable } from "@/components/members/member-table";
+import { CellsDirectory } from "@/components/cells/cells-directory";
 import { RenameChapterDialog } from "@/components/dashboard/rename-chapter-dialog";
 import { GivingCategorySelect } from "@/components/dashboard/giving-category-select";
 import { can, getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
+import { getChapterCells } from "@/lib/data/cells";
 import { getDisplayCurrency } from "@/lib/currency-server";
 import { formatMoney } from "@/lib/currency";
 import {
@@ -16,8 +18,10 @@ import {
   getChurchStats,
   getCountry,
   getMembersByChurch,
+  memberFullName,
 } from "@/lib/data/analytics";
 import { givingFilterLabel, parseGivingFilter } from "@/lib/giving";
+import { tenant } from "@/tenant";
 
 export default async function ChurchPage({
   params,
@@ -49,6 +53,9 @@ export default async function ChurchPage({
   const country = getCountry(ds, church.countryId);
   const stats = getChurchStats(ds, church.id, givingFilter);
   const members = getMembersByChurch(ds, church.id);
+  const { cells, available: cellsAvailable } = await getChapterCells(church.id);
+  const cellNames = Object.fromEntries(cells.map((c) => [c.id, c.name]));
+  const levels = tenant.records.cellLevels;
   const subline = [church.city, country?.name, church.pastor].filter(Boolean).join(" · ");
 
   return (
@@ -109,9 +116,34 @@ export default async function ChurchPage({
             churchName={church.name}
             showGiving={ds.individualGiving}
             canManage={can(profile, "manage_members")}
+            cellNames={cells.length > 0 ? cellNames : undefined}
           />
         </CardContent>
       </Card>
+
+      {cellsAvailable && (
+        <Card id="cells" className="scroll-mt-20">
+          <CardHeader>
+            <CardTitle>
+              {levels.upperPlural} &amp; {levels.lowerPlural.toLowerCase()}
+            </CardTitle>
+            <CardDescription>
+              Who belongs where in {church.name}, who leads each group, and when they meet.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <CellsDirectory
+              churchId={church.id}
+              cells={cells}
+              members={members
+                .map((m) => ({ id: m.id, name: memberFullName(m), cellId: m.cellId }))
+                .sort((a, b) => a.name.localeCompare(b.name))}
+              canManage={can(profile, "manage_members")}
+              levels={levels}
+            />
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

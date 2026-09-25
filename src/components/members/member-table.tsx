@@ -36,7 +36,10 @@ export function MemberTable({
   churchName,
   showGiving = true,
   canManage = true,
+  cellNames,
 }: {
+  // Cell id → name; the Cell column only shows when the chapter has cells.
+  cellNames?: Record<string, string>;
   showGiving?: boolean;
   canManage?: boolean;
   members: Member[];
@@ -98,6 +101,7 @@ export function MemberTable({
             <TableRow>
               <TableHead>Member</TableHead>
               <TableHead>Role</TableHead>
+              {cellNames && <TableHead>Cell</TableHead>}
               <TableHead>Tenure</TableHead>
               <TableHead>Training</TableHead>
               {showGiving && <TableHead className="text-right">Total giving</TableHead>}
@@ -130,6 +134,11 @@ export function MemberTable({
                       {member.position !== "member" ? POSITION_LABELS[member.position] : member.role}
                     </Badge>
                   </TableCell>
+                  {cellNames && (
+                    <TableCell className="text-sm text-muted-foreground">
+                      {(member.cellId && cellNames[member.cellId]) || "—"}
+                    </TableCell>
+                  )}
                   <TableCell className="text-sm text-muted-foreground">
                     {formatTenure(memberTenureYears(member))}
                   </TableCell>
@@ -148,7 +157,7 @@ export function MemberTable({
             })}
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={showGiving ? 5 : 4} className="text-center text-sm text-muted-foreground py-10">
+                <TableCell colSpan={(showGiving ? 5 : 4) + (cellNames ? 1 : 0)} className="text-center text-sm text-muted-foreground py-10">
                   No members match your search.
                 </TableCell>
               </TableRow>
