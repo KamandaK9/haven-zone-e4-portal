@@ -1,6 +1,8 @@
 "use server";
 
+import { randomInt } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { hasCompletedZone, setupKeyMatches } from "@/lib/setup-gate";
 import type { ParsedMemberRow } from "./members";
 import type { MemberRole } from "@/lib/data/types";
 import { flagForCountry } from "@/lib/country-flags";
@@ -17,6 +19,8 @@ function chunk<T>(items: T[], size: number): T[][] {
 }
 
 type SetupPayload = {
+  // Must match the server-only SETUP_KEY env var; the wizard reads it from ?key=.
+  setupKey: string;
   zoneName: string;
   superAdmin: { name: string; email: string; phone: string; password: string };
   countries: { name: string }[];
@@ -43,11 +47,18 @@ function randomTempPassword(): string {
   // 12 random chars from a set that avoids visually-ambiguous characters.
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
   let out = "";
-  for (let i = 0; i < 12; i++) out += chars[Math.floor(Math.random() * chars.length)];
+  for (let i = 0; i < 12; i++) out += chars[randomInt(chars.length)];
   return out;
 }
 
 export async function completeZoneSetup(payload: SetupPayload): Promise<CompleteZoneSetupResult> {
+  if (!setupKeyMatches(payload?.setupKey)) {
+    return { ok: false, error: "This setup link is invalid or setup is disabled on this deployment." };
+  }
+  if (await hasCompletedZone()) {
+    return { ok: false, error: "Setup has already been completed for this deployment." };
+  }
+
   const admin = createAdminClient();
 
   const zoneName = payload.zoneName.trim();

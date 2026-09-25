@@ -151,14 +151,6 @@ function LoginForm() {
                 </div>
               )}
 
-              {!isMember && (
-                <div className="mt-5 text-center text-xs text-muted-foreground">
-                  Setting up a new zone?{" "}
-                  <Link href="/setup" className="text-primary font-medium hover:underline">
-                    Start here
-                  </Link>
-                </div>
-              )}
             </CardContent>
           </Card>
 

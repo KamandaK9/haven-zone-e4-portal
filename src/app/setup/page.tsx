@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Plus,
   Trash2,
@@ -59,6 +59,37 @@ const EMPTY_WIZARD: WizardState = {
 type AssistantCredential = Extract<CompleteZoneSetupResult, { ok: true }>["assistantCredentials"];
 
 export default function SetupPage() {
+  return (
+    <Suspense fallback={null}>
+      <SetupKeyGate />
+    </Suspense>
+  );
+}
+
+// The setup link carries the deployment's SETUP_KEY as ?key=. It's only
+// checked server-side (by completeZoneSetup) — this just stops someone
+// filling in the whole wizard from a link that's missing it.
+function SetupKeyGate() {
+  const setupKey = useSearchParams().get("key");
+  if (!setupKey) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-6">
+        <Card className="w-full max-w-sm">
+          <CardContent className="pt-6 flex flex-col items-center gap-4 text-center">
+            <BrandMark size={44} />
+            <p className="text-sm">
+              This setup link is missing its key. Use the full link you were given, including{" "}
+              <code className="text-xs">?key=…</code>
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+  return <SetupWizard setupKey={setupKey} />;
+}
+
+function SetupWizard({ setupKey }: { setupKey: string }) {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [wizard, setWizard] = useState<WizardState>(EMPTY_WIZARD);
@@ -84,6 +115,7 @@ export default function SetupPage() {
     });
 
     const result = await completeZoneSetup({
+      setupKey,
       zoneName: wizard.zoneName,
       superAdmin: {
         name: wizard.adminName,
