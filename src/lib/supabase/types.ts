@@ -17,6 +17,7 @@ export type EventMediaKind = "image" | "video" | "file";
 export type LedgerEntryType = "income" | "expense";
 export type ProfileScope = "zone" | "sub_zone" | "chapter" | "self";
 export type GivingCategory = "pco" | "dues" | "special_project" | "meta";
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
   public: {
@@ -28,6 +29,7 @@ export type Database = {
           setup_complete: boolean;
           display_currency: string;
           default_programs_seeded: boolean;
+          handbook_rules: Json | null;
           created_at: string;
         };
         Insert: {
@@ -38,7 +40,13 @@ export type Database = {
           default_programs_seeded?: boolean;
           created_at?: string;
         };
-        Update: Partial<{ name: string; setup_complete: boolean; display_currency: string; default_programs_seeded: boolean }>;
+        Update: Partial<{
+          name: string;
+          setup_complete: boolean;
+          display_currency: string;
+          default_programs_seeded: boolean;
+          handbook_rules: Json | null;
+        }>;
         Relationships: [];
       };
       profiles: {

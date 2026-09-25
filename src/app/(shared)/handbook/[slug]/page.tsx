@@ -33,7 +33,7 @@ export default async function HandbookSectionPage({
   const prev = content.pages[pageIndex - 1];
   const next = content.pages[pageIndex + 1];
 
-  const rules = (await getHandbookRules(profile.zoneId)) ?? content.rules;
+  const rules = (await getHandbookRules(profile.zoneId))?.rules ?? content.rules;
   const needsData = page.sections.some((s) => s.blocks.some((b) => DATA_BLOCKS.has(b.type)));
   const yearParam = typeof query.year === "string" ? Number(query.year) : null;
   const [ds, { currency, rates }] = await Promise.all([

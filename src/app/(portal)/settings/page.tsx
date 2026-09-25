@@ -5,8 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { NavVisibilityForm } from "@/components/settings/nav-visibility-form";
 import { CurrencySelectForm } from "@/components/settings/currency-select-form";
+import { HandbookRulesForm } from "@/components/settings/handbook-rules-form";
 import { restartWizardAction } from "@/lib/actions/auth";
 import { can, getCurrentProfile, getAuditLog } from "@/lib/data/get-dataset";
+import { getHandbookRules } from "@/lib/handbook/rules-server";
+import { tenant } from "@/tenant";
 
 const ACTION_LABELS: Record<string, string> = {
   "member.create": "Added member",
@@ -30,6 +33,7 @@ const ACTION_LABELS: Record<string, string> = {
   "training.assign": "Assigned training",
   "training.update_status": "Training status",
   "settings.update_currency": "Currency changed",
+  "settings.update_handbook_rules": "Handbook thresholds",
   "church.rename": "Renamed a chapter",
   "member.merge": "Merged duplicate members",
   "member.photo": "Changed a profile photo",
@@ -44,7 +48,7 @@ export default async function SettingsPage() {
   if (!profile) redirect("/");
   if (!can(profile, "manage_access")) redirect("/dashboard");
 
-  const auditLog = await getAuditLog(profile.zoneId, 30);
+  const [auditLog, handbookRules] = await Promise.all([getAuditLog(profile.zoneId, 30), getHandbookRules(profile.zoneId)]);
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -79,6 +83,26 @@ export default async function SettingsPage() {
           <CurrencySelectForm initialCurrency={profile.zoneCurrency} />
         </CardContent>
       </Card>
+
+      {tenant.handbook && handbookRules && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Handbook thresholds</CardTitle>
+            <CardDescription>
+              The giving and membership each category needs, in USD. They start at the {tenant.handbook.sourceShort}&apos;s values;
+              change them here when the leadership revises them. Every chapter, zone and member is re-ranked straight away.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <HandbookRulesForm
+              defaults={tenant.handbook.rules}
+              current={handbookRules.rules}
+              customised={handbookRules.customised}
+              sourceName={tenant.handbook.sourceShort}
+            />
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
