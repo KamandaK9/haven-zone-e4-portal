@@ -11,6 +11,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { signOutAction } from "@/lib/actions/auth";
 import { EVENT_NAV_ITEMS } from "@/lib/nav-items";
 import { cn } from "@/lib/utils";
+import { SupportButton } from "@/components/support/support-button";
 
 // The chrome the whole signed-in app shares — a fixed sidebar on desktop, a
 // slide-out drawer on mobile — parameterized by which nav items to show.
@@ -166,6 +167,7 @@ export function PortalTopbar({
       </div>
 
       <div className="ml-auto flex items-center gap-3">
+        <SupportButton />
         {showNotifications && (
           <Button variant="ghost" size="icon" className="relative">
             <Bell className="h-4.5 w-4.5" />

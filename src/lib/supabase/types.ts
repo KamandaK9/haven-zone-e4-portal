@@ -22,6 +22,7 @@ export type ChequeStatus = "issued" | "cleared" | "cancelled" | "void";
 export type LiveStreamStatus = "scheduled" | "live" | "ended";
 export type LiveStreamAudience = "zone" | "chapters" | "leaders";
 export type RecordingStatus = "none" | "processing" | "ready" | "errored";
+export type SupportCategory = "question" | "problem" | "account" | "records" | "other";
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
@@ -882,6 +883,40 @@ export type Database = {
         Row: { stream_id: string; profile_id: string; zone_id: string; created_by: string | null; created_at: string };
         Insert: { stream_id: string; profile_id: string; zone_id: string; created_by?: string | null };
         Update: Record<string, never>;
+        Relationships: [];
+      };
+      support_requests: {
+        Row: {
+          id: string;
+          zone_id: string;
+          profile_id: string | null;
+          requester_name: string;
+          requester_email: string;
+          category: SupportCategory;
+          message: string;
+          page_path: string | null;
+          status: "open" | "resolved";
+          email_status: "not_sent" | "sent" | "failed";
+          created_at: string;
+          resolved_at: string | null;
+          resolved_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          zone_id: string;
+          profile_id: string;
+          requester_name: string;
+          requester_email: string;
+          category: SupportCategory;
+          message: string;
+          page_path?: string | null;
+        };
+        Update: Partial<{
+          status: "open" | "resolved";
+          email_status: "not_sent" | "sent" | "failed";
+          resolved_at: string | null;
+          resolved_by: string | null;
+        }>;
         Relationships: [];
       };
     };

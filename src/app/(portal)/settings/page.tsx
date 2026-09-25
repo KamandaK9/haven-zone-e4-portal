@@ -90,6 +90,18 @@ export default async function SettingsPage() {
 
       <Card>
         <CardHeader>
+          <CardTitle>Support requests</CardTitle>
+          <CardDescription>What members and leaders have asked through the Help button.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/settings/support">Open support inbox</Link>
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Currency</CardTitle>
           <CardDescription>
             All giving and ledger figures are stored in USD and converted live for display — switching this never

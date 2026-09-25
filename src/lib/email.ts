@@ -22,6 +22,8 @@ export async function sendEmail(input: {
   subject: string;
   html: string;
   text: string;
+  // Where replies go, e.g. the member who asked for help.
+  replyTo?: string;
 }): Promise<SendEmailResult> {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.RESEND_FROM_EMAIL;
@@ -37,7 +39,15 @@ export async function sendEmail(input: {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from, to: [input.to], bcc: input.bcc, subject: input.subject, html: input.html, text: input.text }),
+      body: JSON.stringify({
+        from,
+        to: [input.to],
+        bcc: input.bcc,
+        subject: input.subject,
+        html: input.html,
+        text: input.text,
+        ...(input.replyTo ? { reply_to: input.replyTo } : {}),
+      }),
     });
     const data = await res.json().catch(() => null);
     if (!res.ok) {
