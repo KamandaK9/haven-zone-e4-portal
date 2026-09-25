@@ -1,7 +1,8 @@
 import type { LucideIcon } from "lucide-react";
 import type { Capability } from "@/lib/access";
 import { EVENT_SERIES_DEFS } from "@/lib/event-series";
-import { LayoutDashboard, Globe2, BarChart3, BookOpenText, GraduationCap, CalendarDays, Mail, Settings } from "lucide-react";
+import { LayoutDashboard, Globe2, BarChart3, BookOpenText, GraduationCap, CalendarDays, Mail, Settings, BookMarked } from "lucide-react";
+import { tenant } from "@/tenant";
 
 export type StaffRole = "super_admin" | "admin";
 
@@ -22,6 +23,10 @@ export const NAV_ITEMS: NavItemDef[] = [
   { key: "ledger", href: "/ledger", label: "Ledger", icon: BookOpenText, cap: "manage_ledger", hideable: true },
   { key: "training", href: "/training", label: "Training", icon: GraduationCap, hideable: true },
   { key: "calendar", href: "/calendar", label: "Calendar", icon: CalendarDays, hideable: false },
+  // Only when the tenant ships a handbook.
+  ...(tenant.handbook
+    ? [{ key: "handbook", href: "/handbook", label: tenant.handbook.title, icon: BookMarked, hideable: true }]
+    : []),
   { key: "newsletter", href: "/newsletter", label: "Newsletter", icon: Mail, cap: "send_newsletter", hideable: true },
   { key: "settings", href: "/settings", label: "Settings", icon: Settings, cap: "manage_access", hideable: false },
 ];
