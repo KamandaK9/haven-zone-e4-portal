@@ -1,7 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import type { Capability } from "@/lib/access";
 import { EVENT_SERIES_DEFS } from "@/lib/event-series";
-import { LayoutDashboard, Globe2, BarChart3, BookOpenText, GraduationCap, CalendarDays, Mail, Settings, BookMarked } from "lucide-react";
+import { LayoutDashboard, Globe2, BarChart3, BookOpenText, GraduationCap, CalendarDays, Mail, Settings, BookMarked, FolderOpen } from "lucide-react";
 import { tenant } from "@/tenant";
 
 export type StaffRole = "super_admin" | "admin";
@@ -11,8 +11,8 @@ export type NavItemDef = {
   href: string;
   label: string;
   icon: LucideIcon;
-  // Capability needed to see this item; omitted = any leader.
-  cap?: Capability;
+  // Capability needed to see this item (any of them, for a list); omitted = any leader.
+  cap?: Capability | Capability[];
   hideable: boolean; // can the Zonal Director hide this from their own nav?
 };
 
@@ -21,6 +21,7 @@ export const NAV_ITEMS: NavItemDef[] = [
   { key: "countries", href: "/countries", label: "Countries", icon: Globe2, hideable: false },
   { key: "reports", href: "/reports", label: "Reports", icon: BarChart3, cap: "view_reports", hideable: true },
   { key: "ledger", href: "/ledger", label: "Ledger", icon: BookOpenText, cap: "manage_ledger", hideable: true },
+  { key: "records", href: "/records", label: "Records", icon: FolderOpen, cap: ["manage_records", "manage_ledger"], hideable: true },
   { key: "training", href: "/training", label: "Training", icon: GraduationCap, hideable: true },
   { key: "calendar", href: "/calendar", label: "Calendar", icon: CalendarDays, hideable: false },
   // Only when the tenant ships a handbook.
@@ -33,7 +34,7 @@ export const NAV_ITEMS: NavItemDef[] = [
 
 export function getVisibleNavItems(role: StaffRole, caps: string[], hiddenNavItems: string[]): NavItemDef[] {
   return NAV_ITEMS.filter((item) => {
-    if (item.cap && !caps.includes(item.cap)) return false;
+    if (item.cap && ![item.cap].flat().some((c) => caps.includes(c))) return false;
     // Only a Director's own hidden-items preference ever applies — other
     // leaders get a nav fixed by their capabilities.
     if (role === "super_admin" && item.hideable && hiddenNavItems.includes(item.key)) return false;

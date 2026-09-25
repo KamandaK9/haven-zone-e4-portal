@@ -52,6 +52,7 @@ export default async function HandbookSectionPage({
     yearHref: (year, sectionId) => `/handbook/${page.slug}?year=${year}#${sectionId}`,
     seriesSlugs: EVENT_SERIES_DEFS.map((s) => s.slug),
     isLeader: profile.role !== "member",
+    homeChapterId: profile.churchId,
     initialRoleId: typeof query.role === "string" ? query.role : undefined,
   };
 

@@ -20,15 +20,22 @@ export type HandbookRenderContext = LiveFormat & {
   seriesSlugs: string[];
   // Leaders get links into the rest of the portal; members don't have those pages.
   isLeader: boolean;
+  // The viewer's own chapter, for links to chapter-level pages.
+  homeChapterId?: string | null;
   initialRoleId?: string;
 };
 
-const PORTAL_FEATURES: Record<PortalFeature, { label: string; href: string }> = {
-  members: { label: "Members", href: "/countries" },
-  ledger: { label: "Ledger", href: "/ledger" },
-  reports: { label: "Reports", href: "/reports" },
-  calendar: { label: "Calendar", href: "/calendar" },
-  training: { label: "Training", href: "/training" },
+const PORTAL_FEATURES: Record<PortalFeature, { label: string; href: (ctx: HandbookRenderContext) => string }> = {
+  members: { label: "Members", href: () => "/countries" },
+  cells: { label: "Cells", href: (ctx) => (ctx.homeChapterId ? `/churches/${ctx.homeChapterId}#cells` : "/countries") },
+  ledger: { label: "Ledger", href: () => "/ledger" },
+  reports: { label: "Reports", href: () => "/reports" },
+  calendar: { label: "Calendar", href: () => "/calendar" },
+  training: { label: "Training", href: () => "/training" },
+  minutes: { label: "Minutes", href: () => "/records?tab=minutes" },
+  correspondence: { label: "Correspondence", href: () => "/records?tab=correspondence" },
+  bankAdvices: { label: "Bank advices", href: () => "/records?tab=bank_advice" },
+  cheques: { label: "Cheques", href: () => "/records?tab=cheques" },
 };
 
 function ListView({ items, ordered }: { items: ListItem[]; ordered?: boolean }) {
@@ -206,7 +213,7 @@ export function BlockRenderer({ blocks, sectionId, ctx }: { blocks: Block[]; sec
                       <span className="flex-1 leading-snug">{item.text}</span>
                       {feature &&
                         (ctx.isLeader ? (
-                          <Link href={feature.href} className="shrink-0 text-xs font-medium text-primary hover:underline">
+                          <Link href={feature.href(ctx)} className="shrink-0 text-xs font-medium text-primary hover:underline">
                             {feature.label} →
                           </Link>
                         ) : (

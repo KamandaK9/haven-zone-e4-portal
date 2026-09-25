@@ -16,7 +16,7 @@ import type { Cheque } from "@/lib/data/records";
 import { chequeGaps, nextChequeNumber } from "@/lib/records/cheques";
 import { RECORD_FILE_ACCEPT } from "@/lib/records/files";
 import type { ChequeStatus } from "@/lib/supabase/types";
-import { cn } from "@/lib/utils";
+import { cn, pluralize } from "@/lib/utils";
 import { uploadRecordFiles } from "./upload";
 
 type Account = { key: string; label: string };
@@ -302,7 +302,7 @@ export function ChequeRegister({
               <div key={a.key} className="space-y-1 rounded-xl border p-3">
                 <p className="text-sm font-medium">{a.label}</p>
                 <p className="text-xs text-muted-foreground">
-                  {numbers.length} cheques · next no. {nextChequeNumber(numbers) || "—"} · {outstanding.length} not yet cleared (
+                  {pluralize(numbers.length, "cheque")} · next no. {nextChequeNumber(numbers) || "—"} · {outstanding.length} not yet cleared (
                   {money(outstanding.reduce((s, c) => s + c.amount, 0))})
                 </p>
                 {gaps.missing.length > 0 && (

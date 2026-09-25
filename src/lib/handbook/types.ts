@@ -36,7 +36,17 @@ export type FlowStage = {
 };
 
 // Portal pages that satisfy a record-keeping duty, keyed so core owns the hrefs.
-export type PortalFeature = "members" | "ledger" | "reports" | "calendar" | "training";
+export type PortalFeature =
+  | "members"
+  | "cells"
+  | "ledger"
+  | "reports"
+  | "calendar"
+  | "training"
+  | "minutes"
+  | "correspondence"
+  | "bankAdvices"
+  | "cheques";
 
 export type LadderKind = "zone" | "chapter" | "member" | "governorship";
 
