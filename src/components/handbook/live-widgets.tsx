@@ -101,7 +101,11 @@ export function ChapterStandings({ live, sectionId, fmt }: { live: HandbookLive;
                           <p className="text-xs text-muted-foreground">
                             To {next.label}: {needs.join(" and ")}
                           </p>
-                          <Progress value={pct(c.amount, next.minAmount)} aria-label={`Progress to ${next.label}`} />
+                          {/* The furthest-behind requirement is what's holding the chapter back. */}
+                          <Progress
+                            value={Math.min(pct(c.amount, next.minAmount), pct(c.members, next.minMembers))}
+                            aria-label={`Progress to ${next.label}`}
+                          />
                         </>
                       ) : (
                         <p className="text-xs text-muted-foreground">Top category</p>
