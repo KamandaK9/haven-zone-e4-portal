@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, CheckCircle2, Loader2, UploadCloud } from "lucide-react";
+import { AlertCircle, CheckCircle2, Circle, Loader2, UploadCloud, Video } from "lucide-react";
 import * as UpChunk from "@mux/upchunk";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +24,9 @@ import {
   updateVideoLesson,
 } from "@/lib/actions/training-lessons";
 import type { LessonVideoStatus } from "@/lib/supabase/types";
+import { canRecord } from "@/lib/video/recording";
 import { formatDuration } from "@/lib/video/watch";
+import { LessonRecorder } from "./lesson-recorder";
 import type { CourseLesson } from "@/lib/data/types";
 import { tenant } from "@/tenant";
 
@@ -67,6 +69,11 @@ export function VideoLessonDialog({
   const [videoUrl, setVideoUrl] = useState(lesson?.videoUrl ?? "");
   const [durationLabel, setDurationLabel] = useState(lesson?.durationLabel ?? "");
   const [file, setFile] = useState<File | null>(null);
+  // In-portal recording: the recorder is showing / holds a live take, and
+  // the length of a finished take waiting to be saved.
+  const [recording, setRecording] = useState(false);
+  const [recorderBusy, setRecorderBusy] = useState(false);
+  const [recordedSeconds, setRecordedSeconds] = useState<number | null>(null);
   const [uploadPct, setUploadPct] = useState<number | null>(null);
   const [videoStatus, setVideoStatus] = useState<LessonVideoStatus | null>(lesson?.hostedVideo?.status ?? null);
   // Set once a new lesson has been created, so retrying a failed upload
@@ -82,6 +89,9 @@ export function VideoLessonDialog({
     setVideoUrl(lesson?.videoUrl ?? "");
     setDurationLabel(lesson?.durationLabel ?? "");
     setFile(null);
+    setRecording(false);
+    setRecorderBusy(false);
+    setRecordedSeconds(null);
     setUploadPct(null);
     setVideoStatus(lesson?.hostedVideo?.status ?? null);
     setCreatedLessonId(null);
@@ -132,6 +142,7 @@ export function VideoLessonDialog({
 
     setBusy(false);
     onOpenChange(false);
+    reset();
     router.refresh();
   }
 
@@ -159,12 +170,14 @@ export function VideoLessonDialog({
     <Dialog
       open={open}
       onOpenChange={(v) => {
-        if (uploading) return; // closing would abandon the upload
+        // Closing now would abandon an upload or a live recording.
+        if (uploading || recorderBusy) return;
+        if (!v && recordedSeconds !== null && !window.confirm("Discard your recording? It hasn't been saved.")) return;
         onOpenChange(v);
         if (!v) reset();
       }}
     >
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className={recording ? "sm:max-w-2xl" : "sm:max-w-md"}>
         <DialogHeader>
           <DialogTitle>{editing ? "Edit video lesson" : "New video lesson"}</DialogTitle>
           <DialogDescription>
@@ -173,6 +186,22 @@ export function VideoLessonDialog({
               : "A single video with a title and description members watch, then mark complete."}
           </DialogDescription>
         </DialogHeader>
+        {recording ? (
+          <LessonRecorder
+            onBusyChange={setRecorderBusy}
+            onCancel={() => {
+              setRecorderBusy(false);
+              setRecording(false);
+            }}
+            onComplete={(recorded, seconds) => {
+              setFile(recorded);
+              setRecordedSeconds(seconds);
+              setRecorderBusy(false);
+              setRecording(false);
+            }}
+          />
+        ) : (
+        <>
         <div className="space-y-4 py-2">
           <div className="space-y-1.5">
             <Label htmlFor="lessonTitle">Title</Label>
@@ -210,17 +239,43 @@ export function VideoLessonDialog({
                   </button>
                 </div>
               )}
-              <Input
-                id="lessonUpload"
-                type="file"
-                accept="video/*"
-                disabled={busy}
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              />
+              {recordedSeconds !== null ? (
+                <div className="flex items-center gap-2 rounded-md bg-primary/5 px-2.5 py-2 text-xs">
+                  <Video className="h-3.5 w-3.5 text-primary" />
+                  <span className="font-medium">Recording ready · {formatDuration(recordedSeconds)}</span>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => {
+                      setFile(null);
+                      setRecordedSeconds(null);
+                    }}
+                    className="ml-auto text-red-600 font-medium hover:underline"
+                  >
+                    Discard
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="lessonUpload"
+                    type="file"
+                    accept="video/*"
+                    disabled={busy}
+                    onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                    className="flex-1"
+                  />
+                  {canRecord() && (
+                    <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => setRecording(true)} className="gap-1.5 shrink-0">
+                      <Circle className="h-3 w-3 fill-red-500 text-red-500" /> Record
+                    </Button>
+                  )}
+                </div>
+              )}
               <p className="text-[11px] text-muted-foreground">
                 {videoStatus
-                  ? "Choosing a new file replaces the current video when you save."
-                  : "Uploads when you save. Streamed privately to signed-in members, with auto-generated captions."}
+                  ? "A new file or recording replaces the current video when you save."
+                  : "Upload a file or record one here. It uploads when you save, streams privately to signed-in members, and gets auto-generated captions."}
               </p>
               {uploading && (
                 <div className="space-y-1">
@@ -251,13 +306,24 @@ export function VideoLessonDialog({
           </div>
         )}
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={uploading}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              if (recordedSeconds !== null && !window.confirm("Discard your recording? It hasn't been saved.")) return;
+              onOpenChange(false);
+              reset();
+            }}
+            disabled={uploading}
+          >
             Cancel
           </Button>
           <Button type="button" onClick={save} disabled={busy || !title.trim()}>
             {uploading ? "Uploading…" : busy ? "Saving…" : editing ? "Save changes" : "Add lesson"}
           </Button>
         </DialogFooter>
+        </>
+        )}
       </DialogContent>
     </Dialog>
   );

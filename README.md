@@ -89,8 +89,13 @@ A Stratum feature, available to every tenant. Video lessons can take an
 uploaded video instead of a pasted YouTube/Vimeo link, hosted on
 [Mux](https://www.mux.com) (its free plan covers 10 videos; pay-as-you-go after).
 
-- **Upload**: the lesson editor uploads the file straight from the browser to
-  Mux in resumable 5 MB chunks — it never passes through this server.
+- **Upload or record**: the lesson editor takes a video file, or records one
+  right there in the browser — camera, screen, or screen with the presenter
+  in a corner bubble (screen options are desktop-only). Recordings have a
+  countdown, pause/resume, a mic level meter, camera/mic pickers, a review
+  step with "record again", and stop automatically at 45 minutes. Either
+  way, the file goes straight from the browser to Mux in resumable 5 MB
+  chunks — it never passes through this server.
 - **Private playback**: videos use Mux's signed playback policy. The member's
   course page mints a short-lived token per viewing, so a copied link doesn't
   play elsewhere.
@@ -107,6 +112,11 @@ uploaded video instead of a pasted YouTube/Vimeo link, hosted on
 Pasted links keep working exactly as before (members mark those complete
 themselves), and with the `MUX_*` variables unset the upload option doesn't
 appear at all.
+
+**One Mux environment per client deployment.** Each deployment needs its
+own webhook URL and signing keys, which Mux scopes to an environment — so
+when you set up a new client, create a new environment in the Mux dashboard
+(or have the client use their own Mux account, so hosting is billed to them).
 
 Setup: create a Mux account → an access token (Mux Video read + write) and a
 URL signing key → set the four `MUX_*` variables. Then add a webhook for
