@@ -2,8 +2,8 @@
    Tailwind utilities; a new tenant only has to redefine them here. */
 
 :root {
-  /* Example tenant: a calm indigo (hue ~265). A real tenant derives its
-     hue from its own logo. */
+  /* PLACEHOLDER — Stratum's example indigo (hue ~265), unchanged. Replace
+     once CE Sandton supplies a logo/brand colours. */
   --background: oklch(0.985 0.003 90);
   --foreground: oklch(0.18 0.012 265);
   --card: oklch(1 0 0);

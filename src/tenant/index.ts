@@ -1,9 +1,7 @@
-import { Landmark, Users, Tent } from "lucide-react";
 import type { TenantConfig, PositionDef } from "@/lib/tenant";
 import type { Capability } from "@/lib/access";
-import { handbook } from "./handbook";
 
-// Root/assistant hold every capability Stratum defines — keep this list in
+// system_admin holds every capability Stratum defines — keep this list in
 // sync with CAPABILITIES in src/lib/access.ts.
 const ALL_CAPS: readonly Capability[] = [
   "view_members", "view_contact_details", "manage_members",
@@ -16,135 +14,132 @@ const ALL_CAPS: readonly Capability[] = [
   "export_data", "manage_settings",
 ];
 
-// This zone's leadership tiers. Rank orders seniority (lower = more senior);
-// scope is which slice of the zone the position sees.
+// CE Sandton's six roles (spec §7). Rank orders seniority (lower = more
+// senior, gates who may assign whom in Settings → Team & access); scope is
+// which slice of the church the role sees.
+//
+// A Foundation School teacher's real restriction — their own cohorts only —
+// isn't a group/location/cell scope at all, so it's enforced by RLS on the
+// course tables (cohort.teacher_profile_id = auth.uid()) rather than by
+// `scope` here; teach_courses is the only capability that matters for them.
+// A check-in volunteer searches members through a dedicated scoped lookup
+// (name + cell only, no contact details) rather than the Members section,
+// so check_in alone is enough — no view_members/view_contact_details.
 const positions: readonly PositionDef[] = [
-  { key: "zonal_director", label: "Zonal Director", rank: 0, scope: "zone", loginRole: "super_admin", baseCaps: ALL_CAPS },
-  { key: "assistant_zonal_director", label: "Assistant Zonal Director", rank: 1, scope: "zone", loginRole: "super_admin", baseCaps: ALL_CAPS },
+  { key: "system_admin", label: "System Administrator", rank: 0, scope: "zone", loginRole: "super_admin", baseCaps: ALL_CAPS },
   {
-    key: "zonal_secretary", label: "Zonal Secretary", rank: 2, scope: "zone", loginRole: "admin",
-    baseCaps: ["view_members", "view_contact_details", "view_giving_totals", "manage_events", "manage_records"],
-    portfolioCaps: {
-      finance: ["view_giving_individual", "import_giving", "manage_ledger", "view_reports"],
-      programs: ["manage_training", "manage_calendar", "send_newsletter", "manage_livestreams"],
-      administration: ["manage_members", "manage_calendar", "send_newsletter", "manage_records"],
-      operations: ["manage_members", "manage_calendar", "send_newsletter", "manage_records"],
-    },
+    key: "group_pastor", label: "Group Pastor", rank: 1, scope: "sub_zone", loginRole: "admin",
+    baseCaps: [
+      "view_members", "view_contact_details", "manage_members", "view_reports", "export_data",
+      "view_attendance", "record_follow_up", "view_pastoral_notes", "manage_services",
+      "manage_courses", "send_messages", "approve_messages",
+    ],
   },
   {
-    key: "deputy_zonal_secretary", label: "Deputy Zonal Secretary", rank: 3, scope: "zone", loginRole: "admin",
-    baseCaps: ["view_members", "view_contact_details", "view_giving_totals"],
-    portfolioCaps: {
-      finance: ["view_giving_individual", "import_giving", "manage_ledger", "view_reports"],
-      programs: ["manage_training", "manage_calendar", "send_newsletter", "manage_livestreams"],
-      administration: ["manage_members", "manage_calendar", "send_newsletter", "manage_records"],
-      operations: ["manage_members", "manage_calendar", "send_newsletter", "manage_records"],
-    },
+    key: "location_pastor", label: "Location Pastor", rank: 2, scope: "chapter", loginRole: "admin",
+    baseCaps: [
+      "view_members", "view_contact_details", "manage_members", "view_reports", "export_data",
+      "view_attendance", "record_follow_up", "view_pastoral_notes", "manage_services",
+      "manage_courses", "send_messages",
+    ],
   },
   {
-    key: "sub_zone_governor", label: "Sub Zone Governor", rank: 4, scope: "sub_zone", loginRole: "admin",
-    baseCaps: ["view_members", "view_contact_details", "view_giving_totals", "manage_records", "manage_members"],
+    key: "cell_leader", label: "Cell Leader", rank: 3, scope: "cell", loginRole: "admin",
+    baseCaps: ["view_members", "view_contact_details", "view_attendance", "record_follow_up"],
   },
   {
-    key: "governor", label: "Governor", rank: 5, scope: "chapter", loginRole: "admin",
-    baseCaps: ["view_members", "view_contact_details", "view_giving_totals", "manage_records", "manage_members"],
+    key: "fs_teacher", label: "Foundation School Teacher", rank: 4, scope: "self", loginRole: "admin",
+    baseCaps: ["teach_courses"],
   },
   {
-    key: "deputy_governor", label: "Deputy Governor", rank: 6, scope: "chapter", loginRole: "admin",
-    baseCaps: ["view_members", "view_contact_details", "view_giving_totals"],
-    portfolioCaps: {
-      finance: ["view_giving_individual", "manage_ledger"],
-      administration: ["manage_members", "manage_calendar", "manage_records"],
-      operations: ["manage_members", "manage_calendar", "manage_records"],
-    },
+    key: "checkin_volunteer", label: "Check-in Volunteer", rank: 5, scope: "chapter", loginRole: "admin",
+    baseCaps: ["check_in"],
   },
-  { key: "member", label: "Member", rank: 7, scope: "self", loginRole: "member", baseCaps: [] },
+  { key: "member", label: "Member", rank: 6, scope: "self", loginRole: "member", baseCaps: [] },
 ];
 
-// Example tenant. Stratum ships with this so it runs out of the box; a real
-// deployment replaces this whole folder (see README → "A new client").
-// Everything that makes a portal belong to one organisation lives here.
+// CE Sandton. Everything that makes this deployment CE Sandton rather than a
+// generic Stratum portal lives in this folder; see src/lib/tenant.ts.
+//
+// Placeholders pending the church's answers (logo, brand colours in
+// theme.css, age bands, active-member rule, Foundation School completion
+// rule, birthday-approval and minors policy — see org_settings once Phase 2
+// lands): update this file and theme.css once they're confirmed.
 export const tenant: TenantConfig = {
-  name: "Example Church",
-  portalName: "Example Church Portal",
-  description: "Member management and analytics for Example Church",
-  defaultOrgName: "Example Church — Northern Region",
-  adminNameExample: "e.g. Pastor Jane Doe",
-  defaultCurrency: "USD",
-  timezone: "UTC",
+  name: "CE Sandton",
+  portalName: "CE Sandton Portal",
+  description: "Member management, attendance, Foundation School and communication for CE Sandton",
+  defaultOrgName: "CE Sandton",
+  adminNameExample: "e.g. Pastor John Doe",
+  defaultCurrency: "ZAR",
+  timezone: "Africa/Johannesburg",
   labels: {
     group: "Group", groupPlural: "Groups",
-    location: "Chapter", locationPlural: "Chapters",
+    location: "Location", locationPlural: "Locations",
     cell: "Cell", cellPlural: "Cells",
   },
   modules: {
-    giving: true,
-    ledger: true,
-    livestreams: true,
-    records: true,
-    training: true,
-    events: true,
-    handbook: true,
-    // Not yet built in Stratum core — flip on once shipped.
-    attendance: false,
-    courses: false,
-    messaging: false,
+    // Not part of this deployment.
+    giving: false,
+    ledger: false,
+    livestreams: false,
+    records: false,
+    training: false,
+    events: false,
+    handbook: false,
+    // The spec's core features. attendance/courses/messaging aren't built
+    // in Stratum core yet (Phases 3–5) — flip stays here ready for when
+    // they land; nav-items.ts doesn't gate on it yet either.
+    attendance: true,
+    courses: true,
+    messaging: true,
   },
   access: {
     memberPositionKey: "member",
-    rootPositionKey: "zonal_director",
-    assistantPositionKey: "assistant_zonal_director",
-    portfolios: [
-      { key: "finance", label: "Finance" },
-      { key: "programs", label: "Programs" },
-      { key: "administration", label: "Administration" },
-      { key: "operations", label: "Operations" },
-    ],
+    rootPositionKey: "system_admin",
+    // No separate co-admin tier — setup's "invite assistants" step invites
+    // more system_admin logins.
+    assistantPositionKey: "system_admin",
+    portfolios: [],
     positions,
   },
   login: {
-    headline: "One view of every branch, every member, every region.",
-    blurb: "Membership growth, giving, training, events and livestreams — from a single dashboard built for leadership.",
+    headline: "One view of every location, every cell, every member.",
+    blurb: "Membership, service attendance, Foundation School progress and follow-up — from a single dashboard built for leadership.",
   },
-  affiliation: null,
-  emailPlaceholder: "you@example.org",
-  logo: { src: "/brand/logo-mark.svg", alt: "Example Church", width: 64, height: 64 },
+  affiliation: "An arm of Christ Embassy",
+  emailPlaceholder: "you@cesandton.org",
+  // Placeholder mark — replace with CE Sandton's own logo once supplied.
+  logo: { src: "/brand/logo-mark.svg", alt: "CE Sandton", width: 64, height: 64 },
   chartPrimary: "#4f46e5",
   chartRamp: ["#c7d2fe", "#a5b4fc", "#818cf8", "#4f46e5"],
   avatarColors: ["#4f46e5", "#0891b2", "#7c3aed", "#0d9488", "#2563eb", "#9333ea", "#0284c7"],
 
-  countries: [
-    { name: "South Africa", flag: "🇿🇦" },
-    { name: "Kenya", flag: "🇰🇪" },
-    { name: "United Kingdom", flag: "🇬🇧" },
-  ],
+  countries: [{ name: "South Africa", flag: "🇿🇦" }],
 
-  eventSeries: [
-    { slug: "annual-conference", name: "Annual Conference", shortName: "Annual Conference", icon: Users },
-    { slug: "leadership-summit", name: "Leadership Summit", shortName: "Leadership Summit", icon: Landmark },
-    { slug: "retreat", name: "Family Retreat", shortName: "Retreat", icon: Tent },
-  ],
+  // The flagship-event-series module (modules.events) is off; the church's
+  // services and one-off events go through the attendance module instead.
+  eventSeries: [],
 
-  captionLanguage: "en",
+  captionLanguage: null,
   lessonExamples: {
-    video: "e.g. Welcome to Example Church",
+    video: "e.g. Welcome to CE Sandton",
     quiz: "e.g. Orientation quiz",
     videoHosts: "YouTube, Vimeo, etc.",
   },
 
+  // Unused while modules.records is off; kept populated so the type is
+  // satisfied and Phase 2's own member-import wizard (not this roster
+  // importer, which is Haven-format-specific) can still read chapterPrefixes
+  // if useful for chapter-name matching.
   roster: {
-    chapterPrefixes: ["example church", "example"],
+    chapterPrefixes: ["ce sandton", "christ embassy sandton", "sandton"],
     countryGuesses: [],
   },
 
   records: {
-    bankAccounts: [
-      { key: "operating", label: "Operating Account" },
-      { key: "projects", label: "Projects Account" },
-    ],
+    bankAccounts: [],
     cellLevels: { upper: "Group", upperPlural: "Groups", lower: "Cell", lowerPlural: "Cells" },
-    meetingTypes: ["Leadership meeting", "Branch meeting", "Finance committee"],
+    meetingTypes: ["Cell leaders' meeting", "Location meeting"],
   },
-
-  handbook,
 };
