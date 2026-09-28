@@ -8,6 +8,7 @@ import type { Dataset } from "./analytics";
 import { isGivingCategory } from "@/lib/giving";
 import { mapEventRow } from "./events";
 import { CAPABILITIES, hasCapability, isPortfolio, isPosition, type Capability, type Portfolio, type Position, type Scope } from "@/lib/access";
+import { tenant } from "@/tenant";
 import type {
   ActivityItem,
   ActivityType,
@@ -73,13 +74,13 @@ export const getCurrentProfile = cache(async (): Promise<CurrentProfile | null> 
   const zone = Array.isArray(profile.zones) ? profile.zones[0] : profile.zones;
   if (!zone) return null;
 
-  // Directors hold every capability by definition. Their stored list is a
-  // snapshot, so a permission added after their login was created (e.g. editing
-  // event pages) would be missing — and RLS reads the stored list. Heal it on
-  // the spot instead of making someone press "Refresh permissions".
+  // Root/assistant hold every capability by definition. Their stored list is
+  // a snapshot, so a permission added after their login was created (e.g.
+  // editing event pages) would be missing — and RLS reads the stored list.
+  // Heal it on the spot instead of making someone press "Refresh permissions".
   let caps: string[] = profile.caps ?? [];
   if (
-    (profile.position === "zonal_director" || profile.position === "assistant_zonal_director") &&
+    (profile.position === tenant.access.rootPositionKey || profile.position === tenant.access.assistantPositionKey) &&
     CAPABILITIES.some((c) => !caps.includes(c))
   ) {
     caps = [...CAPABILITIES];
@@ -99,7 +100,7 @@ export const getCurrentProfile = cache(async (): Promise<CurrentProfile | null> 
     zoneCurrency: zone.display_currency,
     setupComplete: zone.setup_complete,
     role: profile.role as CurrentProfile["role"],
-    position: isPosition(profile.position) ? profile.position : "member",
+    position: isPosition(profile.position) ? profile.position : tenant.access.memberPositionKey,
     portfolio: isPortfolio(profile.portfolio) ? profile.portfolio : null,
     scope: profile.scope,
     subZoneId: profile.sub_zone_id,

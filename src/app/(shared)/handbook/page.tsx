@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { requireModule } from "@/lib/require-module";
 import { ArrowRight, BookMarked, Compass, Target } from "lucide-react";
 import { HandbookSearch } from "@/components/handbook/handbook-search";
 import { getCurrentProfile } from "@/lib/data/get-dataset";
@@ -8,6 +9,7 @@ import { pluralize } from "@/lib/utils";
 import { tenant } from "@/tenant";
 
 export default async function HandbookPage() {
+  requireModule("handbook");
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
   const content = tenant.handbook;

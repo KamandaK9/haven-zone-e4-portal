@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { requireModule } from "@/lib/require-module";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { DeleteStreamButton } from "@/components/live/delete-stream-button";
 import { LiveRoom, type Viewer } from "@/components/live/live-room";
@@ -11,6 +12,7 @@ import { getVideoProvider } from "@/lib/video/providers";
 import { tenant } from "@/tenant";
 
 export default async function LiveStreamPage({ params }: { params: Promise<{ streamId: string }> }) {
+  requireModule("livestreams");
   const { streamId } = await params;
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");

@@ -85,6 +85,7 @@ export const tenant: TenantConfig = {
     training: true,
     events: true,
     handbook: true,
+    newsletter: true,
     // Not yet built in Stratum core — flip on once shipped.
     attendance: false,
     courses: false,

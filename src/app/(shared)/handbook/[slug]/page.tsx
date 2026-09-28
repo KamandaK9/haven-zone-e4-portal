@@ -9,6 +9,7 @@ import { formatMoney } from "@/lib/currency";
 import { EVENT_SERIES_DEFS } from "@/lib/event-series";
 import { buildHandbookLive } from "@/lib/handbook/live";
 import { getHandbookRules } from "@/lib/handbook/rules-server";
+import { requireModule } from "@/lib/require-module";
 import { tenant } from "@/tenant";
 
 // Blocks that need the zone's data; pages without any skip loading it.
@@ -21,6 +22,7 @@ export default async function HandbookSectionPage({
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
+  requireModule("handbook");
   const { slug } = await params;
   const query = await searchParams;
   const profile = await getCurrentProfile();

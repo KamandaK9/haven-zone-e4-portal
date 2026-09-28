@@ -6,12 +6,14 @@ import { LessonListEditor } from "@/components/training/lesson-list-editor";
 import { can, getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
 import { getCourseLessons, getQuizQuestionsForAuthor } from "@/lib/data/training-lessons";
 import { isHostedVideoEnabled } from "@/lib/video/providers";
+import { requireModule } from "@/lib/require-module";
 
 export default async function CourseEditorPage({
   params,
 }: {
   params: Promise<{ programId: string }>;
 }) {
+  requireModule("training");
   const { programId } = await params;
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
