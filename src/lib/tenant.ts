@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import type { CurrencyCode } from "@/lib/currency";
 import type { HandbookContent } from "@/lib/handbook/types";
+import type { Capability, Scope } from "@/lib/access";
 
 // The contract between Stratum (everything outside src/tenant/) and the
 // organisation a deployment is built for (src/tenant/). Core code reads the
@@ -17,6 +18,26 @@ export type EventSeriesDef = {
   icon: LucideIcon;
 };
 
+// One leadership tier. Position sets scope + capability defaults; a login's
+// *effective* caps are baseCaps (+ portfolioCaps[their portfolio]) ∪ granted
+// − revoked (src/lib/access.ts → effectiveCapabilities). `rank` orders
+// seniority — lower is more senior — and gates who may act on whom
+// (canActOn) and who a Team & access editor may assign (nobody at or above
+// their own rank).
+export type PositionDef = {
+  key: string; // stored on members.position / profiles.position — don't rename in place once in use
+  label: string;
+  rank: number;
+  scope: Scope;
+  loginRole: "super_admin" | "admin" | "member";
+  baseCaps: readonly Capability[];
+  // Additive caps layered on top of baseCaps for a login with this position
+  // AND the given portfolio key. Omit for tenants with no portfolios.
+  portfolioCaps?: Readonly<Record<string, readonly Capability[]>>;
+};
+
+export type PortfolioDef = { key: string; label: string };
+
 export type TenantConfig = {
   // How the organisation refers to itself in running copy ("Time in Grace Church").
   name: string;
@@ -30,6 +51,47 @@ export type TenantConfig = {
   // Display currency a new org starts with (amounts are always stored in USD;
   // admins can change this later in Settings).
   defaultCurrency: CurrencyCode;
+  // IANA zone for schedules, birthdays and reports (e.g. "Africa/Johannesburg").
+  timezone: string;
+  // What the org calls each rung of its structure (a zone's sub_zone / church
+  // / cell rows), used everywhere those levels are shown. Keys in the
+  // database stay sub_zone/church/cell regardless of these labels.
+  labels: {
+    group: string; groupPlural: string;
+    location: string; locationPlural: string;
+    cell: string; cellPlural: string;
+  };
+  // Which optional feature areas this deployment ships with. Off hides the
+  // nav item and its routes return 404 (src/lib/nav-items.ts). Modules not
+  // listed here (members, structure, dashboard, settings) are always on.
+  modules: {
+    giving: boolean;
+    ledger: boolean;
+    livestreams: boolean;
+    records: boolean;
+    training: boolean; // self-paced video lessons (src/app/(portal)/training)
+    events: boolean; // the annual flagship-event pages
+    handbook: boolean;
+    attendance: boolean; // services, check-in, absence, follow-up
+    courses: boolean; // cohort-based courses (e.g. Foundation School)
+    messaging: boolean; // SMS/email campaigns + birthdays
+  };
+  access: {
+    positions: readonly PositionDef[];
+    portfolios: readonly PortfolioDef[];
+    // The position everyone starts at with no leadership — no login by
+    // default, no capabilities (the existing "member").
+    memberPositionKey: string;
+    // Position assigned to whoever completes /setup.
+    rootPositionKey: string;
+    // Position given to the extra admins invited during /setup. Same as
+    // rootPositionKey for a tenant with no separate co-admin tier.
+    assistantPositionKey: string;
+    // Scope a member-tier login is given once granted any capability at all
+    // (there'd otherwise be no scope for the grant to apply to). Defaults to
+    // "chapter" if omitted.
+    elevatedMemberScope?: Scope;
+  };
   // Marketing panel on the login page.
   login: { headline: string; blurb: string };
   // Parent-organisation line under the login panel ("An arm of ..."), or

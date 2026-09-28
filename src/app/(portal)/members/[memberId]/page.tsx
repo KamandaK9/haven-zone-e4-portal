@@ -1,5 +1,5 @@
 import { sumByMonth } from "@/lib/giving";
-import { POSITION_LABELS } from "@/lib/access";
+import { isLeader, positionLabel } from "@/lib/access";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Mail, Phone, Calendar, HandCoins, Clock, CheckCircle2, Video } from "lucide-react";
@@ -104,7 +104,7 @@ export default async function MemberPage({
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-semibold tracking-tight">{memberFullName(member)}</h1>
             <Badge variant="secondary" className="font-normal">
-              {member.position !== "member" ? POSITION_LABELS[member.position] : member.title || member.role}
+              {isLeader(member.position) ? positionLabel(member.position) : member.title || member.role}
             </Badge>
           </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-sm text-muted-foreground">

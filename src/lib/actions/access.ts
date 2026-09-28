@@ -6,6 +6,7 @@ import { can, getCurrentProfile, type CurrentProfile } from "@/lib/data/get-data
 import {
   canActOn,
   isCapability,
+  isLeader,
   isPortfolio,
   isPosition,
   loginFor,
@@ -13,6 +14,7 @@ import {
   type Portfolio,
   type Position,
 } from "@/lib/access";
+import { tenant } from "@/tenant";
 import { logAudit } from "./audit";
 import type { ActionResult } from "./members";
 
@@ -59,11 +61,11 @@ export async function updateMemberAccess(input: UpdateAccessInput): Promise<Acti
   if (!member || member.zone_id !== profile.zoneId) return { ok: false, error: "Member not found." };
   if (member.profile_id === profile.userId) return { ok: false, error: "You can't change your own access." };
 
-  const currentPosition = isPosition(member.position) ? member.position : "member";
+  const currentPosition = isPosition(member.position) ? member.position : tenant.access.memberPositionKey;
   if (!canActOn(profile.position, currentPosition)) {
     return { ok: false, error: "You can only change access for people below your own position." };
   }
-  if (input.position !== "member" && !canActOn(profile.position, input.position)) {
+  if (isLeader(input.position) && !canActOn(profile.position, input.position)) {
     return { ok: false, error: "You can't assign a position at or above your own." };
   }
 

@@ -19,17 +19,15 @@ import {
 import {
   CAPABILITIES,
   CAPABILITY_LABELS,
-  PORTFOLIOS,
-  PORTFOLIO_LABELS,
-  POSITIONS,
-  POSITION_LABELS,
   canActOn,
   defaultCapabilities,
   effectiveCapabilities,
+  isLeader,
   type Capability,
   type Portfolio,
   type Position,
 } from "@/lib/access";
+import { tenant } from "@/tenant";
 import { recomputeZoneCapabilities, updateMemberAccess } from "@/lib/actions/access";
 
 const NO_PORTFOLIO = "none";
@@ -101,7 +99,7 @@ export function AccessEditDialog({
     router.refresh();
   }
 
-  const assignable = POSITIONS.filter((p) => p === "member" || canActOn(actorPosition, p));
+  const assignable = tenant.access.positions.filter((p) => !isLeader(p.key) || canActOn(actorPosition, p.key));
 
   return (
     <Dialog
@@ -135,8 +133,8 @@ export function AccessEditDialog({
                 </SelectTrigger>
                 <SelectContent>
                   {assignable.map((p) => (
-                    <SelectItem key={p} value={p}>
-                      {POSITION_LABELS[p]}
+                    <SelectItem key={p.key} value={p.key}>
+                      {p.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -153,9 +151,9 @@ export function AccessEditDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={NO_PORTFOLIO}>None</SelectItem>
-                  {PORTFOLIOS.map((p) => (
-                    <SelectItem key={p} value={p}>
-                      {PORTFOLIO_LABELS[p]}
+                  {tenant.access.portfolios.map((p) => (
+                    <SelectItem key={p.key} value={p.key}>
+                      {p.label}
                     </SelectItem>
                   ))}
                 </SelectContent>

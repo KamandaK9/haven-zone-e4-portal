@@ -24,7 +24,7 @@ import {
 import { sumByMonth } from "@/lib/giving";
 import { getTrainingLevel } from "@/lib/training-icons";
 import { getMemberAchievementStats } from "@/lib/data/achievements";
-import { POSITION_LABELS } from "@/lib/access";
+import { isLeader, positionLabel } from "@/lib/access";
 import { tenant } from "@/tenant";
 
 export default async function MemberDashboardPage() {
@@ -71,7 +71,7 @@ export default async function MemberDashboardPage() {
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-semibold tracking-tight">{memberFullName(member)}</h1>
             <Badge variant="secondary" className="font-normal">
-              {member.position !== "member" ? POSITION_LABELS[member.position] : member.role}
+              {isLeader(member.position) ? positionLabel(member.position) : member.role}
             </Badge>
           </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-sm text-muted-foreground">
