@@ -87,9 +87,10 @@ export const tenant: TenantConfig = {
     training: false,
     events: false,
     handbook: false,
+    newsletter: false,
     // The spec's core features. attendance/courses/messaging aren't built
     // in Stratum core yet (Phases 3–5) — flip stays here ready for when
-    // they land; nav-items.ts doesn't gate on it yet either.
+    // they land.
     attendance: true,
     courses: true,
     messaging: true,
