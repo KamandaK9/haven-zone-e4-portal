@@ -3,6 +3,7 @@ import { PortalFrame } from "@/components/layout/portal-shell";
 import { MemberSidebar } from "@/components/member-portal/member-sidebar";
 import { MemberTopbar } from "@/components/member-portal/member-topbar";
 import { getCurrentProfile } from "@/lib/data/get-dataset";
+import { requireAal2IfEnrolled } from "@/lib/mfa";
 
 // Same frame the staff portal uses (fixed sidebar, top bar, content area) —
 // see (shared)/layout.tsx, which renders the identical member chrome for
@@ -13,6 +14,7 @@ export default async function MemberLayout({ children }: { children: React.React
   if (!profile) redirect("/?from=member");
   if (!profile.setupComplete) redirect("/setup");
   if (profile.role !== "member") redirect("/dashboard");
+  await requireAal2IfEnrolled();
 
   return (
     <PortalFrame

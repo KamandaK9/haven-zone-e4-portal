@@ -55,7 +55,7 @@ export async function updateMemberAccess(input: UpdateAccessInput): Promise<Acti
   const admin = createAdminClient();
   const { data: member } = await admin
     .from("members")
-    .select("id, zone_id, first_name, last_name, position, church_id, profile_id")
+    .select("id, zone_id, first_name, last_name, position, portfolio, church_id, profile_id")
     .eq("id", input.memberId)
     .single();
   if (!member || member.zone_id !== profile.zoneId) return { ok: false, error: "Member not found." };
@@ -100,7 +100,12 @@ export async function updateMemberAccess(input: UpdateAccessInput): Promise<Acti
     profile,
     "access.update",
     `Set ${member.first_name} ${member.last_name} to ${input.position.replace(/_/g, " ")}${portfolio ? ` (${portfolio})` : ""}` +
-      (granted.length || revoked.length ? ` with ${granted.length} granted / ${revoked.length} revoked permissions` : "")
+      (granted.length || revoked.length ? ` with ${granted.length} granted / ${revoked.length} revoked permissions` : ""),
+    {
+      entity: { type: "member", id: member.id },
+      before: { position: member.position, portfolio: member.portfolio },
+      after: { position: input.position, portfolio, granted, revoked },
+    }
   );
   revalidatePath("/", "layout");
   return { ok: true };

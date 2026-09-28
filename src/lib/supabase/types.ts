@@ -444,6 +444,10 @@ export type Database = {
           actor_name: string;
           action: string;
           summary: string;
+          entity_type: string | null;
+          entity_id: string | null;
+          before: Json | null;
+          after: Json | null;
           created_at: string;
         };
         Insert: {
@@ -453,6 +457,10 @@ export type Database = {
           actor_name: string;
           action: string;
           summary: string;
+          entity_type?: string | null;
+          entity_id?: string | null;
+          before?: Json | null;
+          after?: Json | null;
           created_at?: string;
         };
         Update: Record<string, never>;

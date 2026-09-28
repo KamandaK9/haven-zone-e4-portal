@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { requireModule } from "@/lib/require-module";
 import { CalendarDays } from "lucide-react";
 import { getCurrentProfile } from "@/lib/data/get-dataset";
 import { getEventSeriesList, getLatestEditionsBySeries } from "@/lib/data/events";
@@ -9,6 +10,7 @@ import { SERIES_ICON_BY_SLUG } from "@/lib/event-series";
 import { pluralize } from "@/lib/utils";
 
 export default async function EventsIndexPage() {
+  requireModule("events");
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
   const [seriesList, latestBySeries] = await Promise.all([

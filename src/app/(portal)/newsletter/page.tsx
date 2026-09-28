@@ -1,8 +1,10 @@
 import { redirect } from "next/navigation";
+import { requireModule } from "@/lib/require-module";
 import { NewsletterComposer } from "@/components/newsletter/newsletter-composer";
 import { can, getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
 
 export default async function NewsletterPage() {
+  requireModule("newsletter");
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
   if (!can(profile, "send_newsletter")) redirect("/dashboard");

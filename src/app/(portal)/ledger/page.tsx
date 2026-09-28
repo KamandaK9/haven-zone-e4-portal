@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { requireModule } from "@/lib/require-module";
 import { TrendingUp, TrendingDown, Scale } from "lucide-react";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { AddLedgerEntryDialog } from "@/components/ledger/add-ledger-entry-dialog";
@@ -20,6 +21,7 @@ import { getDisplayCurrency } from "@/lib/currency-server";
 import { formatMoney } from "@/lib/currency";
 
 export default async function LedgerPage() {
+  requireModule("ledger");
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
   if (profile.role === "member") redirect("/me");

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { requireModule } from "@/lib/require-module";
 import { AlertTriangle, CalendarClock, PlayCircle, Radio } from "lucide-react";
 import { StreamDialog } from "@/components/live/stream-dialog";
 import { can, getCurrentProfile } from "@/lib/data/get-dataset";
@@ -50,6 +51,7 @@ function StreamRow({ s }: { s: LiveStream }) {
 }
 
 export default async function LivePage() {
+  requireModule("livestreams");
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
   const canManage = can(profile, "manage_livestreams");

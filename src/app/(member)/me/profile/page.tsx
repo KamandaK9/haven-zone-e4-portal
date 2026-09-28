@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { Briefcase, Cake, Calendar, Gift, Heart, MessageCircleMore } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ContactInfoForm } from "@/components/member-portal/contact-info-form";
 import { MemberPhotoUpload } from "@/components/members/member-photo-upload";
@@ -109,6 +111,18 @@ export default async function MemberProfilePage() {
         </CardHeader>
         <CardContent>
           <ContactInfoForm email={member.email} phone={member.phone} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Security</CardTitle>
+          <CardDescription>Add an authenticator app for a second step at sign-in.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/security">Manage two-factor authentication</Link>
+          </Button>
         </CardContent>
       </Card>
     </div>

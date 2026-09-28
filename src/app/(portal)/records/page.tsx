@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { requireModule } from "@/lib/require-module";
 import { AlertTriangle, Landmark, Mail, NotebookPen, ReceiptText } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChapterPicker } from "@/components/records/chapter-picker";
@@ -25,6 +26,7 @@ export default async function RecordsPage({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
+  requireModule("records");
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
   if (profile.role === "member") redirect("/me");

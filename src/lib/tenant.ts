@@ -62,8 +62,9 @@ export type TenantConfig = {
     cell: string; cellPlural: string;
   };
   // Which optional feature areas this deployment ships with. Off hides the
-  // nav item and its routes return 404 (src/lib/nav-items.ts). Modules not
-  // listed here (members, structure, dashboard, settings) are always on.
+  // nav item and its routes return 404 (src/lib/nav-items.ts, ModuleKey).
+  // Modules not listed here (members, structure, dashboard, reports,
+  // calendar, settings) are always on.
   modules: {
     giving: boolean;
     ledger: boolean;
@@ -72,6 +73,7 @@ export type TenantConfig = {
     training: boolean; // self-paced video lessons (src/app/(portal)/training)
     events: boolean; // the annual flagship-event pages
     handbook: boolean;
+    newsletter: boolean; // Resend email broadcasts (src/app/(portal)/newsletter)
     attendance: boolean; // services, check-in, absence, follow-up
     courses: boolean; // cohort-based courses (e.g. Foundation School)
     messaging: boolean; // SMS/email campaigns + birthdays
@@ -138,3 +140,6 @@ export type TenantConfig = {
   // Handbook entirely.
   handbook?: HandbookContent;
 };
+
+// A key of TenantConfig.modules, e.g. "ledger" or "attendance".
+export type ModuleKey = keyof TenantConfig["modules"];
