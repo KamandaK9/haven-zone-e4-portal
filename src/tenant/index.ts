@@ -61,10 +61,18 @@ const positions: readonly PositionDef[] = [
 // CE Sandton. Everything that makes this deployment CE Sandton rather than a
 // generic Stratum portal lives in this folder; see src/lib/tenant.ts.
 //
-// Placeholders pending the church's answers (logo, brand colours in
-// theme.css, age bands, active-member rule, Foundation School completion
-// rule, birthday-approval and minors policy — see org_settings once Phase 2
-// lands): update this file and theme.css once they're confirmed.
+// Interim policy defaults (decided 2026-09-30 while the church's answers are
+// outstanding — seed these into org_settings once Phase 2 lands; the church
+// may still override any of them):
+//   - Age bands: Children 0–12, Youth 13–25, Adults 26+.
+//   - Active member: attended ≥1 of their last 4 expected services.
+//   - Absence alert: cell leader alerted after 2 consecutive missed services.
+//   - Foundation School completion: every required lesson attended (make-ups
+//     allowed in a later cohort).
+//   - Birthday messages: auto-send daily from a once-approved template, admin
+//     can pause; under-18s go to the guardian's contact, not the minor.
+//   - Check-in: no offline mode — printable sheet, bulk-captured afterwards.
+// Still placeholder: logo and brand colours in theme.css, pending supply.
 export const tenant: TenantConfig = {
   name: "CE Sandton",
   portalName: "CE Sandton Portal",
