@@ -44,6 +44,55 @@ their default permissions (`src/lib/access.ts`), the zone → sub-zone →
 chapter structure (`zones`, `sub_zones`, `churches` tables), and the
 leadership-roster spreadsheet importer.
 
+## Security
+
+The data is personal and financial, so the rule is: **the server never sends
+or accepts anything a person isn't allowed** — hiding things in the browser
+is not protection.
+
+- **Database (Row Level Security + guard triggers)** decides every read and
+  write, including from someone calling Supabase directly with the public
+  anon key. Where people may update their own row, triggers limit *which
+  columns* (e.g. a member can change only their email and phone; positions
+  and logins change only through Team & access). `npm run test:db` replays
+  every migration into an in-process Postgres and tries each known attack —
+  it runs in CI.
+- **Server Actions** check the signed-in profile and capability before doing
+  anything, and the service-role key is used only after those checks
+  (`server-only` modules).
+- **Files**: paperwork is in a private bucket, opened through 5-minute signed
+  links issued after a permission check; every stored file path must sit in
+  its owner's folder (database constraint), and the server re-checks before
+  deleting.
+- **Browser**: a per-request nonce Content-Security-Policy (only this site's
+  scripts run; only the services listed in `src/lib/security-headers.ts` can
+  be contacted), HSTS, no framing, strict referrer policy.
+- **Sign-in**: optional authenticator-app two-step sign-in (`/security`);
+  passwords of 10+ characters with letters and numbers; temporary passwords
+  must be replaced at first sign-in; leaders are signed out after 30 minutes
+  idle, members after 7 days; email links can only redirect within the site.
+- **Rate limits** on invites, newsletters, support requests, chat and quiz
+  attempts (`take_rate_limit`).
+
+### Supabase dashboard settings (per project)
+
+`supabase/config.toml` only applies to a local stack. On each hosted project,
+under **Authentication**:
+
+- **Sign In / Providers → Email**: turn **Allow new users to sign up** off
+  (accounts come from setup and invites); **Secure password change** on.
+- **Passwords**: minimum length **10**, require **letters and digits**;
+  turn on leaked-password protection if your plan has it.
+- **Multi-Factor**: enable **TOTP (authenticator app)**.
+- **URL Configuration**: Site URL = the deployment's URL, and only its
+  `/auth/confirm` in the redirect allow-list. Also set
+  `NEXT_PUBLIC_SITE_URL` on the deployment.
+- **Attack protection**: enable CAPTCHA if you see sign-in abuse.
+
+When adding a feature that talks to a new outside service from the browser
+(an embed, a script, an API), add its origin to `src/lib/security-headers.ts`
+or the browser will block it.
+
 ## Getting started
 
 ```bash
@@ -61,6 +110,7 @@ Open <http://localhost:3000>.
 | `npm run dev` | Dev server. |
 | `npm run build` / `npm start` | Production build / serve it. |
 | `npm run lint` | ESLint, including the tenant-boundary rules. |
+| `npm test` / `npm run test:db` | Unit tests / database security tests (RLS and guard triggers, in-process Postgres). |
 | `npm run typecheck` | `next typegen` (generates the `PageProps`/`LayoutProps` route types) then `tsc --noEmit`. |
 | `npm run db:types` | Regenerates `src/lib/supabase/types.ts` from the linked Supabase project. |
 

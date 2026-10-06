@@ -31,11 +31,12 @@ export default function ResetPasswordPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (password.length < 8) return setError("Password must be at least 8 characters.");
+    if (password.length < 10) return setError("Use at least 10 characters.");
+    if (!/[a-zA-Z]/.test(password) || !/\d/.test(password)) return setError("Use both letters and numbers.");
     if (password !== confirm) return setError("Passwords don't match.");
 
     setLoading(true);
-    const { error } = await createClient().auth.updateUser({ password });
+    const { error } = await createClient().auth.updateUser({ password, data: { must_change_password: false } });
     setLoading(false);
     if (error) return setError(error.message);
     setDone(true);
