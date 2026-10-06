@@ -14,7 +14,7 @@
 
 import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, extname, join, resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { fileURLToPath } from "node:url";
@@ -215,7 +215,8 @@ const legal = {
   ],
 };
 const lighten = (t) => mix(brandColor, 255, t);
-const json = (v) => JSON.stringify(v, null, 2).replace(/\n/g, "\n  ");
+// Pretty object literal for the generated file: unquoted keys where valid.
+const json = (v) => JSON.stringify(v, null, 2).replace(/"([A-Za-z_$][\w$]*)":/g, "$1:").replace(/\n/g, "\n  ");
 const keyOf = (label) => slugify(label).replace(/-/g, "_");
 
 const tenantTs = `${eventSeries.length ? 'import { CalendarDays } from "lucide-react";\n' : ""}import type { TenantConfig } from "@/lib/tenant";
