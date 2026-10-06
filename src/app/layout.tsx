@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { tenant } from "@/tenant";
@@ -18,7 +19,11 @@ export const metadata: Metadata = {
   description: tenant.description,
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // Every page renders per request so it can carry that request's CSP nonce
+  // (set in proxy.ts); a page built ahead of time would have its scripts
+  // blocked by the policy.
+  await connection();
   return (
     <html
       lang="en"
