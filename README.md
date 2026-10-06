@@ -110,6 +110,7 @@ Open <http://localhost:3000>.
 | `npm run dev` | Dev server. |
 | `npm run build` / `npm start` | Production build / serve it. |
 | `npm run lint` | ESLint, including the tenant-boundary rules. |
+| `npm run new-client -- --dir …` | Set up a new client repo (see A new client). |
 | `npm test` / `npm run test:db` | Unit tests / database security tests (RLS and guard triggers, in-process Postgres). |
 | `npm run typecheck` | `next typegen` (generates the `PageProps`/`LayoutProps` route types) then `tsc --noEmit`. |
 | `npm run db:types` | Regenerates `src/lib/supabase/types.ts` from the linked Supabase project. |
@@ -251,32 +252,36 @@ Local development against a local stack: `npx supabase start`, then
 Each client gets **their own repo, deployment and database**, made from this
 one — and keeps receiving Stratum updates.
 
-### Start the client repo
+### Start the client repo — one command
 
 ```bash
-git clone https://github.com/KamandaK9/stratum.git <client>-portal
-cd <client>-portal
-git remote rename origin upstream            # Stratum
-git remote add origin <the client's new GitHub repo>
-git config merge.ours.driver true            # see "Pulling Stratum updates"
+npm run new-client -- --dir ../<client>-portal                  # asks questions
+npm run new-client -- --dir ../<client>-portal --config answers.json --yes --install
 ```
 
-Then make it theirs, in one commit:
+The script (`scripts/new-client.mjs`, Node built-ins only) clones this
+checkout into the new folder with Stratum as the `upstream` remote, then
+writes everything that makes the portal the client's:
 
-1. **`src/tenant/index.ts`** — export `tenant: TenantConfig` (from
-   `@/lib/tenant`). TypeScript tells you what's missing. Slugs in
-   `eventSeries` and keys in `records.bankAccounts` are stored in the
-   database, so don't change them after launch.
-2. **`src/tenant/handbook/`** — their operating manual (or remove `handbook`
-   from the tenant to hide the Handbook).
-3. **`src/tenant/theme.css`** — their colour tokens (same variable names).
-4. **`src/tenant/lint.json`** — their name(s), so it can't leak into core.
-5. **`public/brand/`** — their logo; also `src/app/favicon.ico`.
-6. `README.md`, `supabase/seed.sql`, and the `name` in `package.json` /
-   `project_id` in `supabase/config.toml`.
-7. New Supabase project: link it, `db push` the migrations, set the env vars
-   (including a fresh `SETUP_KEY`), deploy, and run `/setup?key=...`.
-8. `npm run lint && npm run typecheck && npm test && npm run build`.
+- `src/tenant/index.ts` — names, labels, currency, time zone, countries, the
+  modules to switch on, a leadership structure from `src/lib/access-presets.ts`
+  (church network or single church), event series, bank accounts, meeting
+  types and the privacy (`legal`) details;
+- `src/tenant/theme.css` from one brand colour; the logo (PNG/SVG, or
+  initials); `src/tenant/lint.json`;
+- `docs/legal/` from the templates; package and Supabase project names; a
+  short README; an empty seed;
+- `.env.local` with a fresh `SETUP_KEY`; `git config merge.ours.driver true`;
+- `stratum.client.json` — the answers, for the record.
+
+It commits the result, and with `--github owner/name` creates the client's
+private repo and pushes; with `--install` it installs and runs typecheck, lint
+and tests. See `stratum.client.example.json` for every answer. Anything left
+blank in the privacy details becomes a `[placeholder]` that Settings flags.
+
+Then: create the client's Supabase project and `npx supabase link` +
+`db push`, apply the dashboard settings (Security above), deploy with the env
+vars, open `/setup?key=…`, and work through `docs/legal/README.md`.
 
 ### Pulling Stratum updates
 
