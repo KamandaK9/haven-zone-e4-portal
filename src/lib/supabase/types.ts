@@ -23,6 +23,8 @@ export type LiveStreamStatus = "scheduled" | "live" | "ended";
 export type LiveStreamAudience = "zone" | "chapters" | "leaders";
 export type RecordingStatus = "none" | "processing" | "ready" | "errored";
 export type SupportCategory = "question" | "problem" | "account" | "records" | "other";
+export type DataRequestKind = "access" | "correction" | "deletion" | "objection" | "other";
+export type DataRequestStatus = "open" | "in_progress" | "completed" | "declined";
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
@@ -73,6 +75,8 @@ export type Database = {
           caps: string[];
           granted_caps: string[];
           revoked_caps: string[];
+          privacy_accepted_version: string | null;
+          privacy_accepted_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -109,6 +113,8 @@ export type Database = {
           caps: string[];
           granted_caps: string[];
           revoked_caps: string[];
+          privacy_accepted_version: string | null;
+          privacy_accepted_at: string | null;
         }>;
         Relationships: [
           {
@@ -925,6 +931,41 @@ export type Database = {
         Update: Partial<{
           status: "open" | "resolved";
           email_status: "not_sent" | "sent" | "failed";
+          resolved_at: string | null;
+          resolved_by: string | null;
+        }>;
+        Relationships: [];
+      };
+      data_requests: {
+        Row: {
+          id: string;
+          zone_id: string;
+          profile_id: string | null;
+          member_id: string | null;
+          requester_name: string;
+          requester_email: string;
+          kind: DataRequestKind;
+          details: string;
+          status: DataRequestStatus;
+          response: string | null;
+          created_at: string;
+          due_at: string;
+          resolved_at: string | null;
+          resolved_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          zone_id: string;
+          profile_id: string;
+          member_id?: string | null;
+          requester_name: string;
+          requester_email: string;
+          kind: DataRequestKind;
+          details: string;
+        };
+        Update: Partial<{
+          status: DataRequestStatus;
+          response: string | null;
           resolved_at: string | null;
           resolved_by: string | null;
         }>;

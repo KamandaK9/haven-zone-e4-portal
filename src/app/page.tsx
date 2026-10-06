@@ -73,8 +73,8 @@ function LoginForm() {
 
           <div className="grid grid-cols-3 gap-4 pt-4">
             <StatBlock icon={Users2} label="Members" />
-            <StatBlock icon={Globe2} label="Countries" />
-            <StatBlock icon={TrendingUp} label="Chapters" />
+            <StatBlock icon={Globe2} label={tenant.labels.groupPlural} />
+            <StatBlock icon={TrendingUp} label={tenant.labels.locationPlural} />
           </div>
         </div>
 
@@ -96,7 +96,7 @@ function LoginForm() {
             <p className="text-sm text-muted-foreground">
               {isMember
                 ? "Sign in to see your profile, giving history, and the calendar."
-                : "Sign in to access your zone's dashboard."}
+                : "Sign in to access your leadership dashboard."}
             </p>
           </div>
 
@@ -152,7 +152,12 @@ function LoginForm() {
             </CardContent>
           </Card>
 
-          <p className="text-center text-xs text-muted-foreground">Powered by Stratum KamTech</p>
+          <p className="text-center text-xs text-muted-foreground">
+            <Link href="/privacy" className="hover:text-foreground">Privacy</Link>
+            {" · "}
+            <Link href="/terms" className="hover:text-foreground">Terms</Link>
+            {" · "}Powered by Stratum KamTech
+          </p>
         </div>
       </div>
     </div>

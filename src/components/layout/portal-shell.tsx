@@ -207,6 +207,12 @@ export function PortalFrame({
       <div className="md:pl-64 flex flex-col min-h-screen">
         {topbar}
         <main className="flex-1 p-4 md:p-8 max-w-[1400px] w-full mx-auto">{children}</main>
+        <footer className="flex flex-wrap justify-center gap-x-4 gap-y-1 px-4 pb-6 text-xs text-muted-foreground">
+          <Link href="/privacy" className="hover:text-foreground">Privacy notice</Link>
+          <Link href="/terms" className="hover:text-foreground">Terms of use</Link>
+          <Link href="/my-data" className="hover:text-foreground">Your data</Link>
+          <Link href="/security" className="hover:text-foreground">Sign-in security</Link>
+        </footer>
       </div>
     </div>
   );
