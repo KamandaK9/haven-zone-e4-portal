@@ -1,4 +1,8 @@
 import { sumByMonth } from "@/lib/giving";
+import { ContributionsCard } from "@/components/members/contributions-card";
+import { summariseContributions } from "@/lib/giving-summary";
+import { memberStanding } from "@/lib/handbook/member-standing";
+import { getHandbookRules } from "@/lib/handbook/rules-server";
 import { isLeader, positionLabel } from "@/lib/access";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -65,6 +69,10 @@ export default async function MemberPage({
   const cell = member.cellId ? (await getChapterCells(member.churchId)).cells.find((c) => c.id === member.cellId) : undefined;
   const country = getCountry(ds, member.countryId);
   const totalGiving = memberTotalGiving(member);
+  // Individual giving is visible to leaders who may see it (and RLS returns
+  // nothing otherwise); the card colour only where the Handbook is on.
+  const showContributions = ds.individualGiving && tenant.modules.giving;
+  const handbookRules = showContributions && tenant.modules.handbook ? await getHandbookRules(profile.zoneId) : null;
   const tenure = memberTenureYears(member);
   const completed = member.trainings.filter((t) => t.status === "completed").length;
   const trainingPoints = memberTrainingPoints(member);
@@ -167,6 +175,16 @@ export default async function MemberPage({
           />
         )}
       </div>
+
+      {showContributions && (
+        <ContributionsCard
+          summary={summariseContributions(member.giving)}
+          standing={handbookRules ? memberStanding(handbookRules.rules, member.giving) : null}
+          currency={currency}
+          rates={rates}
+          self={false}
+        />
+      )}
 
       <div className="grid lg:grid-cols-3 gap-4">
         {ds.individualGiving && (
