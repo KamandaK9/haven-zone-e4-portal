@@ -945,6 +945,10 @@ export type Database = {
         Args: { e_series: string | null; e_church: string | null };
         Returns: boolean;
       };
+      take_rate_limit: {
+        Args: { p_key: string; p_max: number; p_window_seconds: number };
+        Returns: boolean;
+      };
       giving_totals_in_scope: {
         Args: Record<string, never>;
         Returns: { church_id: string; month: string; category: string | null; amount: number }[];

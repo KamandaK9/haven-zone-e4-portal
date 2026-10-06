@@ -25,6 +25,7 @@ function LoginForm() {
   const params = useSearchParams();
   const isMember = params.get("from") === "member";
   const authError = params.get("authError") === "1";
+  const signedOutIdle = params.get("signedOut") === "idle";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -136,6 +137,11 @@ function LoginForm() {
                 </Button>
               </form>
 
+              {signedOutIdle && !error && (
+                <p className="rounded-lg border bg-muted/50 px-3 py-2.5 text-xs text-muted-foreground">
+                  You were signed out after a period of inactivity. Please sign in again.
+                </p>
+              )}
               {(error || authError) && (
                 <div className="mt-4 flex items-center gap-2 rounded-lg bg-red-50 text-red-700 border border-red-200 px-3 py-2.5 text-xs">
                   <AlertCircle className="h-3.5 w-3.5 shrink-0" />

@@ -67,8 +67,8 @@ export async function completeZoneSetup(payload: SetupPayload): Promise<Complete
   if (!zoneName || !superAdminName || !superAdminEmail || !payload.superAdmin.password) {
     return { ok: false, error: "Zone name, your name, email, and password are all required." };
   }
-  if (payload.superAdmin.password.length < 8) {
-    return { ok: false, error: "Password must be at least 8 characters." };
+  if (payload.superAdmin.password.length < 10 || !/[a-zA-Z]/.test(payload.superAdmin.password) || !/\d/.test(payload.superAdmin.password)) {
+    return { ok: false, error: "Use a password of at least 10 characters, with letters and numbers." };
   }
 
   // 1. Super Admin auth user.
@@ -288,6 +288,8 @@ export async function completeZoneSetup(payload: SetupPayload): Promise<Complete
       email,
       password: tempPassword,
       email_confirm: true,
+      // Must choose their own password at first sign-in.
+      user_metadata: { must_change_password: true },
     });
     if (assistantAuthError || !assistantUser.user) {
       // Don't fail the whole setup over one bad assistant email — surface it

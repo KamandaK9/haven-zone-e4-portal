@@ -165,8 +165,7 @@ export async function deleteEventPage(eventId: string): Promise<ActionResult> {
   const { error } = await supabase.from("events").delete().eq("id", eventId);
   if (error) return { ok: false, error: error.message };
 
-  const paths = [...(media ?? []).map((m) => m.storage_path), event?.cover_path].filter((p): p is string => !!p);
-  if (paths.length > 0) await createAdminClient().storage.from(EVENT_MEDIA_BUCKET).remove(paths);
+  await removeEventFiles([...(media ?? []).map((m) => m.storage_path), event?.cover_path], check.zoneId, eventId);
 
   await logAudit(profile, "event.delete", `Deleted the event "${check.title}"`);
   refreshEventPages();
@@ -210,6 +209,13 @@ function publicUrl(path: string): string {
 // caller can't attach some other event's file.
 function pathBelongsTo(path: string, zoneId: string, eventId: string): boolean {
   return path.startsWith(`${zoneId}/${eventId}/`) && !path.includes("..");
+}
+
+// Deletes stored files, but only ones inside this event's own folder —
+// never trust a path just because it's in a row.
+async function removeEventFiles(paths: (string | null | undefined)[], zoneId: string, eventId: string) {
+  const own = paths.filter((p): p is string => !!p && pathBelongsTo(p, zoneId, eventId));
+  if (own.length > 0) await createAdminClient().storage.from(EVENT_MEDIA_BUCKET).remove(own);
 }
 
 export async function addEventMedia(
@@ -284,7 +290,7 @@ export async function setEventCover(eventId: string, path: string): Promise<Acti
   if (error) return { ok: false, error: error.message };
 
   if (existing?.cover_path && existing.cover_path !== path) {
-    await createAdminClient().storage.from(EVENT_MEDIA_BUCKET).remove([existing.cover_path]);
+    await removeEventFiles([existing.cover_path], check.zoneId, eventId);
   }
   await logAudit(profile, "event.cover", `Changed the cover picture for "${check.title}"`);
   refreshEventPages(eventId);
@@ -302,7 +308,7 @@ export async function removeEventCover(eventId: string): Promise<ActionResult> {
   const { data: existing } = await supabase.from("events").select("cover_path").eq("id", eventId).maybeSingle();
   const { error } = await supabase.from("events").update({ cover_url: null, cover_path: null }).eq("id", eventId);
   if (error) return { ok: false, error: error.message };
-  if (existing?.cover_path) await createAdminClient().storage.from(EVENT_MEDIA_BUCKET).remove([existing.cover_path]);
+  await removeEventFiles([existing?.cover_path], check.zoneId, eventId);
 
   refreshEventPages(eventId);
   return { ok: true };
@@ -326,7 +332,7 @@ export async function removeEventMedia(mediaId: string): Promise<ActionResult> {
 
   const { error } = await supabase.from("event_media").delete().eq("id", mediaId);
   if (error) return { ok: false, error: error.message };
-  if (media.storage_path) await createAdminClient().storage.from(EVENT_MEDIA_BUCKET).remove([media.storage_path]);
+  await removeEventFiles([media.storage_path], check.zoneId, media.event_id);
 
   await logAudit(profile, "event.media_remove", `Removed a ${media.kind} from "${check.title}"`);
   refreshEventPages(media.event_id);

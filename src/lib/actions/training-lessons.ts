@@ -13,6 +13,7 @@ import { WATCH_COMPLETE_RATIO, WATCH_REPORT_INTERVAL_SECONDS } from "@/lib/video
 import type { LessonVideoStatus } from "@/lib/supabase/types";
 import { logAudit } from "./audit";
 import type { ActionResult } from "./members";
+import { TOO_MANY, withinRateLimit } from "@/lib/rate-limit";
 
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -166,6 +167,8 @@ export type QuizResult = { ok: true; score: number; total: number; passed: boole
 export async function submitQuizAttempt(lessonId: string, answers: (number | null)[]): Promise<QuizResult> {
   const profile = await getCurrentProfile();
   if (!profile || !profile.linkedMemberId) return { ok: false, error: "Only a member can take a quiz." };
+  // Retakes are fine; hammering the grader to work out the answers isn't.
+  if (!(await withinRateLimit(`quiz:${profile.linkedMemberId}:${lessonId}`, 10, 3600))) return { ok: false, error: TOO_MANY };
 
   const supabase = await createClient();
   const { data: lesson } = await supabase
@@ -187,7 +190,9 @@ export async function submitQuizAttempt(lessonId: string, answers: (number | nul
   const threshold = lesson.pass_threshold ?? questions.length;
   const passed = score >= threshold;
 
-  const { error } = await supabase.from("training_lesson_progress").upsert(
+  // Written by the server: a member can't record quiz results themselves (a
+  // database trigger blocks it), so a score can only come from this grading.
+  const { error } = await admin.from("training_lesson_progress").upsert(
     {
       member_id: profile.linkedMemberId,
       lesson_id: lessonId,
