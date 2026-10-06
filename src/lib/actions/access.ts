@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { can, getCurrentProfile, type CurrentProfile } from "@/lib/data/get-dataset";
 import {
   canActOn,
@@ -60,6 +61,10 @@ export async function updateMemberAccess(input: UpdateAccessInput): Promise<Acti
     .single();
   if (!member || member.zone_id !== profile.zoneId) return { ok: false, error: "Member not found." };
   if (member.profile_id === profile.userId) return { ok: false, error: "You can't change your own access." };
+  // Only people in your own area: if your own session can't see them (RLS
+  // scopes members to your chapters), you can't change their access.
+  const { data: visible } = await (await createClient()).from("members").select("id").eq("id", member.id).maybeSingle();
+  if (!visible) return { ok: false, error: "That person isn't in your area." };
 
   const currentPosition = isPosition(member.position) ? member.position : tenant.access.memberPositionKey;
   if (!canActOn(profile.position, currentPosition)) {

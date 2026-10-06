@@ -9,6 +9,7 @@ import { SUPPORT_CATEGORIES, supportCategoryLabel } from "@/lib/support";
 import type { SupportCategory } from "@/lib/supabase/types";
 import { tenant } from "@/tenant";
 import type { ActionResult } from "./members";
+import { TOO_MANY, withinRateLimit } from "@/lib/rate-limit";
 
 const escape = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
@@ -22,6 +23,7 @@ export async function submitSupportRequest(input: { category: SupportCategory; m
   if (!message) return { ok: false, error: "Tell us what you need help with." };
   if (message.length > 4000) return { ok: false, error: "That's a bit long — keep it under 4,000 characters." };
   if (!SUPPORT_CATEGORIES.some((c) => c.value === input.category)) return { ok: false, error: "Pick what it's about." };
+  if (!(await withinRateLimit(`support:${profile.userId}`, 5, 3600))) return { ok: false, error: TOO_MANY };
 
   const supabase = await createClient();
   const { data: row, error } = await supabase
