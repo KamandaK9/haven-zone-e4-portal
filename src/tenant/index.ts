@@ -170,5 +170,24 @@ export const tenant: TenantConfig = {
     meetingTypes: ["General Executive Assembly (GEA)", "Monthly General Meeting", "Executive meeting", "Cell leaders' meeting"],
   },
 
+  // POPIA. Placeholders in [brackets] are flagged in Settings until filled.
+  // The Information Officer is the head of the zone (the Zonal Director)
+  // unless the role is delegated in writing — docs/legal/information-officer-appointment.md.
+  legal: {
+    organisationName: "[Registered name of the entity The Haven Zone E4 operates under]",
+    physicalAddress: "[Zonal office street address, city, postal code]",
+    jurisdiction: "ZA",
+    informationOfficer: { name: "[Zonal Director's name]", email: "[privacy email address]" },
+    privacyNoticeVersion: "2026-10-07",
+    religiousBody: true,
+    operators: [
+      { name: "Supabase", purpose: "Database, sign-in and file storage", location: "[Region of the Supabase project]" },
+      { name: "Vercel", purpose: "Hosting the portal", location: "[Region of the deployment]" },
+      { name: "Mux", purpose: "Lesson videos and livestreams", location: "United States" },
+      { name: "Resend", purpose: "Sending email (invites, newsletters, support)", location: "United States" },
+    ],
+    retention: { membersAfterLeaving: 2, financial: 5, auditLog: 5, supportAndRequests: 2 },
+  },
+
   handbook,
 };
