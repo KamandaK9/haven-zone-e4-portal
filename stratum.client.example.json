@@ -1,0 +1,55 @@
+{
+  "name": "Grace Church",
+  "slug": "grace-church",
+  "portalName": "Grace Church Portal",
+  "description": "Member management for Grace Church",
+  "defaultOrgName": "Grace Church",
+  "emailDomain": "gracechurch.org",
+  "adminNameExample": "e.g. Pastor Jane Doe",
+  "currency": "ZAR",
+  "timezone": "Africa/Johannesburg",
+  "brandColor": "#0f766e",
+  "logo": "",
+  "countries": [
+    "ZA"
+  ],
+  "structurePreset": "single-church",
+  "labels": {
+    "group": "Region",
+    "location": "Branch",
+    "cell": "Cell",
+    "cellGroup": "Group"
+  },
+  "modules": {
+    "giving": true,
+    "ledger": true,
+    "livestreams": true,
+    "records": true,
+    "training": true,
+    "events": false,
+    "handbook": false,
+    "newsletter": true
+  },
+  "eventSeries": [],
+  "bankAccounts": [
+    "Operating Account",
+    "Building Fund"
+  ],
+  "meetingTypes": [
+    "Leadership meeting",
+    "Finance committee"
+  ],
+  "siteUrl": "",
+  "legal": {
+    "organisationName": "",
+    "physicalAddress": "",
+    "informationOfficer": {
+      "name": "",
+      "email": "",
+      "phone": ""
+    },
+    "religiousBody": true,
+    "supabaseRegion": "",
+    "hostingRegion": ""
+  }
+}

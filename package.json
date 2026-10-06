@@ -10,7 +10,8 @@
     "test": "vitest run",
     "typecheck": "next typegen && tsc --noEmit",
     "db:types": "supabase gen types typescript --linked > src/lib/supabase/types.ts",
-    "test:db": "node supabase/tests/security.mjs"
+    "test:db": "node supabase/tests/security.mjs",
+    "new-client": "node scripts/new-client.mjs"
   },
   "dependencies": {
     "@mux/mux-node": "^15.3.0",
