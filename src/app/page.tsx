@@ -73,8 +73,8 @@ function LoginForm() {
 
           <div className="grid grid-cols-3 gap-4 pt-4">
             <StatBlock icon={Users2} label="Members" />
-            <StatBlock icon={Globe2} label="Countries" />
-            <StatBlock icon={TrendingUp} label="Chapters" />
+            <StatBlock icon={Globe2} label={tenant.labels.groupPlural} />
+            <StatBlock icon={TrendingUp} label={tenant.labels.locationPlural} />
           </div>
         </div>
 
@@ -96,7 +96,7 @@ function LoginForm() {
             <p className="text-sm text-muted-foreground">
               {isMember
                 ? "Sign in to see your profile, giving history, and the calendar."
-                : "Sign in to access your zone's dashboard."}
+                : "Sign in to access your leadership dashboard."}
             </p>
           </div>
 
