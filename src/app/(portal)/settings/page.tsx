@@ -102,6 +102,18 @@ export default async function SettingsPage() {
 
       <Card>
         <CardHeader>
+          <CardTitle>Your security</CardTitle>
+          <CardDescription>Add an authenticator app to your own account for a second step at sign-in.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/security">Manage two-factor authentication</Link>
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Currency</CardTitle>
           <CardDescription>
             All giving and ledger figures are stored in USD and converted live for display — switching this never

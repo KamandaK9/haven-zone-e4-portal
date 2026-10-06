@@ -1,6 +1,65 @@
 import { Landmark, Globe2, Users, Tent, Sparkles } from "lucide-react";
-import type { TenantConfig } from "@/lib/tenant";
+import type { TenantConfig, PositionDef } from "@/lib/tenant";
+import type { Capability } from "@/lib/access";
 import { handbook } from "./handbook";
+
+// Root/assistant hold every capability Stratum defines — keep this list in
+// sync with CAPABILITIES in src/lib/access.ts.
+const ALL_CAPS: readonly Capability[] = [
+  "view_members", "view_contact_details", "manage_members",
+  "view_giving_totals", "view_giving_individual", "import_giving", "manage_ledger",
+  "manage_training", "manage_calendar", "send_newsletter", "view_reports",
+  "manage_access", "manage_events", "manage_records", "manage_livestreams",
+  "check_in", "view_attendance", "record_follow_up", "view_pastoral_notes", "manage_services",
+  "manage_courses", "teach_courses",
+  "send_messages", "approve_messages",
+  "export_data", "manage_settings",
+];
+
+// The Haven Zone E4's leadership tiers. Rank orders seniority (lower = more senior);
+// scope is which slice of the zone the position sees.
+const positions: readonly PositionDef[] = [
+  { key: "zonal_director", label: "Zonal Director", rank: 0, scope: "zone", loginRole: "super_admin", baseCaps: ALL_CAPS },
+  { key: "assistant_zonal_director", label: "Assistant Zonal Director", rank: 1, scope: "zone", loginRole: "super_admin", baseCaps: ALL_CAPS },
+  {
+    key: "zonal_secretary", label: "Zonal Secretary", rank: 2, scope: "zone", loginRole: "admin",
+    baseCaps: ["view_members", "view_contact_details", "view_giving_totals", "manage_events", "manage_records"],
+    portfolioCaps: {
+      finance: ["view_giving_individual", "import_giving", "manage_ledger", "view_reports"],
+      programs: ["manage_training", "manage_calendar", "send_newsletter", "manage_livestreams"],
+      administration: ["manage_members", "manage_calendar", "send_newsletter", "manage_records"],
+      operations: ["manage_members", "manage_calendar", "send_newsletter", "manage_records"],
+    },
+  },
+  {
+    key: "deputy_zonal_secretary", label: "Deputy Zonal Secretary", rank: 3, scope: "zone", loginRole: "admin",
+    baseCaps: ["view_members", "view_contact_details", "view_giving_totals"],
+    portfolioCaps: {
+      finance: ["view_giving_individual", "import_giving", "manage_ledger", "view_reports"],
+      programs: ["manage_training", "manage_calendar", "send_newsletter", "manage_livestreams"],
+      administration: ["manage_members", "manage_calendar", "send_newsletter", "manage_records"],
+      operations: ["manage_members", "manage_calendar", "send_newsletter", "manage_records"],
+    },
+  },
+  {
+    key: "sub_zone_governor", label: "Sub Zone Governor", rank: 4, scope: "sub_zone", loginRole: "admin",
+    baseCaps: ["view_members", "view_contact_details", "view_giving_totals", "manage_records", "manage_members"],
+  },
+  {
+    key: "governor", label: "Governor", rank: 5, scope: "chapter", loginRole: "admin",
+    baseCaps: ["view_members", "view_contact_details", "view_giving_totals", "manage_records", "manage_members"],
+  },
+  {
+    key: "deputy_governor", label: "Deputy Governor", rank: 6, scope: "chapter", loginRole: "admin",
+    baseCaps: ["view_members", "view_contact_details", "view_giving_totals"],
+    portfolioCaps: {
+      finance: ["view_giving_individual", "manage_ledger"],
+      administration: ["manage_members", "manage_calendar", "manage_records"],
+      operations: ["manage_members", "manage_calendar", "manage_records"],
+    },
+  },
+  { key: "member", label: "Member", rank: 7, scope: "self", loginRole: "member", baseCaps: [] },
+];
 
 // The Haven Zone E4. Everything that makes this deployment The Haven rather
 // than a generic Stratum portal lives in this folder; see src/lib/tenant.ts.
@@ -11,6 +70,38 @@ export const tenant: TenantConfig = {
   defaultOrgName: "The Haven Zone E4",
   adminNameExample: "e.g. Pastor John Kamanda",
   defaultCurrency: "USD",
+  timezone: "Africa/Johannesburg",
+  labels: {
+    group: "Sub-zone", groupPlural: "Sub-zones",
+    location: "Chapter", locationPlural: "Chapters",
+    cell: "Cell", cellPlural: "Cells",
+  },
+  modules: {
+    giving: true,
+    ledger: true,
+    livestreams: true,
+    records: true,
+    training: true,
+    events: true,
+    handbook: true,
+    newsletter: true,
+    // Not yet built in Stratum core — flip on once shipped.
+    attendance: false,
+    courses: false,
+    messaging: false,
+  },
+  access: {
+    memberPositionKey: "member",
+    rootPositionKey: "zonal_director",
+    assistantPositionKey: "assistant_zonal_director",
+    portfolios: [
+      { key: "finance", label: "Finance" },
+      { key: "programs", label: "Programs" },
+      { key: "administration", label: "Administration" },
+      { key: "operations", label: "Operations" },
+    ],
+    positions,
+  },
   login: {
     headline: "One view of every chapter, every member, every country in your zone.",
     blurb:

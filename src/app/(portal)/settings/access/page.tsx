@@ -9,7 +9,7 @@ import { AccessEditDialog, RefreshPermissionsButton } from "@/components/setting
 import { can, getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
 import { createClient } from "@/lib/supabase/server";
 import { getChurch, memberFullName } from "@/lib/data/analytics";
-import { isCapability, PORTFOLIO_LABELS, POSITION_LABELS, positionRank, type Capability } from "@/lib/access";
+import { isCapability, isLeader, portfolioLabel, positionLabel, positionRank, type Capability } from "@/lib/access";
 
 const PAGE_SIZE = 20;
 
@@ -36,7 +36,7 @@ export default async function TeamAccessPage({
 
   const params = await searchParams;
   const leaders = ds.members
-    .filter((m) => m.position !== "member")
+    .filter((m) => isLeader(m.position))
     .sort((a, b) => positionRank(a.position) - positionRank(b.position) || memberFullName(a).localeCompare(memberFullName(b)));
 
   const page = clampPage(params.page, leaders.length, PAGE_SIZE);
@@ -87,8 +87,8 @@ export default async function TeamAccessPage({
                     <TableRow key={m.id}>
                       <TableCell className="text-sm font-medium">{memberFullName(m)}</TableCell>
                       <TableCell className="text-sm">
-                        {POSITION_LABELS[m.position]}
-                        {m.portfolio && <span className="text-muted-foreground"> · {PORTFOLIO_LABELS[m.portfolio]}</span>}
+                        {positionLabel(m.position)}
+                        {m.portfolio && <span className="text-muted-foreground"> · {portfolioLabel(m.portfolio)}</span>}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">{getChurch(ds, m.churchId)?.name}</TableCell>
                       <TableCell>

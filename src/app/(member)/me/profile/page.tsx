@@ -1,12 +1,14 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { Briefcase, Cake, Calendar, Gift, Heart, MessageCircleMore } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ContactInfoForm } from "@/components/member-portal/contact-info-form";
 import { MemberPhotoUpload } from "@/components/members/member-photo-upload";
 import { getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
 import { getChurch, getCountry, getMember, memberFullName } from "@/lib/data/analytics";
-import { POSITION_LABELS } from "@/lib/access";
+import { isLeader, positionLabel } from "@/lib/access";
 
 // Roster fields (title, KC handle, profession, ...) only exist for members
 // pulled in from a leadership-roster import — most plain members won't have
@@ -70,7 +72,7 @@ export default async function MemberProfilePage() {
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-lg font-semibold">{memberFullName(member)}</h2>
             <Badge variant="secondary" className="font-normal">
-              {member.position !== "member" ? POSITION_LABELS[member.position] : member.title || member.role}
+              {isLeader(member.position) ? positionLabel(member.position) : member.title || member.role}
             </Badge>
           </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
@@ -109,6 +111,18 @@ export default async function MemberProfilePage() {
         </CardHeader>
         <CardContent>
           <ContactInfoForm email={member.email} phone={member.phone} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Security</CardTitle>
+          <CardDescription>Add an authenticator app for a second step at sign-in.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/security">Manage two-factor authentication</Link>
+          </Button>
         </CardContent>
       </Card>
     </div>

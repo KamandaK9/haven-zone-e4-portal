@@ -24,7 +24,7 @@ import {
 import { AddMemberDialog } from "./add-member-dialog";
 import { ImportMembersDialog } from "./import-members-dialog";
 import { formatTenure, memberFullName, memberTenureYears, memberTotalGiving } from "@/lib/data/analytics";
-import { POSITION_LABELS } from "@/lib/access";
+import { isLeader, positionLabel } from "@/lib/access";
 import type { Member, MemberRole } from "@/lib/data/types";
 
 const ROLES: (MemberRole | "All roles")[] = ["All roles", "Member", "Worker", "Cell Leader", "Pastor"];
@@ -131,7 +131,7 @@ export function MemberTable({
                   </TableCell>
                   <TableCell>
                     <Badge variant="secondary" className="font-normal">
-                      {member.position !== "member" ? POSITION_LABELS[member.position] : member.role}
+                      {isLeader(member.position) ? positionLabel(member.position) : member.role}
                     </Badge>
                   </TableCell>
                   {cellNames && (

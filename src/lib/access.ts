@@ -1,63 +1,31 @@
-// The zone's leadership hierarchy and what each level may do.
+// The org's leadership hierarchy and what each level may do.
 //
 // Access = scope (which chapters a person can see) + capabilities (what they
-// can do there). Position sets the defaults; the Zonal Director can grant or
-// revoke individual capabilities on top (Settings → Team & access).
+// can do there). Which positions exist, their rank/scope/default caps, and
+// which portfolios modify them is entirely tenant-defined (src/tenant →
+// TenantConfig.access) — this file only holds the closed set of
+// capabilities Stratum knows how to check, and the generic logic that reads
+// a position's definition out of the tenant. A leader can grant or revoke
+// individual capabilities on top of their position's defaults (Settings →
+// Team & access).
 //
-// This file is the single source of truth. The database only stores each
-// login's *effective* capability list (profiles.caps) and checks it in RLS —
-// so after changing defaults here, re-save people from Team & access (or run
-// the recompute action there) to refresh stored caps.
+// The database only stores each login's *effective* capability list
+// (profiles.caps) and checks it in RLS — so after changing a tenant's
+// position defaults, re-save people from Team & access (or run the
+// recompute action there) to refresh stored caps.
 
-export const POSITIONS = [
-  "zonal_director",
-  "assistant_zonal_director",
-  "zonal_secretary",
-  "deputy_zonal_secretary",
-  "sub_zone_governor",
-  "governor",
-  "deputy_governor",
-  "member",
-] as const;
-export type Position = (typeof POSITIONS)[number];
+import { tenant } from "@/tenant";
+import type { PositionDef } from "@/lib/tenant";
 
-// Lower = more senior. Used so nobody can invite or edit someone at or above
-// their own tier (the Zonal Director can act on anyone below them).
-const POSITION_RANK: Record<Position, number> = {
-  zonal_director: 0,
-  assistant_zonal_director: 1,
-  zonal_secretary: 2,
-  deputy_zonal_secretary: 3,
-  sub_zone_governor: 4,
-  governor: 5,
-  deputy_governor: 6,
-  member: 7,
-};
+// Which slice of the org a position sees. "cell" sits below "chapter"
+// (a church) for tenants with leaders scoped to one cell.
+export type Scope = "zone" | "sub_zone" | "chapter" | "cell" | "self";
 
-export const POSITION_LABELS: Record<Position, string> = {
-  zonal_director: "Zonal Director",
-  assistant_zonal_director: "Assistant Zonal Director",
-  zonal_secretary: "Zonal Secretary",
-  deputy_zonal_secretary: "Deputy Zonal Secretary",
-  sub_zone_governor: "Sub Zone Governor",
-  governor: "Governor",
-  deputy_governor: "Deputy Governor",
-  member: "Member",
-};
-
-// What a Secretary / Deputy does within their tier. Null = no portfolio.
-export const PORTFOLIOS = ["finance", "programs", "administration", "operations"] as const;
-export type Portfolio = (typeof PORTFOLIOS)[number];
-
-export const PORTFOLIO_LABELS: Record<Portfolio, string> = {
-  finance: "Finance",
-  programs: "Programs",
-  administration: "Administration",
-  operations: "Operations",
-};
-
-// Which slice of the zone a position sees.
-export type Scope = "zone" | "sub_zone" | "chapter" | "self";
+// Position and portfolio keys are tenant-defined free text (see
+// TenantConfig.access), not a fixed union — Stratum doesn't know a
+// deployment's leadership titles ahead of time.
+export type Position = string;
+export type Portfolio = string;
 
 export const CAPABILITIES = [
   "view_members",
@@ -75,6 +43,21 @@ export const CAPABILITIES = [
   "manage_events",
   "manage_records",
   "manage_livestreams",
+  // Attendance (services, check-in, absence, follow-up).
+  "check_in",
+  "view_attendance",
+  "record_follow_up",
+  "view_pastoral_notes",
+  "manage_services",
+  // Cohort-based courses (e.g. Foundation School).
+  "manage_courses",
+  "teach_courses",
+  // Messaging (SMS/email campaigns, birthdays).
+  "send_messages",
+  "approve_messages",
+  // Cross-cutting.
+  "export_data",
+  "manage_settings",
 ] as const;
 export type Capability = (typeof CAPABILITIES)[number];
 
@@ -94,87 +77,71 @@ export const CAPABILITY_LABELS: Record<Capability, string> = {
   manage_events: "Edit annual event pages",
   manage_records: "Keep minutes, correspondence & records",
   manage_livestreams: "Run livestreams",
+  check_in: "Check members and visitors in",
+  view_attendance: "View attendance lists & absentees",
+  record_follow_up: "Record follow-up contact",
+  view_pastoral_notes: "See pastoral notes",
+  manage_services: "Manage services & schedules",
+  manage_courses: "Manage cohorts & curricula",
+  teach_courses: "Mark lesson attendance for own cohorts",
+  send_messages: "Send SMS/email campaigns",
+  approve_messages: "Approve campaigns before they send",
+  export_data: "Export data (CSV/Excel)",
+  manage_settings: "Manage organisation settings",
 };
 
 export function isPosition(value: unknown): value is Position {
-  return POSITIONS.includes(value as Position);
+  return typeof value === "string" && tenant.access.positions.some((p) => p.key === value);
 }
 export function isPortfolio(value: unknown): value is Portfolio {
-  return PORTFOLIOS.includes(value as Portfolio);
+  return typeof value === "string" && tenant.access.portfolios.some((p) => p.key === value);
 }
 export function isCapability(value: unknown): value is Capability {
-  return CAPABILITIES.includes(value as Capability);
+  return (CAPABILITIES as readonly string[]).includes(value as Capability);
+}
+
+// True for any position other than the tenant's "no leadership" tier.
+export function isLeader(position: Position): boolean {
+  return position !== tenant.access.memberPositionKey;
+}
+
+function positionDef(position: Position): PositionDef | undefined {
+  return tenant.access.positions.find((p) => p.key === position);
+}
+
+export function positionLabel(position: Position): string {
+  return positionDef(position)?.label ?? position;
+}
+export function portfolioLabel(portfolio: Portfolio): string {
+  return tenant.access.portfolios.find((p) => p.key === portfolio)?.label ?? portfolio;
 }
 
 export function scopeForPosition(position: Position): Scope {
-  switch (position) {
-    case "zonal_director":
-    case "assistant_zonal_director":
-    case "zonal_secretary":
-    case "deputy_zonal_secretary":
-      return "zone";
-    case "sub_zone_governor":
-      return "sub_zone";
-    case "governor":
-    case "deputy_governor":
-      return "chapter";
-    case "member":
-      return "self";
-  }
+  return positionDef(position)?.scope ?? "self";
 }
 
-// The coarse login role the rest of the app still keys off: the Directors
-// run the zone; every other leader is 'admin'; members only see /me.
+// The coarse login role the rest of the app still keys off.
 export function loginRoleForPosition(position: Position): "super_admin" | "admin" | "member" {
-  if (position === "zonal_director" || position === "assistant_zonal_director") return "super_admin";
-  return position === "member" ? "member" : "admin";
+  return positionDef(position)?.loginRole ?? "member";
 }
 
+// Lower = more senior. Unknown positions rank last, so they're never treated
+// as senior to anyone by accident.
 export function positionRank(position: Position): number {
-  return POSITION_RANK[position];
+  return positionDef(position)?.rank ?? Number.MAX_SAFE_INTEGER;
 }
 
 // True when `actor` may invite or change someone holding `target`.
 export function canActOn(actor: Position, target: Position): boolean {
-  return POSITION_RANK[actor] < POSITION_RANK[target];
+  return positionRank(actor) < positionRank(target);
 }
 
-const BASE_LEADER: Capability[] = ["view_members", "view_contact_details", "view_giving_totals"];
-
 export function defaultCapabilities(position: Position, portfolio: Portfolio | null): Capability[] {
-  if (position === "zonal_director" || position === "assistant_zonal_director") return [...CAPABILITIES];
-  if (position === "member") return [];
-
-  const caps = new Set<Capability>(BASE_LEADER);
-  // The annual event pages are edited by Zonal Secretaries and above (not
-  // their Deputies); the Director can grant it to anyone else.
-  if (position === "zonal_secretary") caps.add("manage_events");
-  // Minutes, correspondence and the like: the secretarial side of every
-  // office from Governor up. Keep in step with the backfill in
-  // supabase/migrations/20260926120000_chapter_records.sql.
-  if (position === "zonal_secretary" || position === "sub_zone_governor" || position === "governor") caps.add("manage_records");
-
-  if (position === "zonal_secretary" || position === "deputy_zonal_secretary") {
-    if (portfolio === "finance") {
-      for (const c of ["view_giving_individual", "import_giving", "manage_ledger", "view_reports"] as const) caps.add(c);
-    } else if (portfolio === "programs") {
-      // Keep manage_livestreams in step with the backfill in
-      // supabase/migrations/20260926150000_live_streams.sql.
-      for (const c of ["manage_training", "manage_calendar", "send_newsletter", "manage_livestreams"] as const) caps.add(c);
-    } else if (portfolio === "administration" || portfolio === "operations") {
-      for (const c of ["manage_members", "manage_calendar", "send_newsletter", "manage_records"] as const) caps.add(c);
-    }
-  } else if (position === "sub_zone_governor" || position === "governor") {
-    caps.add("manage_members");
-  } else if (position === "deputy_governor") {
-    if (portfolio === "finance") {
-      caps.add("view_giving_individual");
-      caps.add("manage_ledger");
-    } else if (portfolio === "administration" || portfolio === "operations") {
-      caps.add("manage_members");
-      caps.add("manage_calendar");
-      caps.add("manage_records");
-    }
+  const def = positionDef(position);
+  if (!def) return [];
+  const caps = new Set<Capability>(def.baseCaps);
+  if (portfolio && def.portfolioCaps?.[portfolio]) {
+    for (const c of def.portfolioCaps[portfolio]) caps.add(c);
   }
   return [...caps];
 }
@@ -195,8 +162,8 @@ export function effectiveCapabilities(
 
 // Everything a login row stores for a given position + overrides. A plain
 // member the Director has granted leadership permissions to (a Dues Champion,
-// say) works at chapter level and in the portal rather than the member page —
-// otherwise the grant would have no scope to apply to.
+// say) works at tenant.access.elevatedMemberScope rather than "self" — a
+// grant with no scope to apply to would do nothing.
 export function loginFor(
   position: Position,
   portfolio: Portfolio | null,
@@ -204,10 +171,10 @@ export function loginFor(
   revoked: Capability[] = []
 ): { role: "super_admin" | "admin" | "member"; scope: Scope; caps: Capability[] } {
   const caps = effectiveCapabilities(position, portfolio, granted, revoked);
-  const elevatedMember = position === "member" && caps.length > 0;
+  const elevatedMember = position === tenant.access.memberPositionKey && caps.length > 0;
   return {
     caps,
-    scope: elevatedMember ? "chapter" : scopeForPosition(position),
+    scope: elevatedMember ? tenant.access.elevatedMemberScope ?? "chapter" : scopeForPosition(position),
     role: elevatedMember ? "admin" : loginRoleForPosition(position),
   };
 }
@@ -236,6 +203,12 @@ function portfolioFromText(t: string): Portfolio | null {
   return null;
 }
 
+// NOTE: this maps one tenant's (The Haven's) roster-spreadsheet DESIGNATION
+// text to position keys, and is only reached via
+// src/lib/import/parse-leadership-roster.ts, which only Haven-shaped clients
+// use. It belongs in that tenant, not core — left here for now to avoid
+// touching a working import path; move it if a second tenant needs
+// designation-text parsing with different wording.
 export function parseDesignation(raw: string | undefined): ParsedDesignation {
   const t = (raw ?? "").toLowerCase().replace(/[^a-z\s]/g, " ").replace(/\s+/g, " ").trim();
   const plain = (position: Position, portfolio: Portfolio | null = null): ParsedDesignation => ({

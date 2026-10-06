@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { isVideoProviderId, type PlaybackSource } from "@/lib/video/provider";
 import { getVideoProvider } from "@/lib/video/providers";
 import { formatDuration } from "@/lib/video/watch";
+import { requireModule } from "@/lib/require-module";
 
 export default async function MemberCoursePage({
   params,
@@ -21,6 +22,7 @@ export default async function MemberCoursePage({
   params: Promise<{ programId: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
+  requireModule("training");
   const { programId } = await params;
   const lessonParam = (await searchParams).lesson;
   const profile = await getCurrentProfile();

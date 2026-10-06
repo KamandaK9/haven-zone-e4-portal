@@ -3,12 +3,14 @@ import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { Topbar } from "@/components/layout/topbar";
 import { PortalFrame } from "@/components/layout/portal-shell";
 import { getCurrentProfile } from "@/lib/data/get-dataset";
+import { requireAal2IfEnrolled } from "@/lib/mfa";
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
   if (!profile.setupComplete) redirect("/setup");
   if (profile.role === "member") redirect("/me");
+  await requireAal2IfEnrolled();
 
   return (
     <PortalFrame

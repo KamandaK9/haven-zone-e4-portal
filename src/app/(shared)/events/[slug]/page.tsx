@@ -8,6 +8,7 @@ import { can, getCurrentProfile } from "@/lib/data/get-dataset";
 import { getEventMedia, getEventSeriesBySlug, getSeriesEditions } from "@/lib/data/events";
 import { formatEventDates } from "@/lib/event-format";
 import { SERIES_ICON_BY_SLUG } from "@/lib/event-series";
+import { requireModule } from "@/lib/require-module";
 
 export default async function EventSeriesPage({
   params,
@@ -16,6 +17,7 @@ export default async function EventSeriesPage({
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
+  requireModule("events");
   const { slug } = await params;
   const edit = (await searchParams).edit === "1";
   const profile = await getCurrentProfile();

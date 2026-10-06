@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { requireModule } from "@/lib/require-module";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrainingHero } from "@/components/training/training-hero";
 import { TrainingCourseCard } from "@/components/training/training-course-card";
@@ -10,6 +11,7 @@ import { getMemberAchievementStats } from "@/lib/data/achievements";
 import { getEarnedBadges } from "@/lib/badges";
 
 export default async function MemberTrainingPage() {
+  requireModule("training");
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
   if (!profile.linkedMemberId) {

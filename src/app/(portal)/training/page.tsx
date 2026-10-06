@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { requireModule } from "@/lib/require-module";
 import Link from "next/link";
 import { Video, Users2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +15,7 @@ import { getTrainingIcon } from "@/lib/training-icons";
 import { pluralize } from "@/lib/utils";
 
 export default async function TrainingPage() {
+  requireModule("training");
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
   if (profile.role === "member") redirect("/me");

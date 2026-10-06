@@ -162,7 +162,8 @@ export async function mergeDuplicateMembers(keepId: string, mergeId: string): Pr
   await logAudit(
     profile,
     "member.merge",
-    `Merged "${mergeName}" into "${keepName}"${transferredLogin ? " (portal login moved to the surviving record)" : ""}`
+    `Merged "${mergeName}" into "${keepName}"${transferredLogin ? " (portal login moved to the surviving record)" : ""}`,
+    { entity: { type: "member", id: keepId }, before: { keep, merge }, after: { survivorId: keepId, mergedAwayId: mergeId } }
   );
   revalidatePath("/", "layout");
   return { ok: true };

@@ -15,7 +15,7 @@ export type ActivityType = "new_member" | "training_complete" | "giving" | "bapt
 export type CalendarEventType = "meeting" | "training" | "service" | "outreach" | "flagship";
 export type EventMediaKind = "image" | "video" | "file";
 export type LedgerEntryType = "income" | "expense";
-export type ProfileScope = "zone" | "sub_zone" | "chapter" | "self";
+export type ProfileScope = "zone" | "sub_zone" | "chapter" | "cell" | "self";
 export type GivingCategory = "pco" | "dues" | "special_project" | "meta";
 export type ChapterRecordKind = "minutes" | "correspondence" | "bank_advice";
 export type ChequeStatus = "issued" | "cleared" | "cancelled" | "void";
@@ -69,6 +69,7 @@ export type Database = {
           scope: ProfileScope;
           sub_zone_id: string | null;
           church_id: string | null;
+          cell_id: string | null;
           caps: string[];
           granted_caps: string[];
           revoked_caps: string[];
@@ -87,6 +88,7 @@ export type Database = {
           scope?: ProfileScope;
           sub_zone_id?: string | null;
           church_id?: string | null;
+          cell_id?: string | null;
           caps?: string[];
           granted_caps?: string[];
           revoked_caps?: string[];
@@ -103,6 +105,7 @@ export type Database = {
           scope: ProfileScope;
           sub_zone_id: string | null;
           church_id: string | null;
+          cell_id: string | null;
           caps: string[];
           granted_caps: string[];
           revoked_caps: string[];
@@ -441,6 +444,10 @@ export type Database = {
           actor_name: string;
           action: string;
           summary: string;
+          entity_type: string | null;
+          entity_id: string | null;
+          before: Json | null;
+          after: Json | null;
           created_at: string;
         };
         Insert: {
@@ -450,6 +457,10 @@ export type Database = {
           actor_name: string;
           action: string;
           summary: string;
+          entity_type?: string | null;
+          entity_id?: string | null;
+          before?: Json | null;
+          after?: Json | null;
           created_at?: string;
         };
         Update: Record<string, never>;

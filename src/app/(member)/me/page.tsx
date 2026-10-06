@@ -22,9 +22,13 @@ import {
   memberTrainingPoints,
 } from "@/lib/data/analytics";
 import { sumByMonth } from "@/lib/giving";
+import { ContributionsCard } from "@/components/members/contributions-card";
+import { summariseContributions } from "@/lib/giving-summary";
+import { memberStanding } from "@/lib/handbook/member-standing";
+import { getHandbookRules } from "@/lib/handbook/rules-server";
 import { getTrainingLevel } from "@/lib/training-icons";
 import { getMemberAchievementStats } from "@/lib/data/achievements";
-import { POSITION_LABELS } from "@/lib/access";
+import { isLeader, positionLabel } from "@/lib/access";
 import { tenant } from "@/tenant";
 
 export default async function MemberDashboardPage() {
@@ -48,6 +52,7 @@ export default async function MemberDashboardPage() {
   const church = getChurch(ds, member.churchId);
   const country = getCountry(ds, member.countryId);
   const totalGiving = memberTotalGiving(member);
+  const handbookRules = tenant.modules.giving && tenant.modules.handbook ? await getHandbookRules(profile.zoneId) : null;
   const tenure = memberTenureYears(member);
   const completed = member.trainings.filter((t) => t.status === "completed").length;
   const trainingPoints = memberTrainingPoints(member);
@@ -71,7 +76,7 @@ export default async function MemberDashboardPage() {
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-semibold tracking-tight">{memberFullName(member)}</h1>
             <Badge variant="secondary" className="font-normal">
-              {member.position !== "member" ? POSITION_LABELS[member.position] : member.role}
+              {isLeader(member.position) ? positionLabel(member.position) : member.role}
             </Badge>
           </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-sm text-muted-foreground">
@@ -94,6 +99,16 @@ export default async function MemberDashboardPage() {
         <StatCard label={`Time in ${tenant.name}`} value={formatTenure(tenure)} icon={Clock} />
         <StatCard label="Trainings complete" value={`${completed}/${member.trainings.length}`} icon={CheckCircle2} />
       </div>
+
+      {tenant.modules.giving && (
+        <ContributionsCard
+          summary={summariseContributions(member.giving)}
+          standing={handbookRules ? memberStanding(handbookRules.rules, member.giving) : null}
+          currency={currency}
+          rates={rates}
+          self
+        />
+      )}
 
       <div className="grid lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2">

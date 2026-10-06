@@ -5,6 +5,7 @@ import { PortalFrame } from "@/components/layout/portal-shell";
 import { MemberSidebar } from "@/components/member-portal/member-sidebar";
 import { MemberTopbar } from "@/components/member-portal/member-topbar";
 import { getCurrentProfile } from "@/lib/data/get-dataset";
+import { requireAal2IfEnrolled } from "@/lib/mfa";
 
 // Pages everyone signed in can open — leaders and members alike. Same portal
 // frame for both; only which nav items show up differs, via PortalFrame.
@@ -12,6 +13,7 @@ export default async function SharedLayout({ children }: { children: React.React
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
   if (!profile.setupComplete) redirect("/setup");
+  await requireAal2IfEnrolled();
 
   if (profile.role === "member") {
     return (

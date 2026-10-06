@@ -7,12 +7,14 @@ import { randomAvatarColor } from "@/lib/avatar-color";
 import { can, getCurrentProfile } from "@/lib/data/get-dataset";
 import {
   canActOn,
+  isLeader,
   isPortfolio,
   isPosition,
   loginFor,
   type Portfolio,
   type Position,
 } from "@/lib/access";
+import { tenant } from "@/tenant";
 import { getAutoAssignedProgramIds } from "@/lib/data/programs-server";
 import { getSiteUrl } from "@/lib/site-url";
 import { logAudit } from "./audit";
@@ -271,9 +273,9 @@ export async function inviteMemberToPortal(memberId: string): Promise<InviteMemb
   if (member.profile_id) return { ok: false, error: "This member already has portal access." };
   if (!member.email) return { ok: false, error: "Add an email for this member first." };
 
-  const position = isPosition(member.position) ? member.position : "member";
+  const position = isPosition(member.position) ? member.position : tenant.access.memberPositionKey;
   const portfolio = isPortfolio(member.portfolio) ? member.portfolio : null;
-  if (position !== "member" && !canActOn(profile.position, position)) {
+  if (isLeader(position) && !canActOn(profile.position, position)) {
     return { ok: false, error: "You can only give portal access to people below your own position." };
   }
 

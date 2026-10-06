@@ -5,6 +5,7 @@ import { EventPage } from "@/components/events/event-page";
 import { EventEditorButton } from "@/components/events/event-editor";
 import { getCurrentProfile } from "@/lib/data/get-dataset";
 import { canEditEventPage, getEventById, getEventMedia, getSeriesById } from "@/lib/data/events";
+import { requireModule } from "@/lib/require-module";
 
 export default async function EventDetailPage({
   params,
@@ -13,6 +14,7 @@ export default async function EventDetailPage({
   params: Promise<{ eventId: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
+  requireModule("events");
   const { eventId } = await params;
   const edit = (await searchParams).edit === "1";
   const profile = await getCurrentProfile();

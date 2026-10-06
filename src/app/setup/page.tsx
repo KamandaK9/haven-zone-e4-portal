@@ -37,6 +37,7 @@ import {
   type ChapterGroup,
 } from "@/lib/import/parse-leadership-roster";
 import { cn } from "@/lib/utils";
+import { isLeader } from "@/lib/access";
 import { tenant } from "@/tenant";
 
 const TOTAL_STEPS = STEP_LABELS.length;
@@ -937,7 +938,7 @@ function RosterImportPanel({
 
       const giving = p.email ? givingMap.get(p.email) : undefined;
       if (giving?.givingTotal) matchedGiving++;
-      if (p.position !== "member") leaderCount++;
+      if (isLeader(p.position)) leaderCount++;
 
       return {
         countryName,

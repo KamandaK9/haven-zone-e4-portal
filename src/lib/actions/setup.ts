@@ -101,8 +101,8 @@ export async function completeZoneSetup(payload: SetupPayload): Promise<Complete
     full_name: superAdminName,
     email: superAdminEmail,
     phone: payload.superAdmin.phone.trim() || null,
-    // Whoever runs setup is the Zonal Director.
-    position: "zonal_director",
+    // Whoever runs setup gets the tenant's root leadership position.
+    position: tenant.access.rootPositionKey,
     scope: "zone",
     caps: [...CAPABILITIES],
   });
@@ -302,9 +302,9 @@ export async function completeZoneSetup(payload: SetupPayload): Promise<Complete
       role: "super_admin",
       full_name: name,
       email,
-      position: "assistant_zonal_director",
+      position: tenant.access.assistantPositionKey,
       scope: "zone",
-      caps: effectiveCapabilities("assistant_zonal_director", null),
+      caps: effectiveCapabilities(tenant.access.assistantPositionKey, null),
     });
     if (assistantProfileError) {
       assistantCredentials.push({ name, email, tempPassword: "" });
