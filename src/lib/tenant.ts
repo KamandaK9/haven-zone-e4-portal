@@ -139,6 +139,43 @@ export type TenantConfig = {
   // The org's operating manual, rendered at /handbook. Omit to hide the
   // Handbook entirely.
   handbook?: HandbookContent;
+  // The organisation as the responsible party under privacy law (POPIA in
+  // South Africa). Shown in the privacy notice (/privacy), the terms (/terms)
+  // and on data-request screens. Values in [square brackets] are treated as
+  // unfinished placeholders and flagged to admins in Settings.
+  legal: LegalConfig;
+};
+
+export type LegalContact = { name: string; email: string; phone?: string };
+
+export type LegalConfig = {
+  // Registered/legal name and physical address of the responsible party.
+  organisationName: string;
+  physicalAddress: string;
+  // Privacy law the notice is written for. "ZA" = POPIA (Information
+  // Regulator, PAIA manual); the only one Stratum ships text for so far.
+  jurisdiction: "ZA";
+  // By default the head of the organisation; may be delegated in writing.
+  // Registered with the Information Regulator.
+  informationOfficer: LegalContact;
+  deputyInformationOfficer?: LegalContact;
+  // Change this (e.g. to the date) whenever the notice changes in substance —
+  // every login is asked to read and accept it again.
+  privacyNoticeVersion: string;
+  // A religious organisation processing its own members' information
+  // (membership reveals religious affiliation — special personal
+  // information, permitted for such bodies under POPIA s28).
+  religiousBody: boolean;
+  // Service providers ("operators") that process the data for the
+  // organisation, and where. List every one actually used.
+  operators: readonly { name: string; purpose: string; location: string }[];
+  // How long records are kept, in years.
+  retention: {
+    membersAfterLeaving: number;
+    financial: number; // giving, ledger, cheques, bank advices
+    auditLog: number;
+    supportAndRequests: number;
+  };
 };
 
 // A key of TenantConfig.modules, e.g. "ledger" or "attendance".

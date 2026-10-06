@@ -152,7 +152,12 @@ function LoginForm() {
             </CardContent>
           </Card>
 
-          <p className="text-center text-xs text-muted-foreground">Powered by Stratum KamTech</p>
+          <p className="text-center text-xs text-muted-foreground">
+            <Link href="/privacy" className="hover:text-foreground">Privacy</Link>
+            {" · "}
+            <Link href="/terms" className="hover:text-foreground">Terms</Link>
+            {" · "}Powered by Stratum KamTech
+          </p>
         </div>
       </div>
     </div>

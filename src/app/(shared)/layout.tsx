@@ -6,6 +6,7 @@ import { MemberSidebar } from "@/components/member-portal/member-sidebar";
 import { MemberTopbar } from "@/components/member-portal/member-topbar";
 import { getCurrentProfile } from "@/lib/data/get-dataset";
 import { requireAal2IfEnrolled, requireOwnPassword } from "@/lib/mfa";
+import { requirePrivacyAccepted } from "@/lib/privacy-server";
 import { IdleSignOut } from "@/components/layout/idle-sign-out";
 import { LEADER_IDLE_MINUTES, MEMBER_IDLE_MINUTES } from "@/lib/idle";
 
@@ -16,6 +17,7 @@ export default async function SharedLayout({ children }: { children: React.React
   if (!profile) redirect("/");
   if (!profile.setupComplete) redirect("/setup");
   await requireOwnPassword();
+  await requirePrivacyAccepted(profile.userId);
   await requireAal2IfEnrolled();
   const idleMinutes = profile.role === "member" ? MEMBER_IDLE_MINUTES : LEADER_IDLE_MINUTES;
 

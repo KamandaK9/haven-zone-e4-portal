@@ -147,5 +147,23 @@ export const tenant: TenantConfig = {
     meetingTypes: ["Leadership meeting", "Branch meeting", "Finance committee"],
   },
 
+  legal: {
+    organisationName: "[Registered name of Example Church]",
+    physicalAddress: "[Street address, city, postal code]",
+    jurisdiction: "ZA",
+    informationOfficer: { name: "[Name of the Information Officer]", email: "[privacy@example.org]" },
+    privacyNoticeVersion: "2026-10-07",
+    religiousBody: true,
+    // Every service that processes the data for the organisation. Adjust to
+    // what this deployment actually uses (and where it's hosted).
+    operators: [
+      { name: "Supabase", purpose: "Database, sign-in and file storage", location: "[Region of the Supabase project]" },
+      { name: "Vercel", purpose: "Hosting the portal", location: "[Region of the deployment]" },
+      { name: "Mux", purpose: "Lesson videos and livestreams", location: "United States" },
+      { name: "Resend", purpose: "Sending email (invites, newsletters, support)", location: "United States" },
+    ],
+    retention: { membersAfterLeaving: 2, financial: 5, auditLog: 5, supportAndRequests: 2 },
+  },
+
   handbook,
 };

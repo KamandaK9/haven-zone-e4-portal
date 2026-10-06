@@ -177,5 +177,24 @@ expect("anonymous can't call helper functions", denied(r), r);
 r = await as(null, "anon", `select count(*) from members`);
 expect("anonymous sees no members", (r.ok && Number(r.rows[0].count) === 0) || denied(r), r);
 
+// ── Privacy requests ─────────────────────────────────────────────────
+r = await as(M, "authenticated", `insert into data_requests (zone_id, profile_id, requester_name, requester_email, kind, details) values ('${Z}', '${M}', 'Real Member', 'm@x', 'access', 'Please send my data') returning id, due_at > now() + interval '29 days' as due_ok`);
+expect("member can make a privacy request with a 30-day deadline", r.ok && r.rows[0]?.due_ok === true, r);
+const REQ = r.rows?.[0]?.id;
+r = await as(M, "authenticated", `insert into data_requests (zone_id, profile_id, requester_name, requester_email, kind, details, status, response) values ('${Z}', '${M}', 'x', 'x', 'access', 'x', 'completed', 'done')`);
+expect("member can't file a request already marked done", denied(r), r);
+r = await as(M, "authenticated", `insert into data_requests (zone_id, profile_id, requester_name, requester_email, kind, details) values ('${Z}', '${M2}', 'x', 'x', 'deletion', 'as someone else')`);
+expect("member can't file a request as someone else", denied(r), r);
+r = await as(M2, "authenticated", `select id from data_requests`);
+expect("members can't see each other's requests", r.ok && r.rows.length === 0, r);
+r = await as(M, "authenticated", `update data_requests set status = 'completed', response = 'self-approved' where id = '${REQ}'`);
+expect("member can't answer their own request", r.ok && r.affected === 0, r);
+r = await as(D, "authenticated", `update data_requests set status = 'completed', response = 'Sent by email' where id = '${REQ}'`);
+expect("Information Officer (manage_access) can answer a request", changed(r), r);
+r = await as(D, "authenticated", `update data_requests set due_at = now() + interval '1 year' where id = '${REQ}'`);
+expect("nobody can move a request's deadline", denied(r), r);
+r = await as(M, "authenticated", `update profiles set privacy_accepted_version = 'x' where id = '${M}'`);
+expect("consent is recorded only by the server", r.ok && r.affected === 0, r);
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

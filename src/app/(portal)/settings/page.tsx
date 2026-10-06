@@ -10,6 +10,7 @@ import { restartWizardAction } from "@/lib/actions/auth";
 import { can, getCurrentProfile, getAuditLog } from "@/lib/data/get-dataset";
 import { getHandbookRules } from "@/lib/handbook/rules-server";
 import { tenant } from "@/tenant";
+import { legalGaps } from "@/lib/privacy";
 
 const ACTION_LABELS: Record<string, string> = {
   "member.create": "Added member",
@@ -45,6 +46,7 @@ const ACTION_LABELS: Record<string, string> = {
   "cheque.create": "Recorded a cheque",
   "cheque.update": "Updated a cheque",
   "cheque.delete": "Deleted a cheque",
+  "privacy.request_update": "Answered a privacy request",
   "livestream.create": "Scheduled a stream",
   "livestream.update": "Edited a stream",
   "livestream.end": "Ended a stream",
@@ -84,6 +86,32 @@ export default async function SettingsPage() {
         <CardContent>
           <Button variant="outline" size="sm" asChild>
             <Link href="/settings/access">Manage team access</Link>
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Privacy &amp; legal</CardTitle>
+          <CardDescription>
+            Requests from people to see, correct or delete their information (30-day deadline), and the privacy notice
+            and terms everyone accepts.
+            {legalGaps(tenant.legal).length > 0 && (
+              <span className="mt-1 block text-amber-700 dark:text-amber-400">
+                The privacy notice still has placeholders to fill in before launch.
+              </span>
+            )}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/settings/privacy">Privacy requests</Link>
+          </Button>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/privacy">Privacy notice</Link>
+          </Button>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/terms">Terms of use</Link>
           </Button>
         </CardContent>
       </Card>
