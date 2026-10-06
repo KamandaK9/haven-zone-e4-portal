@@ -17,6 +17,7 @@ import {
 import { tenant } from "@/tenant";
 import { getAutoAssignedProgramIds } from "@/lib/data/programs-server";
 import { getSiteUrl } from "@/lib/site-url";
+import { matchCell } from "@/lib/import/match-cell";
 import { logAudit } from "./audit";
 import type { MemberRole } from "@/lib/data/types";
 
@@ -114,12 +115,18 @@ export type ParsedMemberRow = {
   // only — a login is issued later, by invite, never in bulk.
   position?: Position;
   portfolio?: Portfolio;
+  // The member's cell group, by name — matched to an existing cell in the
+  // chapter, or created as a new top-level cell on import.
+  cellName?: string;
+  ageGroup?: string; // a tenant.ageGroups key
 };
 
 export type BulkImportResult = {
   ok: true;
   inserted: number;
   errors: { row: number; reason: string }[];
+  // Cell names from the file that matched none of the chapter's cells.
+  unmatchedCells?: { name: string; count: number }[];
 } | { ok: false; error: string };
 
 export async function bulkImportMembers(input: {
@@ -144,7 +151,12 @@ export async function bulkImportMembers(input: {
     join_date?: string;
     role: MemberRole;
     avatar_color: string;
+    title: string | null;
+    birthday: string | null;
+    cell_id?: string | null;
+    age_group: string | null;
   }[] = [];
+  const cellNameByIndex: (string | undefined)[] = [];
   const givingByIndex: (number | undefined)[] = [];
   const givingMonthByIndex: (string | undefined)[] = [];
 
@@ -160,35 +172,41 @@ export async function bulkImportMembers(input: {
   const seenNames = new Set((existingMembers ?? []).map((m) => nameKey(m.first_name, m.last_name)));
 
   input.rows.forEach((row, i) => {
-    if (!row.firstName?.trim() && !row.lastName?.trim()) {
-      errors.push({ row: i + 1, reason: "Missing first and last name" });
+    // A surname is optional (some sheets only have one name for a person);
+    // a first name isn't.
+    if (!row.firstName?.trim()) {
+      errors.push({ row: i + 1, reason: "Missing a name" });
       return;
     }
-    if (!row.firstName?.trim() || !row.lastName?.trim()) {
-      errors.push({ row: i + 1, reason: "Missing first or last name" });
-      return;
-    }
+    const lastName = row.lastName?.trim() ?? "";
+    const fullName = `${row.firstName.trim()} ${lastName}`.trim();
     const email = row.email?.trim().toLowerCase();
-    const key = nameKey(row.firstName, row.lastName);
-    if ((email && seenEmails.has(email)) || seenNames.has(key)) {
-      errors.push({ row: i + 1, reason: `${row.firstName.trim()} ${row.lastName.trim()} is already in this chapter` });
+    // Matching on a first name alone would merge different people, so a
+    // surname-less row is only ever deduplicated by email.
+    const key = lastName ? nameKey(row.firstName, lastName) : undefined;
+    if ((email && seenEmails.has(email)) || (key && seenNames.has(key))) {
+      errors.push({ row: i + 1, reason: `${fullName} is already in this chapter` });
       return;
     }
     if (email) seenEmails.add(email);
-    seenNames.add(key);
+    if (key) seenNames.add(key);
 
     toInsert.push({
       zone_id: profile.zoneId,
       church_id: input.churchId,
       country_id: input.countryId,
       first_name: row.firstName.trim(),
-      last_name: row.lastName.trim(),
+      last_name: lastName,
       email: row.email?.trim() || null,
       phone: row.phone?.trim() || null,
       join_date: row.joinDate,
       role: row.role ?? "Member",
       avatar_color: randomAvatarColor(),
+      title: row.title?.trim() || null,
+      birthday: row.birthday?.trim() || null,
+      age_group: row.ageGroup ?? null,
     });
+    cellNameByIndex.push(row.cellName?.trim() || undefined);
     givingByIndex.push(row.givingTotal && row.givingTotal > 0 ? row.givingTotal : undefined);
     givingMonthByIndex.push((row.givingDate ?? new Date().toISOString().slice(0, 10)).slice(0, 7));
   });
@@ -196,6 +214,23 @@ export async function bulkImportMembers(input: {
   if (toInsert.length === 0) {
     return { ok: true, inserted: 0, errors };
   }
+
+  // Cells are matched by name to the chapter's existing cells (forgiving
+  // case, spacing and small typos — see matchCell). Names that don't match
+  // aren't created as new cells: hand-kept sheets spell one cell many ways,
+  // so the member is imported without a cell and the name is reported back.
+  const unmatchedCellCounts = new Map<string, number>();
+  if (cellNameByIndex.some(Boolean)) {
+    const { data: cells } = await supabase.from("cells").select("id, name").eq("church_id", input.churchId);
+    toInsert.forEach((m, i) => {
+      const name = cellNameByIndex[i];
+      if (!name) return;
+      const cell = matchCell(name, cells ?? []);
+      if (cell) m.cell_id = cell.id;
+      else unmatchedCellCounts.set(name, (unmatchedCellCounts.get(name) ?? 0) + 1);
+    });
+  }
+  const unmatchedCells = [...unmatchedCellCounts].map(([name, count]) => ({ name, count }));
 
   const { data: inserted, error } = await supabase.from("members").insert(toInsert).select("id");
   if (error || !inserted) {
@@ -233,7 +268,7 @@ export async function bulkImportMembers(input: {
 
   await logAudit(profile, "member.bulk_import", `Imported ${inserted.length} members at ${church?.name ?? "a church"}`);
   revalidatePath("/", "layout");
-  return { ok: true, inserted: inserted.length, errors };
+  return { ok: true, inserted: inserted.length, errors, unmatchedCells };
 }
 
 function randomTempPassword(): string {

@@ -64,7 +64,8 @@ const positions: readonly PositionDef[] = [
 // Interim policy defaults (decided 2026-09-30 while the church's answers are
 // outstanding — seed these into org_settings once Phase 2 lands; the church
 // may still override any of them):
-//   - Age bands: Children 0–12, Youth 13–25, Adults 26+.
+//   - Age groups: Children 0–12, Teens 13–17, Youth 18–25, Adults 26+ (see
+//     ageGroups below — the church's own sheet has a Teens tab).
 //   - Active member: attended ≥1 of their last 4 expected services.
 //   - Absence alert: cell leader alerted after 2 consecutive missed services.
 //   - Foundation School completion: every required lesson attended (make-ups
@@ -112,6 +113,14 @@ export const tenant: TenantConfig = {
     portfolios: [],
     positions,
   },
+  // The church's member sheet keeps one tab per group. Ranges are the interim
+  // defaults (2026-10-07) — the church hasn't confirmed them.
+  ageGroups: [
+    { key: "children", label: "Children", minAge: 0, maxAge: 12 },
+    { key: "teens", label: "Teens", minAge: 13, maxAge: 17 },
+    { key: "youth", label: "Youth", minAge: 18, maxAge: 25 },
+    { key: "adults", label: "Adults", minAge: 26 },
+  ],
   login: {
     headline: "One view of every location, every cell, every member.",
     blurb: "Membership, service attendance, Foundation School progress and follow-up — from a single dashboard built for leadership.",

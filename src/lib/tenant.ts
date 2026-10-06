@@ -94,6 +94,12 @@ export type TenantConfig = {
     // "chapter" if omitted.
     elevatedMemberScope?: Scope;
   };
+  // The age groups members are sorted into, youngest first. Optional: with
+  // none defined, age groups don't appear anywhere. A member's group is
+  // stored (members.age_group = key), not computed from birthday; the age
+  // range is a guide for whoever assigns it. Import also reads a workbook tab
+  // or an "Age group" column named after a group's label or key.
+  ageGroups?: readonly { key: string; label: string; minAge?: number; maxAge?: number }[];
   // Marketing panel on the login page.
   login: { headline: string; blurb: string };
   // Parent-organisation line under the login panel ("An arm of ..."), or

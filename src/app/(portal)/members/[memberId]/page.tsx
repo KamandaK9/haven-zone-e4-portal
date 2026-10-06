@@ -30,6 +30,7 @@ import { getTrainingIcon, getTrainingLevel } from "@/lib/training-icons";
 import type { LessonStatus } from "@/lib/data/types";
 import { cn } from "@/lib/utils";
 import { tenant } from "@/tenant";
+import { formatBirthday } from "@/lib/birthday";
 
 const STATUS_META: Record<LessonStatus, { label: string; className: string }> = {
   completed: { label: "Completed", className: "text-emerald-600" },
@@ -60,6 +61,7 @@ export default async function MemberPage({
       </div>
     );
   }
+  const ageGroupLabel = tenant.ageGroups?.find((g) => g.key === member.ageGroup)?.label;
 
   const church = getChurch(ds, member.churchId);
   const cell = member.cellId ? (await getChapterCells(member.churchId)).cells.find((c) => c.id === member.cellId) : undefined;
@@ -232,13 +234,19 @@ export default async function MemberPage({
         </Card>
       </div>
 
-      {(member.profession || member.spouseName || member.birthday || member.weddingAnniversary || member.kcHandle) && (
+      {(member.profession || member.spouseName || member.birthday || member.weddingAnniversary || member.kcHandle || ageGroupLabel) && (
         <Card>
           <CardHeader>
             <CardTitle>Profile</CardTitle>
-            <CardDescription>From the leadership roster import</CardDescription>
+            <CardDescription>From imported records</CardDescription>
           </CardHeader>
           <CardContent className="grid sm:grid-cols-3 gap-4 text-sm">
+            {ageGroupLabel && (
+              <div>
+                <p className="text-xs text-muted-foreground">Age group</p>
+                <p className="font-medium">{ageGroupLabel}</p>
+              </div>
+            )}
             {member.profession && (
               <div>
                 <p className="text-xs text-muted-foreground">Profession</p>
@@ -254,7 +262,7 @@ export default async function MemberPage({
             {member.birthday && (
               <div>
                 <p className="text-xs text-muted-foreground">Birthday</p>
-                <p className="font-medium">{member.birthday}</p>
+                <p className="font-medium">{formatBirthday(member.birthday)}</p>
               </div>
             )}
             {member.weddingAnniversary && (

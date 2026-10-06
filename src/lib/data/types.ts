@@ -97,6 +97,7 @@ export type Member = {
   weddingAnniversary?: string;
   photoUrl?: string;
   cellId?: string;
+  ageGroup?: string; // a tenant.ageGroups key
 };
 
 // A group below a chapter; parentId unset = the upper level (e.g. a senior

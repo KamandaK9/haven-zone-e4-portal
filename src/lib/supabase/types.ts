@@ -190,6 +190,7 @@ export type Database = {
           photo_url: string | null;
           photo_path: string | null;
           cell_id: string | null;
+          age_group: string | null;
           created_at: string;
         };
         Insert: {
@@ -216,6 +217,7 @@ export type Database = {
           photo_url?: string | null;
           photo_path?: string | null;
           cell_id?: string | null;
+          age_group?: string | null;
           created_at?: string;
         };
         Update: Partial<{
@@ -240,6 +242,7 @@ export type Database = {
           photo_url: string | null;
           photo_path: string | null;
           cell_id: string | null;
+          age_group: string | null;
         }>;
         Relationships: [];
       };

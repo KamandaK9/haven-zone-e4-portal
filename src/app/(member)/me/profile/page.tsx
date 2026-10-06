@@ -9,6 +9,7 @@ import { MemberPhotoUpload } from "@/components/members/member-photo-upload";
 import { getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
 import { getChurch, getCountry, getMember, memberFullName } from "@/lib/data/analytics";
 import { isLeader, positionLabel } from "@/lib/access";
+import { formatBirthday } from "@/lib/birthday";
 
 // Roster fields (title, KC handle, profession, ...) only exist for members
 // pulled in from a leadership-roster import — most plain members won't have
@@ -48,7 +49,7 @@ export default async function MemberProfilePage() {
   const importantInfo = [
     { icon: Briefcase, label: "Profession", value: member.profession },
     { icon: Heart, label: "Spouse", value: member.spouseName },
-    { icon: Cake, label: "Birthday", value: member.birthday },
+    { icon: Cake, label: "Birthday", value: member.birthday && formatBirthday(member.birthday) },
     { icon: Gift, label: "Wedding anniversary", value: member.weddingAnniversary },
     { icon: MessageCircleMore, label: "KingsChat handle", value: member.kcHandle },
   ].filter((row) => row.value);

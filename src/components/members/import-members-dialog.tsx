@@ -112,6 +112,12 @@ export function ImportMembersDialog({
                     {result.errors.map((e) => `row ${e.row} (${e.reason})`).join(", ")}
                   </p>
                 )}
+                {result.unmatchedCells && result.unmatchedCells.length > 0 && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Imported without a cell (no matching cell in {churchName}):{" "}
+                    {result.unmatchedCells.map((c) => `${c.name} (${c.count})`).join(", ")}
+                  </p>
+                )}
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">{result.error}</p>
@@ -126,6 +132,11 @@ export function ImportMembersDialog({
               {parsed.matchedHeaders.length > 0 && (
                 <p className="text-xs text-muted-foreground">
                   Matched columns: {parsed.matchedHeaders.map((m) => m.header).join(", ")}
+                </p>
+              )}
+              {parsed.ignoredHeaders.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Ignored columns: {parsed.ignoredHeaders.join(", ")}
                 </p>
               )}
             </div>
