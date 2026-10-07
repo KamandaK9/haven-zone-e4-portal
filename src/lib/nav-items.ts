@@ -2,8 +2,9 @@ import type { LucideIcon } from "lucide-react";
 import type { Capability } from "@/lib/access";
 import type { ModuleKey } from "@/lib/tenant";
 import { EVENT_SERIES_DEFS } from "@/lib/event-series";
-import { LayoutDashboard, Globe2, BarChart3, BookOpenText, GraduationCap, CalendarDays, Mail, Settings, BookMarked, FolderOpen, Radio } from "lucide-react";
+import { LayoutDashboard, Globe2, Church, BarChart3, BookOpenText, GraduationCap, CalendarDays, Mail, Settings, BookMarked, FolderOpen, Radio } from "lucide-react";
 import { tenant } from "@/tenant";
+import { labels, singleCountry } from "@/lib/labels";
 
 export type StaffRole = "super_admin" | "admin";
 
@@ -21,7 +22,12 @@ export type NavItemDef = {
 
 export const NAV_ITEMS: NavItemDef[] = [
   { key: "dashboard", href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, hideable: false },
-  { key: "countries", href: "/countries", label: "Countries", icon: Globe2, hideable: false },
+  // With a single country the country level is skipped, and this is the
+  // list of locations (see /countries).
+  {
+    key: "countries", href: "/countries", label: singleCountry ? labels.locations : labels.countries,
+    icon: singleCountry ? Church : Globe2, hideable: false,
+  },
   { key: "reports", href: "/reports", label: "Reports", icon: BarChart3, cap: "view_reports", hideable: true },
   { key: "ledger", href: "/ledger", label: "Ledger", icon: BookOpenText, cap: "manage_ledger", module: "ledger", hideable: true },
   {
@@ -42,6 +48,8 @@ export const NAV_ITEMS: NavItemDef[] = [
 export function getVisibleNavItems(role: StaffRole, caps: string[], hiddenNavItems: string[]): NavItemDef[] {
   return NAV_ITEMS.filter((item) => {
     if (item.module && !tenant.modules[item.module]) return false;
+    // Reports are giving reports for now — nothing to show without giving.
+    if (item.key === "reports" && !tenant.modules.giving) return false;
     if (item.cap && ![item.cap].flat().some((c) => caps.includes(c))) return false;
     // Only a Director's own hidden-items preference ever applies — other
     // leaders get a nav fixed by their capabilities.

@@ -12,11 +12,12 @@ import { memberFullName } from "@/lib/data/analytics";
 import { formatMoney, type CurrencyCode } from "@/lib/currency";
 import type { DuplicateReason } from "@/lib/data/duplicates";
 import type { Member } from "@/lib/data/types";
+import { labels, lower } from "@/lib/labels";
 
 const REASON_LABELS: Record<DuplicateReason, string> = {
   "same email": "Same email",
   "same phone": "Same phone",
-  "same name in this chapter": "Same name, same chapter",
+  "same name in this chapter": `Same name, same ${lower(labels.location)}`,
 };
 
 function Side({

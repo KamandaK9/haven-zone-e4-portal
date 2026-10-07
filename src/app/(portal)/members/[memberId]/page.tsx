@@ -53,7 +53,7 @@ export default async function MemberPage({
   if (!member) {
     return (
       <div className="space-y-4">
-        <Breadcrumb items={[{ label: "Zone Dashboard", href: "/dashboard" }, { label: "Not found" }]} />
+        <Breadcrumb items={[{ label: "Dashboard", href: "/dashboard" }, { label: "Not found" }]} />
         <p className="text-sm text-muted-foreground">This member doesn&apos;t exist.</p>
         <Link href="/dashboard" className="text-sm text-primary hover:underline">
           Back to dashboard
@@ -77,7 +77,7 @@ export default async function MemberPage({
     <div className="space-y-6">
       <Breadcrumb
         items={[
-          { label: "Zone Dashboard", href: "/dashboard" },
+          { label: "Dashboard", href: "/dashboard" },
           { label: country?.name ?? "Country", href: `/countries/${member.countryId}` },
           { label: church?.name ?? "Church", href: `/churches/${member.churchId}` },
           { label: memberFullName(member) },

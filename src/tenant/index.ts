@@ -28,7 +28,8 @@ const ALL_CAPS: readonly Capability[] = [
 const positions: readonly PositionDef[] = [
   { key: "system_admin", label: "System Administrator", rank: 0, scope: "zone", loginRole: "super_admin", baseCaps: ALL_CAPS },
   {
-    key: "group_pastor", label: "Group Pastor", rank: 1, scope: "sub_zone", loginRole: "admin",
+    // The group is the zone (CE Sandton = group → locations → cells).
+    key: "group_pastor", label: "Group Pastor", rank: 1, scope: "zone", loginRole: "admin",
     baseCaps: [
       "view_members", "view_contact_details", "manage_members", "view_reports", "export_data",
       "view_attendance", "record_follow_up", "view_pastoral_notes", "manage_services",
@@ -82,10 +83,14 @@ export const tenant: TenantConfig = {
   churchNameExample: "e.g. CE Sandton",
   defaultCurrency: "ZAR",
   timezone: "Africa/Johannesburg",
+  // CE Sandton is the group (the zone); locations under it; cells under
+  // each location. sub_zones aren't used, so `group` never shows.
   labels: {
-    group: "Group", groupPlural: "Groups",
+    zone: "Group", zonePlural: "Groups",
+    group: "Sub-group", groupPlural: "Sub-groups",
     location: "Location", locationPlural: "Locations",
     cell: "Cell", cellPlural: "Cells",
+    country: "Country", countryPlural: "Countries",
   },
   modules: {
     // Not part of this deployment.
@@ -160,7 +165,9 @@ export const tenant: TenantConfig = {
 
   records: {
     bankAccounts: [],
-    cellLevels: { upper: "Group", upperPlural: "Groups", lower: "Cell", lowerPlural: "Cells" },
+    // "Group" is the whole of CE Sandton (labels.zone), so the upper cell
+    // level is a senior cell, as Christ Embassy calls it.
+    cellLevels: { upper: "Senior cell", upperPlural: "Senior cells", lower: "Cell", lowerPlural: "Cells" },
     meetingTypes: ["Cell leaders' meeting", "Location meeting"],
   },
 };

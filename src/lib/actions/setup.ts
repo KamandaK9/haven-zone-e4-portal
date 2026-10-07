@@ -11,6 +11,7 @@ import { tenant } from "@/tenant";
 import { getAutoAssignedProgramIds } from "@/lib/data/programs-server";
 import { ensureEventSeries } from "@/lib/data/events";
 import { CAPABILITIES, effectiveCapabilities, type Portfolio, type Position } from "@/lib/access";
+import { labels } from "@/lib/labels";
 
 function chunk<T>(items: T[], size: number): T[][] {
   const out: T[][] = [];
@@ -68,7 +69,7 @@ export async function completeZoneSetup(payload: SetupPayload): Promise<Complete
   const superAdminName = payload.superAdmin.name.trim();
   const superAdminEmail = payload.superAdmin.email.trim().toLowerCase();
   if (!zoneName || !superAdminName || !superAdminEmail || !payload.superAdmin.password) {
-    return { ok: false, error: "Zone name, your name, email, and password are all required." };
+    return { ok: false, error: `${labels.zone} name, your name, email, and password are all required.` };
   }
   if (payload.superAdmin.password.length < 8) {
     return { ok: false, error: "Password must be at least 8 characters." };

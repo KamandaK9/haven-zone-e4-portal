@@ -20,6 +20,7 @@ import { getSiteUrl } from "@/lib/site-url";
 import { matchCell } from "@/lib/import/match-cell";
 import { logAudit } from "./audit";
 import type { MemberRole } from "@/lib/data/types";
+import { labels, lower } from "@/lib/labels";
 
 type CreateMemberInput = {
   churchId: string;
@@ -185,7 +186,7 @@ export async function bulkImportMembers(input: {
     // surname-less row is only ever deduplicated by email.
     const key = lastName ? nameKey(row.firstName, lastName) : undefined;
     if ((email && seenEmails.has(email)) || (key && seenNames.has(key))) {
-      errors.push({ row: i + 1, reason: `${fullName} is already in this chapter` });
+      errors.push({ row: i + 1, reason: `${fullName} is already in this ${lower(labels.location)}` });
       return;
     }
     if (email) seenEmails.add(email);

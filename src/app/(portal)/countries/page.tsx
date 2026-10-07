@@ -21,6 +21,7 @@ export default async function CountriesPage({
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
   const ds = await getZoneDataset(profile.zoneId);
+  if (ds.countries.length === 1) redirect(`/countries/${ds.countries[0].id}`);
   const { currency, rates } = await getDisplayCurrency(profile.zoneCurrency);
   const giving = getGivingByCountry(ds, givingFilter);
   return (

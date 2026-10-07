@@ -328,7 +328,8 @@ export async function getZoneDataset(zoneId: string): Promise<Dataset & { zoneNa
     trainingPrograms,
     subZones,
     giving,
-    individualGiving: !!viewer && (viewer.role === "member" || can(viewer, "view_giving_individual")),
+    individualGiving:
+      tenant.modules.giving && !!viewer && (viewer.role === "member" || can(viewer, "view_giving_individual")),
   };
 }
 

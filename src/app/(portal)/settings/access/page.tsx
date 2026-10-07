@@ -10,6 +10,7 @@ import { can, getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
 import { createClient } from "@/lib/supabase/server";
 import { getChurch, memberFullName } from "@/lib/data/analytics";
 import { isCapability, isLeader, portfolioLabel, positionLabel, positionRank, type Capability } from "@/lib/access";
+import { labels } from "@/lib/labels";
 
 const PAGE_SIZE = 20;
 
@@ -75,7 +76,7 @@ export default async function TeamAccessPage({
                 <TableRow>
                   <TableHead>Person</TableHead>
                   <TableHead>Position</TableHead>
-                  <TableHead>Chapter</TableHead>
+                  <TableHead>{labels.location}</TableHead>
                   <TableHead>Login</TableHead>
                   <TableHead />
                 </TableRow>

@@ -8,6 +8,7 @@ import { getDisplayCurrency } from "@/lib/currency-server";
 import { findDuplicateMemberPairs } from "@/lib/data/duplicates";
 import { getChurch } from "@/lib/data/analytics";
 import { pluralize } from "@/lib/utils";
+import { labels, lower } from "@/lib/labels";
 
 export default async function DuplicateMembersPage() {
   const profile = await getCurrentProfile();
@@ -42,7 +43,7 @@ export default async function DuplicateMembersPage() {
             <div className="flex flex-col items-center gap-2 py-10 text-center">
               <Users2 className="h-8 w-8 text-muted-foreground" />
               <p className="text-sm font-medium">No likely duplicates found</p>
-              <p className="text-xs text-muted-foreground">Checked matching email, phone, and same-name-same-chapter.</p>
+              <p className="text-xs text-muted-foreground">Checked matching email, phone, and same name in the same {lower(labels.location)}.</p>
             </div>
           </CardContent>
         </Card>

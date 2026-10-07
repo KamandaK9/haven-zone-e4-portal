@@ -62,6 +62,10 @@ export type TenantConfig = {
     group: string; groupPlural: string;
     location: string; locationPlural: string;
     cell: string; cellPlural: string;
+    // The top level (a zones row) and the country level. Optional — they
+    // default to "Zone"/"Country" (see src/lib/labels.ts, which UI reads).
+    zone?: string; zonePlural?: string;
+    country?: string; countryPlural?: string;
   };
   // Which optional feature areas this deployment ships with. Off hides the
   // nav item and its routes return 404 (src/lib/nav-items.ts, ModuleKey).

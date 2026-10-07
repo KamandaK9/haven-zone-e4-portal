@@ -1,5 +1,6 @@
 import type { Portfolio, Position } from "@/lib/access";
 import { tenant } from "@/tenant";
+import { labels, singleCountry } from "@/lib/labels";
 import type { MemberList } from "./member-list";
 
 export type WizardCountry = {
@@ -57,11 +58,18 @@ export type WizardState = {
   memberList: MemberList | null;
 };
 
-const ALL_STEP_LABELS = ["Zone basics", "Countries & churches", "Assistants", "Import members", "Review"] as const;
+const IMPORT_STEP_LABEL = "Import members";
+const ALL_STEP_LABELS = [
+  `${labels.zone} basics`,
+  singleCountry ? labels.locations : `${labels.countries} & ${labels.locations.toLowerCase()}`,
+  "Assistants",
+  IMPORT_STEP_LABEL,
+  "Review",
+];
 
 export const SETUP_IMPORT_MODES = tenant.setupImportModes ?? (["roster", "simple"] as const);
 
 // A tenant with no setup import modes doesn't get the import step at all.
-export const STEP_LABELS: readonly (typeof ALL_STEP_LABELS)[number][] = ALL_STEP_LABELS.filter(
-  (label) => label !== "Import members" || SETUP_IMPORT_MODES.length > 0
+export const STEP_LABELS: readonly string[] = ALL_STEP_LABELS.filter(
+  (label) => label !== IMPORT_STEP_LABEL || SETUP_IMPORT_MODES.length > 0
 );

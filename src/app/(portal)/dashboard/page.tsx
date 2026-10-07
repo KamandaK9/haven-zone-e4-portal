@@ -32,12 +32,21 @@ import { Download, CalendarClock } from "lucide-react";
 import { describeScope } from "@/lib/scope-label";
 import Link from "next/link";
 import { tenant } from "@/tenant";
+import { OverviewDashboard } from "@/components/dashboard/overview-dashboard";
+import { getZoneCells } from "@/lib/data/cells";
+import { labels, lower } from "@/lib/labels";
 
 export default async function DashboardPage({
   searchParams,
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
+  if (!tenant.modules.giving) {
+    const profile = await getCurrentProfile();
+    if (!profile) redirect("/");
+    const ds = await getZoneDataset(profile.zoneId);
+    return <OverviewDashboard ds={ds} cells={await getZoneCells(profile.zoneId)} scopeName={describeScope(profile, ds)} />;
+  }
   const giving = parseGivingFilter((await searchParams).giving);
   const givingLabel = giving === "all" ? "Total giving" : givingFilterLabel(giving);
   const profile = await getCurrentProfile();
@@ -61,7 +70,7 @@ export default async function DashboardPage({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{profile.scope === "zone" ? "Zone Dashboard" : "Dashboard"}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{profile.scope === "zone" ? `${labels.zone} Dashboard` : "Dashboard"}</h1>
           <p className="text-sm text-muted-foreground">
             An overview of membership, giving, and growth across {scopeName}.
           </p>
@@ -78,8 +87,8 @@ export default async function DashboardPage({
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard label="Total members" value={stats.totalMembers.toLocaleString()} icon={Users} delta={stats.growthPct} deltaLabel="vs last quarter" />
-        <StatCard label="Total Chapters" value={String(stats.totalChurches)} icon={Church} />
-        <StatCard label="Countries" value={String(stats.totalCountries)} icon={Globe2} />
+        <StatCard label={`Total ${labels.locations}`} value={String(stats.totalChurches)} icon={Church} />
+        <StatCard label={labels.countries} value={String(stats.totalCountries)} icon={Globe2} />
         <StatCard label="New this month" value={String(stats.newThisMonth)} icon={TrendingUp} />
       </div>
 
@@ -119,8 +128,8 @@ export default async function DashboardPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>Countries in {ds.zoneName}</CardTitle>
-          <CardDescription>Click a country to drill into its chapters</CardDescription>
+          <CardTitle>{labels.countries} in {ds.zoneName}</CardTitle>
+          <CardDescription>Click a {lower(labels.country)} to drill into its {lower(labels.locations)}</CardDescription>
         </CardHeader>
         <CardContent>
           <CountryGrid countries={ds.countries} ds={ds} />
@@ -146,8 +155,8 @@ export default async function DashboardPage({
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Giving by chapter</CardTitle>
-            <CardDescription>Top 8 chapters · {givingFilterLabel(giving)}, 12-month sum</CardDescription>
+            <CardTitle>Giving by {lower(labels.location)}</CardTitle>
+            <CardDescription>Top 8 {lower(labels.locations)} · {givingFilterLabel(giving)}, 12-month sum</CardDescription>
           </CardHeader>
           <CardContent>
             <BarBreakdownChart
@@ -166,7 +175,7 @@ export default async function DashboardPage({
         <Card>
           <CardHeader>
             <CardTitle>Time in {tenant.name}</CardTitle>
-            <CardDescription>Membership tenure distribution, zone-wide</CardDescription>
+            <CardDescription>Membership tenure distribution, {lower(labels.zone)}-wide</CardDescription>
           </CardHeader>
           <CardContent>
             <TenureChart data={tenure} />
@@ -186,8 +195,8 @@ export default async function DashboardPage({
       <div className="grid lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Zone health summary</CardTitle>
-            <CardDescription>Which chapters are growing, flat, or need attention</CardDescription>
+            <CardTitle>{labels.zone} health summary</CardTitle>
+            <CardDescription>Which {lower(labels.locations)} are growing, flat, or need attention</CardDescription>
           </CardHeader>
           <CardContent>
             <ChurchHealthList rows={health} ds={ds} />

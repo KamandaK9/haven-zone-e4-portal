@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { labels, lower } from "@/lib/labels";
 import { Users, Church, Globe2, HandCoins } from "lucide-react";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { TopGivers } from "@/components/dashboard/top-givers";
@@ -36,6 +37,8 @@ export default async function ReportsPage({
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
   if (!can(profile, "view_reports")) redirect("/dashboard");
+  // Giving reports only, for now — the dashboard has the rest.
+  if (!tenant.modules.giving) redirect("/dashboard");
   const ds = await getZoneDataset(profile.zoneId);
   const { currency, rates } = await getDisplayCurrency(profile.zoneCurrency);
 
@@ -59,8 +62,8 @@ export default async function ReportsPage({
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard label="Total members" value={stats.totalMembers.toLocaleString()} icon={Users} />
-        <StatCard label="Total Chapters" value={String(stats.totalChurches)} icon={Church} />
-        <StatCard label="Countries" value={String(stats.totalCountries)} icon={Globe2} />
+        <StatCard label={`Total ${labels.locations}`} value={String(stats.totalChurches)} icon={Church} />
+        <StatCard label={labels.countries} value={String(stats.totalCountries)} icon={Globe2} />
         <StatCard
           label={giving === "all" ? "Total giving" : `${givingLabel} giving`}
           value={formatMoney(getTotalGiving(ds, giving), currency, rates)}
@@ -74,7 +77,7 @@ export default async function ReportsPage({
             <CardTitle>
               <GivingCategorySelect value={giving} />
             </CardTitle>
-            <CardDescription>Zone-wide, last 12 months</CardDescription>
+            <CardDescription>{labels.zone}-wide, last 12 months</CardDescription>
           </CardHeader>
           <CardContent>
             <GivingTrendChart data={givingTrend} currency={currency} rates={rates} />
@@ -84,7 +87,7 @@ export default async function ReportsPage({
           <Card>
             <CardHeader>
               <CardTitle>Top givers</CardTitle>
-              <CardDescription>Zone-wide leaderboard · {givingLabel}</CardDescription>
+              <CardDescription>{labels.zone}-wide leaderboard · {givingLabel}</CardDescription>
             </CardHeader>
             <CardContent>
               <TopGivers givers={topGivers} ds={ds} currency={currency} rates={rates} />
@@ -112,8 +115,8 @@ export default async function ReportsPage({
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Giving by chapter</CardTitle>
-            <CardDescription>All chapters · {givingLabel}, 12-month sum</CardDescription>
+            <CardTitle>Giving by {lower(labels.location)}</CardTitle>
+            <CardDescription>All {lower(labels.locations)} · {givingLabel}, 12-month sum</CardDescription>
           </CardHeader>
           <CardContent>
             <BarBreakdownChart
@@ -132,7 +135,7 @@ export default async function ReportsPage({
         <Card>
           <CardHeader>
             <CardTitle>Time in {tenant.name}</CardTitle>
-            <CardDescription>Membership tenure distribution, zone-wide</CardDescription>
+            <CardDescription>Membership tenure distribution, {lower(labels.zone)}-wide</CardDescription>
           </CardHeader>
           <CardContent>
             <TenureChart data={tenure} />
@@ -151,8 +154,8 @@ export default async function ReportsPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>Zone health summary</CardTitle>
-          <CardDescription>Which chapters are growing, flat, or need attention</CardDescription>
+          <CardTitle>{labels.zone} health summary</CardTitle>
+          <CardDescription>Which {lower(labels.locations)} are growing, flat, or need attention</CardDescription>
         </CardHeader>
         <CardContent>
           <ChurchHealthList rows={health} ds={ds} />

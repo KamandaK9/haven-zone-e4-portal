@@ -4,6 +4,7 @@ import { Topbar } from "@/components/layout/topbar";
 import { PortalFrame } from "@/components/layout/portal-shell";
 import { getCurrentProfile } from "@/lib/data/get-dataset";
 import { requireAal2IfEnrolled } from "@/lib/mfa";
+import { positionLabel } from "@/lib/access";
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
   const profile = await getCurrentProfile();
@@ -19,6 +20,7 @@ export default async function PortalLayout({ children }: { children: React.React
         <Topbar
           zoneName={profile.zoneName}
           fullName={profile.fullName}
+          positionLabel={positionLabel(profile.position)}
           role={profile.role}
           caps={profile.caps}
           hiddenNavItems={profile.hiddenNavItems}

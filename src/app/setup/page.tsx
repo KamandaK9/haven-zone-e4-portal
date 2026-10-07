@@ -41,6 +41,7 @@ import {
 import { cn } from "@/lib/utils";
 import { isLeader } from "@/lib/access";
 import { tenant } from "@/tenant";
+import { labels, lower, singleCountry } from "@/lib/labels";
 
 const TOTAL_STEPS = STEP_LABELS.length;
 const IMPORT_STEP = STEP_LABELS.indexOf("Import members") + 1;
@@ -148,7 +149,7 @@ function SetupWizard({ setupKey }: { setupKey: string }) {
       password: wizard.adminPassword,
     });
     if (signInError) {
-      setSubmitError(`Zone created, but sign-in failed: ${signInError.message}. Try signing in from the login page.`);
+      setSubmitError(`${labels.zone} created, but sign-in failed: ${signInError.message}. Try signing in from the login page.`);
       setSubmitting(false);
       return;
     }
@@ -185,7 +186,7 @@ function SetupWizard({ setupKey }: { setupKey: string }) {
           <BrandMark size={32} />
           <div>
             <p className="font-semibold text-sm leading-tight">{wizard.zoneName || "Zone Setup"}</p>
-            <p className="text-xs text-muted-foreground leading-tight">Let&apos;s set up your zone</p>
+            <p className="text-xs text-muted-foreground leading-tight">Let&apos;s set up your {lower(labels.zone)}</p>
           </div>
         </div>
       </header>
@@ -264,7 +265,7 @@ function AssistantCredentialsScreen({
             <CheckCircle2 className="h-6 w-6 text-emerald-600" />
           </div>
           <div>
-            <p className="text-lg font-semibold">Zone set up</p>
+            <p className="text-lg font-semibold">{labels.zone} set up</p>
             <p className="text-sm text-muted-foreground mt-1">
               Share these one-time logins with your assistants before continuing — they won&apos;t be shown again.
             </p>
@@ -319,11 +320,13 @@ function StepZoneBasics({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold">Zone basics</h2>
-        <p className="text-sm text-muted-foreground mt-0.5">Name your zone and set up your Super Admin account.</p>
+        <h2 className="text-lg font-semibold">{labels.zone} basics</h2>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          Name your {lower(labels.zone)} and set up your main admin account.
+        </p>
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="zoneName">Zone name</Label>
+        <Label htmlFor="zoneName">{labels.zone} name</Label>
         <Input
           id="zoneName"
           value={wizard.zoneName}
@@ -483,9 +486,12 @@ function StepCountriesAndChurches({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold">Countries &amp; churches</h2>
+        <h2 className="text-lg font-semibold">
+          {singleCountry ? labels.locations : `${labels.countries} & ${lower(labels.locations)}`}
+        </h2>
         <p className="text-sm text-muted-foreground mt-0.5">
-          Add the countries and churches {wizard.zoneName || "your zone"} covers — type them in, or import a
+          Add the {singleCountry ? "" : `${lower(labels.countries)} and `}
+          {lower(labels.locations)} {wizard.zoneName || `your ${lower(labels.zone)}`} covers — type them in, or import a
           spreadsheet.
         </p>
       </div>
@@ -1031,14 +1037,14 @@ function StepReview({ wizard }: { wizard: WizardState }) {
       </div>
 
       <div className="grid sm:grid-cols-4 gap-3">
-        <SummaryStat label="Countries" value={countries.length} icon={Globe2} />
-        <SummaryStat label="Churches" value={totalChurches} icon={ChurchIcon} />
+        <SummaryStat label={labels.countries} value={countries.length} icon={Globe2} />
+        <SummaryStat label={labels.locations} value={totalChurches} icon={ChurchIcon} />
         <SummaryStat label="Assistants" value={assistants.length} icon={Users} />
         <SummaryStat label="Members" value={memberCount(wizard)} icon={Users} />
       </div>
 
       <div className="space-y-1.5">
-        <p className="text-sm font-medium">Zone</p>
+        <p className="text-sm font-medium">{labels.zone}</p>
         <p className="text-sm text-muted-foreground">
           {wizard.zoneName} &middot; Super Admin: {wizard.adminName} ({wizard.adminEmail})
         </p>
