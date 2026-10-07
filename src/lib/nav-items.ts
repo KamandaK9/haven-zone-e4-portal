@@ -58,8 +58,8 @@ export const NAV_ITEMS: NavItemDef[] = [
 export function getVisibleNavItems(role: StaffRole, caps: string[], hiddenNavItems: string[]): NavItemDef[] {
   return NAV_ITEMS.filter((item) => {
     if (item.module && !tenant.modules[item.module]) return false;
-    // Reports are giving reports for now — nothing to show without giving.
-    if (item.key === "reports" && !tenant.modules.giving) return false;
+    // Reports are giving or attendance reports — nothing to show with neither.
+    if (item.key === "reports" && !tenant.modules.giving && !tenant.modules.attendance) return false;
     if (item.cap && ![item.cap].flat().some((c) => caps.includes(c))) return false;
     // Only a Director's own hidden-items preference ever applies — other
     // leaders get a nav fixed by their capabilities.

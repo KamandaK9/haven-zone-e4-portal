@@ -1,5 +1,11 @@
 import { redirect } from "next/navigation";
 import { labels, lower } from "@/lib/labels";
+import { AttendanceReport } from "@/components/reports/attendance-report";
+import { getZoneCells } from "@/lib/data/cells";
+import { churchToday, getAttendanceData } from "@/lib/data/attendance";
+import { summarise } from "@/lib/attendance/summary";
+import { getCourse, getVisibleClassAttendance } from "@/lib/data/courses";
+import { courseProgress } from "@/lib/courses/progress";
 import { Users, Church, Globe2, HandCoins } from "lucide-react";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { TopGivers } from "@/components/dashboard/top-givers";
@@ -37,8 +43,33 @@ export default async function ReportsPage({
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
   if (!can(profile, "view_reports")) redirect("/dashboard");
-  // Giving reports only, for now — the dashboard has the rest.
-  if (!tenant.modules.giving) redirect("/dashboard");
+  // Without giving, reports are attendance reports.
+  if (!tenant.modules.giving) {
+    if (!tenant.modules.attendance) redirect("/dashboard");
+    const [ds, cells, data] = await Promise.all([getZoneDataset(profile.zoneId), getZoneCells(profile.zoneId), getAttendanceData()]);
+    const members = ds.members.filter((m) => !m.isVisitor && (profile.scope !== "cell" || m.cellId === profile.cellId));
+    const standing = summarise(members, data.services, data.attendance, churchToday());
+    let course: { name: string; completed: number; inProgress: number } | undefined;
+    const c = tenant.modules.courses ? await getCourse(profile.zoneId) : undefined;
+    if (c) {
+      const byMember = new Map<string, string[]>();
+      for (const a of await getVisibleClassAttendance()) byMember.set(a.memberId, [...(byMember.get(a.memberId) ?? []), a.classId]);
+      const ids = c.classes.map((x) => x.id);
+      const done = [...byMember.values()].filter((v) => courseProgress(v, ids, c.requiredClasses).completed).length;
+      course = { name: c.name, completed: done, inProgress: byMember.size - done };
+    }
+    return (
+      <AttendanceReport
+        ds={ds}
+        cells={cells}
+        services={data.services}
+        attendance={data.attendance}
+        standing={standing}
+        course={course}
+        canExport={can(profile, "export_data")}
+      />
+    );
+  }
   const ds = await getZoneDataset(profile.zoneId);
   const { currency, rates } = await getDisplayCurrency(profile.zoneCurrency);
 
