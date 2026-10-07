@@ -368,5 +368,50 @@ expect("a member can't switch features off", r.ok && r.affected === 0, r);
 r = await as(D, "authenticated", `update zones set disabled_modules = '{}' where id = '${Z}'`);
 expect("an admin can switch features on and off", changed(r), r);
 
+// ── Cell roles ────────────────────────────────────────────────────────
+{
+  const SC = id(60), CC = id(61), OC = id(62);
+  const SL = id(63), AL = id(64);
+  const MSL = id(65), MAL = id(66), M_SC = id(67), M_CC = id(68), M_OC = id(69);
+  await db.exec(`
+    insert into auth.users (id) values ('${SL}'), ('${AL}');
+    insert into profiles (id, zone_id, role, full_name, email, position, scope, church_id, caps) values
+      ('${SL}', '${Z}', 'admin', 'Senior Leader', 'sl@x', 'member', 'cell', '${C1}', '{view_members,view_attendance}'),
+      ('${AL}', '${Z}', 'admin', 'Assistant', 'al@x', 'member', 'cell', '${C1}', '{view_members,view_attendance}');
+    insert into members (id, zone_id, church_id, country_id, first_name, last_name, profile_id) values
+      ('${MSL}', '${Z}', '${C1}', '${CO}', 'Senior', 'Leader', '${SL}'),
+      ('${MAL}', '${Z}', '${C1}', '${CO}', 'Assist', 'Ant', '${AL}'),
+      ('${M_SC}', '${Z}', '${C1}', '${CO}', 'In', 'Senior', null),
+      ('${M_CC}', '${Z}', '${C1}', '${CO}', 'In', 'Child', null),
+      ('${M_OC}', '${Z}', '${C1}', '${CO}', 'In', 'Other', null);
+    insert into cells (id, zone_id, church_id, name, leader_member_id) values ('${SC}', '${Z}', '${C1}', 'Senior', '${MSL}');
+    insert into cells (id, zone_id, church_id, name, parent_id) values ('${CC}', '${Z}', '${C1}', 'Child', '${SC}'), ('${OC}', '${Z}', '${C1}', 'Other', null);
+    update members set cell_id = '${SC}' where id in ('${M_SC}', '${MSL}');
+    update members set cell_id = '${CC}' where id in ('${M_CC}', '${MAL}');
+    update members set cell_id = '${OC}' where id = '${M_OC}';
+  `);
+  r = await as(SL, "authenticated", `select id from members where id in ('${M_SC}', '${M_CC}', '${M_OC}') order by last_name`);
+  expect("a senior cell leader sees their senior cell and the cells inside it", r.ok && r.rows.length === 2 && !r.rows.some((x) => x.id === M_OC), r);
+  r = await as(AL, "authenticated", `select id from members where id in ('${M_SC}', '${M_CC}', '${M_OC}')`);
+  expect("an assistant sees only the cell they belong to", r.ok && r.rows.length === 1 && r.rows[0].id === M_CC, r);
+  r = await as(G, "authenticated", `select id from members where id in ('${M_SC}', '${M_CC}', '${M_OC}')`);
+  expect("a chapter-scoped leader still sees every cell in their chapter", r.ok && r.rows.length === 3, r);
+}
+
+// ── Departments ───────────────────────────────────────────────────────
+{
+  const DEP = id(70);
+  r = await as(G, "authenticated", `insert into departments (id, zone_id, name) values ('${DEP}', '${Z}', 'Choir')`);
+  expect("only whoever manages settings defines departments", denied(r), r);
+  r = await as(D, "authenticated", `insert into departments (id, zone_id, name) values ('${DEP}', '${Z}', 'Choir')`);
+  expect("an admin can add a department", r.ok, r);
+  r = await as(G, "authenticated", `insert into member_departments (member_id, department_id, zone_id) values ('${MM}', '${DEP}', '${Z}')`);
+  expect("a leader who manages a member can put them in a department", r.ok, r);
+  r = await as(G, "authenticated", `insert into member_departments (member_id, department_id, zone_id) values ('${MM2}', '${DEP}', '${Z}')`);
+  expect("…but not someone outside their area", denied(r), r);
+  r = await as(M2, "authenticated", `select member_id from member_departments`);
+  expect("members don't see who else is in a department", r.ok && r.rows.length === 0, r);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

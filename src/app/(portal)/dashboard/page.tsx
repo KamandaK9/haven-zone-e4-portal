@@ -61,7 +61,7 @@ export default async function DashboardPage({
     let attendance: AttendanceTiles | undefined;
     if (modules.attendance && can(profile, "view_attendance")) {
       const data = await getAttendanceData();
-      const members = ds.members.filter((m) => !m.isVisitor && (profile.scope !== "cell" || m.cellId === profile.cellId));
+      const members = ds.members.filter((m) => !m.isVisitor);
       const standing = [...summarise(members, data.services, data.attendance, churchToday()).values()];
       const lastSunday = data.services.find((s) => s.kind === "sunday");
       const lastSundayCount = lastSunday

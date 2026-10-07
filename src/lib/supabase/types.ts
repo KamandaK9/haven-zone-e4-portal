@@ -1174,6 +1174,18 @@ export type Database = {
         Update: Partial<{ expires_at: string }>;
         Relationships: [];
       };
+      departments: {
+        Row: { id: string; zone_id: string; name: string; sort_order: number; created_at: string };
+        Insert: { id?: string; zone_id: string; name: string; sort_order?: number; created_at?: string };
+        Update: Partial<{ name: string; sort_order: number }>;
+        Relationships: [];
+      };
+      member_departments: {
+        Row: { member_id: string; department_id: string; zone_id: string };
+        Insert: { member_id: string; department_id: string; zone_id: string };
+        Update: Partial<{ department_id: string }>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {

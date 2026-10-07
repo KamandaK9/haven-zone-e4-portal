@@ -31,8 +31,9 @@ export default async function AttendancePage() {
   const cellName = new Map(cells.map((c) => [c.id, c.name]));
   const churchName = new Map(ds.churches.map((c) => [c.id, c.name]));
 
-  // A cell leader's list is their own cell; everyone else, their whole scope.
-  const members = ds.members.filter((m) => !m.isVisitor && (profile.scope !== "cell" || m.cellId === profile.cellId));
+  // Members are already limited to the viewer's scope (RLS) — for a cell
+  // role, the cells they lead or belong to.
+  const members = ds.members.filter((m) => !m.isVisitor);
   const standing = summarise(members, data.services, data.attendance, today);
   const counts = { active: 0, irregular: 0, unknown: 0 };
   for (const s of standing.values()) counts[s.status]++;

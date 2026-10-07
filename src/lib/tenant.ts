@@ -27,6 +27,9 @@ export type EventSeriesDef = {
 export type PositionDef = {
   key: string; // stored on members.position / profiles.position — don't rename in place once in use
   label: string;
+  // What the role is for, in a sentence — shown when giving someone a role
+  // and in Settings → Team & access → Roles explained.
+  description?: string;
   rank: number;
   scope: Scope;
   loginRole: "super_admin" | "admin" | "member";
@@ -119,6 +122,13 @@ export type TenantConfig = {
   // go into the church entered on the previous step, and its cells are set up
   // from the sheet). Defaults to both; [] drops the step.
   setupImportModes?: readonly ("roster" | "simple")[];
+  // The statuses a member can have (members.role), in place of Stratum's
+  // Member / Worker / Cell Leader / Pastor — e.g. just Member and Worker when
+  // leadership is shown from people's roles instead. Optional.
+  memberStatuses?: readonly ("Member" | "Worker" | "Cell Leader" | "Pastor")[];
+  // Departments (Settings → Departments) offered as one-tap additions — the
+  // organisation's usual ones. Optional.
+  departmentSuggestions?: readonly string[];
   // The age groups members are sorted into, youngest first. Optional: with
   // none defined, age groups don't appear anywhere. A member's group is
   // stored (members.age_group = key), not computed from birthday; the age

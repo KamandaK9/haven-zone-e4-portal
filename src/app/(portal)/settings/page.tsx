@@ -144,6 +144,20 @@ export default async function SettingsPage() {
         </Card>
       )}
 
+      {can(profile, "manage_settings") && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Departments</CardTitle>
+            <CardDescription>Where people serve — choir, ushering, media… Shown on profiles and filterable on members.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/settings/departments">Manage departments</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>Features</CardTitle>

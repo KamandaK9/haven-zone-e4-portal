@@ -3,7 +3,7 @@ import { ContributionsCard } from "@/components/members/contributions-card";
 import { summariseContributions } from "@/lib/giving-summary";
 import { memberStanding } from "@/lib/handbook/member-standing";
 import { getHandbookRules } from "@/lib/handbook/rules-server";
-import { isLeader, positionLabel } from "@/lib/access";
+import { canActOn, isLeader, positionLabel } from "@/lib/access";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Mail, Phone, Calendar, HandCoins, Clock, CheckCircle2, Video } from "lucide-react";
@@ -42,6 +42,10 @@ import { ATTENDANCE_RULES, attendanceStatus, consecutiveMissedSundays, sundaySer
 import { FollowUpDialog, OUTCOMES } from "@/components/attendance/follow-up-dialog";
 import { ConfirmVisitorButton } from "@/components/attendance/confirm-visitor-button";
 import { MemberDataActions } from "@/components/members/member-data-actions";
+import { RoleCard } from "@/components/members/role-card";
+import { DepartmentsField } from "@/components/members/departments-field";
+import { getDepartmentMemberships, getDepartments } from "@/lib/data/departments";
+import { assignableRoles, roleOption } from "@/lib/roles";
 import { formatBirthday } from "@/lib/birthday";
 import { MemberFieldsCard } from "@/components/members/member-fields-card";
 import { getMemberFields, getMemberFieldValues } from "@/lib/data/member-fields";
@@ -100,6 +104,8 @@ export default async function MemberPage({
   const trainingPoints = memberTrainingPoints(member);
   const level = getTrainingLevel(trainingPoints);
   const single = ds.countries.length === 1;
+  const [departments, memberships] = await Promise.all([getDepartments(), getDepartmentMemberships()]);
+  const memberDepartments = memberships[member.id] ?? [];
   const showAttendance = modules.attendance && can(profile, "view_attendance");
   const att = showAttendance ? await getMemberAttendance(member.id, member.churchId) : undefined;
   const today = churchToday();
@@ -188,6 +194,18 @@ export default async function MemberPage({
               )}
             </div>
           )}
+          {departments.length > 0 || can(profile, "manage_settings") ? (
+            <div className="mt-2">
+              <DepartmentsField
+                memberId={member.id}
+                firstName={member.firstName}
+                departments={departments}
+                selected={memberDepartments}
+                canEdit={can(profile, "manage_members")}
+                canDefine={can(profile, "manage_settings")}
+              />
+            </div>
+          ) : null}
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {member.isVisitor && can(profile, "manage_members") && <ConfirmVisitorButton memberId={member.id} />}
             <InviteMemberButton
@@ -381,6 +399,22 @@ export default async function MemberPage({
           </Card>
         )}
       </div>
+
+      {(can(profile, "assign_roles") || can(profile, "manage_access") || isLeader(member.position)) && (
+        <RoleCard
+          memberId={member.id}
+          firstName={member.firstName}
+          current={roleOption(member.position, modules)}
+          options={assignableRoles(profile.position, modules)}
+          canChange={
+            (can(profile, "assign_roles") || can(profile, "manage_access")) &&
+            member.profileId !== profile.userId &&
+            canActOn(profile.position, member.position)
+          }
+          hasLogin={member.hasPortalAccess}
+          cellsHref={`/churches/${member.churchId}#cells`}
+        />
+      )}
 
       {can(profile, "manage_members") && (
         <div className="flex justify-end">

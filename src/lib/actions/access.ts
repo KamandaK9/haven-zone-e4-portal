@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { can, getCurrentProfile, type CurrentProfile } from "@/lib/data/get-dataset";
 import {
   canActOn,
+  positionLabel,
   isCapability,
   isLeader,
   isPortfolio,
@@ -36,10 +37,17 @@ async function requireAccessManager(): Promise<{ ok: true; profile: CurrentProfi
   return { ok: true, profile };
 }
 
+// Giving someone a role. manage_access may also fine-tune their individual
+// permissions; assign_roles (pastors) only picks the role — always below
+// their own, for someone they can see.
 export async function updateMemberAccess(input: UpdateAccessInput): Promise<ActionResult> {
-  const auth = await requireAccessManager();
-  if (!auth.ok) return auth;
-  const { profile } = auth;
+  const profile = await getCurrentProfile();
+  if (!profile) return { ok: false, error: "Not signed in." };
+  const fullAccess = can(profile, "manage_access");
+  if (!fullAccess && !can(profile, "assign_roles")) return { ok: false, error: "Not permitted." };
+  if (!fullAccess && (input.granted.length > 0 || input.revoked.length > 0)) {
+    return { ok: false, error: "Only an administrator can change individual permissions." };
+  }
 
   if (!isPosition(input.position) || (input.portfolio !== null && !isPortfolio(input.portfolio))) {
     return { ok: false, error: "Unknown position." };
@@ -104,7 +112,7 @@ export async function updateMemberAccess(input: UpdateAccessInput): Promise<Acti
   await logAudit(
     profile,
     "access.update",
-    `Set ${member.first_name} ${member.last_name} to ${input.position.replace(/_/g, " ")}${portfolio ? ` (${portfolio})` : ""}` +
+    `Set ${member.first_name} ${member.last_name} to ${positionLabel(input.position)}${portfolio ? ` (${portfolio})` : ""}` +
       (granted.length || revoked.length ? ` with ${granted.length} granted / ${revoked.length} revoked permissions` : ""),
     {
       entity: { type: "member", id: member.id },
