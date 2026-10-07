@@ -31,6 +31,8 @@ import type { LessonStatus } from "@/lib/data/types";
 import { cn } from "@/lib/utils";
 import { tenant } from "@/tenant";
 import { labels } from "@/lib/labels";
+import { getCourse, getMemberCourse } from "@/lib/data/courses";
+import { courseProgress } from "@/lib/courses/progress";
 import { churchToday, getMemberAttendance } from "@/lib/data/attendance";
 import { ATTENDANCE_RULES, attendanceStatus, consecutiveMissedSundays, sundayServicesFor } from "@/lib/attendance/rules";
 import { FollowUpDialog, OUTCOMES } from "@/components/attendance/follow-up-dialog";
@@ -83,6 +85,11 @@ export default async function MemberPage({
   const sundays = att ? sundayServicesFor(att.services, member.churchId, today) : [];
   const standing = att ? attendanceStatus(sundays, att.attended, today) : undefined;
   const missed = att && sundays.length ? consecutiveMissedSundays(sundays, att.attended) : 0;
+  const course = tenant.modules.courses ? await getCourse(profile.zoneId) : undefined;
+  const memberCourse = course ? await getMemberCourse(member.id) : undefined;
+  const courseDone = course && memberCourse
+    ? courseProgress(memberCourse.attended.map((a) => a.classId), course.classes.map((c) => c.id), course.requiredClasses)
+    : undefined;
   const LevelIcon = level.icon;
 
   return (
@@ -265,6 +272,40 @@ export default async function MemberPage({
             })}
           </CardContent>
         </Card>
+        )}
+        {course && courseDone && memberCourse && (
+          <Card className={!ds.individualGiving && !tenant.modules.training ? "lg:col-span-3" : undefined}>
+            <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0">
+              <div>
+                <CardTitle>{course.name}</CardTitle>
+                <CardDescription>
+                  {courseDone.completed
+                    ? "Completed"
+                    : memberCourse.cohorts.length
+                      ? `${courseDone.attended} of ${courseDone.required} classes`
+                      : "Not started"}
+                  {memberCourse.cohorts.length > 0 && ` · ${memberCourse.cohorts.map((c) => c.name).join(", ")}`}
+                </CardDescription>
+              </div>
+              {courseDone.completed && <Badge>Completed</Badge>}
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-1.5">
+                {course.classes.map((c) => {
+                  const a = memberCourse.attended.find((x) => x.classId === c.id);
+                  return (
+                    <span
+                      key={c.id}
+                      title={a ? `Attended ${a.date}` : c.title || undefined}
+                      className={`rounded-md px-2 py-1 text-xs ${a ? "bg-emerald-100 text-emerald-800" : "bg-muted text-muted-foreground"}`}
+                    >
+                      {c.title ? `${c.number}. ${c.title}` : `Class ${c.number}`}
+                    </span>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
         )}
         {att && (
           <Card className={!ds.individualGiving && !tenant.modules.training ? "lg:col-span-3" : undefined}>

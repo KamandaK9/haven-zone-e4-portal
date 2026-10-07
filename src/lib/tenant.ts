@@ -100,6 +100,9 @@ export type TenantConfig = {
     // "chapter" if omitted.
     elevatedMemberScope?: Scope;
   };
+  // The cohort-based course the courses module runs (modules.courses): its
+  // name, how many classes it has, and how many distinct classes complete it.
+  course?: { name: string; classes: number; requiredClasses: number };
   // Attendance rules (src/lib/attendance/rules.ts): a member is active with at
   // least `activeMinSundays` Sunday services in the last 30 days, and flagged
   // for follow-up after `absenceAlertAfter` missed Sundays in a row. Both

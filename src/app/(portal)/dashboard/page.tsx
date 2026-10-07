@@ -47,6 +47,12 @@ export default async function DashboardPage({
   if (!tenant.modules.giving) {
     const profile = await getCurrentProfile();
     if (!profile) redirect("/");
+    // A teacher or check-in volunteer can't see members — their screen is
+    // their dashboard.
+    if (!can(profile, "view_members")) {
+      if (tenant.modules.courses && can(profile, "teach_courses")) redirect("/courses");
+      if (tenant.modules.attendance && can(profile, "check_in")) redirect("/check-in");
+    }
     const ds = await getZoneDataset(profile.zoneId);
     let attendance: AttendanceTiles | undefined;
     if (tenant.modules.attendance && can(profile, "view_attendance")) {

@@ -1006,6 +1006,36 @@ export type Database = {
         Update: Partial<{ outcome: "reached" | "no_answer" | "visited" | "other"; note: string | null }>;
         Relationships: [];
       };
+      courses: {
+        Row: { id: string; zone_id: string; name: string; required_classes: number; created_at: string };
+        Insert: { id?: string; zone_id: string; name: string; required_classes?: number; created_at?: string };
+        Update: Partial<{ name: string; required_classes: number }>;
+        Relationships: [];
+      };
+      course_classes: {
+        Row: { id: string; course_id: string; zone_id: string; number: number; title: string };
+        Insert: { id?: string; course_id: string; zone_id: string; number: number; title?: string };
+        Update: Partial<{ number: number; title: string }>;
+        Relationships: [];
+      };
+      cohorts: {
+        Row: { id: string; zone_id: string; course_id: string; church_id: string; name: string; start_date: string | null; teacher_profile_id: string | null; closed: boolean; created_at: string };
+        Insert: { id?: string; zone_id: string; course_id: string; church_id: string; name: string; start_date?: string | null; teacher_profile_id?: string | null; closed?: boolean; created_at?: string };
+        Update: Partial<{ name: string; start_date: string | null; teacher_profile_id: string | null; closed: boolean; church_id: string }>;
+        Relationships: [];
+      };
+      cohort_students: {
+        Row: { cohort_id: string; member_id: string; zone_id: string; enrolled_at: string };
+        Insert: { cohort_id: string; member_id: string; zone_id: string; enrolled_at?: string };
+        Update: Partial<{ enrolled_at: string }>;
+        Relationships: [];
+      };
+      class_attendance: {
+        Row: { id: string; zone_id: string; class_id: string; cohort_id: string; member_id: string; attended_on: string; marked_by: string | null };
+        Insert: { id?: string; zone_id: string; class_id: string; cohort_id: string; member_id: string; attended_on?: string; marked_by?: string | null };
+        Update: Partial<{ attended_on: string }>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -1028,6 +1058,10 @@ export type Database = {
       checkin_roster: {
         Args: { p_church_id: string };
         Returns: { id: string; first_name: string; last_name: string; cell_name: string | null; age_group: string | null; is_visitor: boolean }[];
+      };
+      cohort_roster: {
+        Args: { p_cohort_id: string };
+        Returns: { member_id: string; first_name: string; last_name: string; cell_name: string | null }[];
       };
       checkin_add_visitor: {
         Args: { p_id: string; p_church_id: string; p_first_name: string; p_last_name: string; p_phone: string };

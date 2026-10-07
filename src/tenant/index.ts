@@ -118,6 +118,8 @@ export const tenant: TenantConfig = {
     portfolios: [],
     positions,
   },
+  // From the pastor (2026-10-07): complete after 7 classes.
+  course: { name: "Foundation School", classes: 7, requiredClasses: 7 },
   // From the pastor (2026-10-07): active = 2+ Sunday services a month;
   // follow up after 2 missed Sundays in a row.
   attendance: { activeMinSundays: 2, absenceAlertAfter: 2 },
