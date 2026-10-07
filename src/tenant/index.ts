@@ -61,18 +61,17 @@ const positions: readonly PositionDef[] = [
 // CE Sandton. Everything that makes this deployment CE Sandton rather than a
 // generic Stratum portal lives in this folder; see src/lib/tenant.ts.
 //
-// Interim policy defaults (decided 2026-09-30 while the church's answers are
-// outstanding — seed these into org_settings once Phase 2 lands; the church
-// may still override any of them):
-//   - Age groups: Children 0–12, Teens 13–17, Youth 18–25, Adults 26+ (see
-//     ageGroups below — the church's own sheet has a Teens tab).
-//   - Active member: attended ≥1 of their last 4 expected services.
-//   - Absence alert: cell leader alerted after 2 consecutive missed services.
-//   - Foundation School completion: every required lesson attended (make-ups
-//     allowed in a later cohort).
-//   - Birthday messages: auto-send daily from a once-approved template, admin
-//     can pause; under-18s go to the guardian's contact, not the minor.
-//   - Check-in: no offline mode — printable sheet, bulk-captured afterwards.
+// Church policy, as confirmed by the pastor (2026-10-07) — seed these into
+// org_settings once Phase 2 lands:
+//   - Age groups: Children 0–12, Teens 13–19, Youth 20–35, Adults 36+ (see
+//     ageGroups below; the pastor wrote "adults 35+", read as following on
+//     from Youth's 35).
+//   - Active member: attends at least 2 Sunday services a month.
+//   - Absence alert: cell leader alerted after 2 consecutive missed Sundays.
+//   - Foundation School completion: 7 classes completed.
+//   - Birthday messages: each day's batch is approved by someone before it
+//     sends; under-18s go to the guardian's contact, not the minor.
+//   - Check-in: must work offline (queue on the device, sync when back).
 // Still placeholder: logo and brand colours in theme.css, pending supply.
 export const tenant: TenantConfig = {
   name: "CE Sandton",
@@ -113,13 +112,13 @@ export const tenant: TenantConfig = {
     portfolios: [],
     positions,
   },
-  // The church's member sheet keeps one tab per group. Ranges are the interim
-  // defaults (2026-10-07) — the church hasn't confirmed them.
+  // The church's member sheet keeps one tab per group; ranges as confirmed
+  // by the pastor (2026-10-07).
   ageGroups: [
     { key: "children", label: "Children", minAge: 0, maxAge: 12 },
-    { key: "teens", label: "Teens", minAge: 13, maxAge: 17 },
-    { key: "youth", label: "Youth", minAge: 18, maxAge: 25 },
-    { key: "adults", label: "Adults", minAge: 26 },
+    { key: "teens", label: "Teens", minAge: 13, maxAge: 19 },
+    { key: "youth", label: "Youth", minAge: 20, maxAge: 35 },
+    { key: "adults", label: "Adults", minAge: 36 },
   ],
   login: {
     headline: "One view of every location, every cell, every member.",
