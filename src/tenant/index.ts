@@ -11,52 +11,81 @@ const ALL_CAPS: readonly Capability[] = [
   "check_in", "view_attendance", "record_follow_up", "view_pastoral_notes", "manage_services",
   "manage_courses", "teach_courses",
   "send_messages", "approve_messages",
-  "export_data", "manage_settings",
+  "export_data", "manage_settings", "assign_roles",
 ];
 
-// CE Sandton's six roles (spec §7). Rank orders seniority (lower = more
-// senior, gates who may assign whom in Settings → Team & access); scope is
-// which slice of the church the role sees.
-//
-// A Foundation School teacher's real restriction — their own cohorts only —
-// isn't a group/location/cell scope at all, so it's enforced by RLS on the
-// course tables (cohort.teacher_profile_id = auth.uid()) rather than by
-// `scope` here; teach_courses is the only capability that matters for them.
-// A check-in volunteer searches members through a dedicated scoped lookup
-// (name + cell only, no contact details) rather than the Members section,
-// so check_in alone is enough — no view_members/view_contact_details.
+// CE Sandton's roles, as agreed with Daniel (2026-10-08). Rank orders
+// seniority (lower = more senior): you can only give someone a role ranked
+// below your own. Scope is which slice of the church the role sees:
+//   zone    — all of CE Sandton
+//   chapter — one sub-group
+//   cell    — the cells they lead or belong to, and the cells inside those
+//             (from the cells page's leader and the member's own cell)
+//   self    — their own record (a teacher's class groups are enforced by
+//             the course tables, not this)
+// A check-in volunteer and a Foundation School teacher see names only.
 const positions: readonly PositionDef[] = [
-  { key: "system_admin", label: "System Administrator", rank: 0, scope: "zone", loginRole: "super_admin", baseCaps: ALL_CAPS },
   {
-    // The group is the zone (CE Sandton = group → locations → cells).
+    key: "system_admin", label: "System Administrator", rank: 0, scope: "zone", loginRole: "super_admin", baseCaps: ALL_CAPS,
+    description: "Runs the portal: every member, every setting, features and team access.",
+  },
+  {
     key: "group_pastor", label: "Group Pastor", rank: 1, scope: "zone", loginRole: "admin",
+    description: "Leads all of CE Sandton: every sub-group, cell and member, approves messages, and gives people their roles.",
     baseCaps: [
       "view_members", "view_contact_details", "manage_members", "view_reports", "export_data",
       "view_attendance", "record_follow_up", "view_pastoral_notes", "manage_services",
-      "manage_courses", "send_messages", "approve_messages",
+      "manage_courses", "send_messages", "approve_messages", "assign_roles",
     ],
   },
   {
     key: "location_pastor", label: "Sub-group Pastor", rank: 2, scope: "chapter", loginRole: "admin",
+    description: "Leads one sub-group: its members, cells, attendance and Foundation School, and gives roles within it.",
     baseCaps: [
       "view_members", "view_contact_details", "manage_members", "view_reports", "export_data",
       "view_attendance", "record_follow_up", "view_pastoral_notes", "manage_services",
-      "manage_courses", "send_messages",
+      "manage_courses", "send_messages", "assign_roles",
     ],
   },
   {
-    key: "cell_leader", label: "Cell Leader", rank: 3, scope: "cell", loginRole: "admin",
+    key: "fs_principal", label: "Foundation School Principal", rank: 3, scope: "zone", loginRole: "admin",
+    description: "Runs Foundation School everywhere: class groups, teachers, enrolment and every register — names only.",
+    baseCaps: ["view_members", "manage_courses", "teach_courses"],
+  },
+  {
+    key: "followup_coordinator", label: "Follow-up Coordinator", rank: 3, scope: "chapter", loginRole: "admin",
+    description: "Reaches out to people who've been away from a sub-group: absentees, their numbers, and follow-up notes.",
+    baseCaps: ["view_members", "view_contact_details", "view_attendance", "record_follow_up", "view_pastoral_notes"],
+  },
+  {
+    key: "senior_cell_leader", label: "Senior Cell Leader", rank: 3, scope: "cell", loginRole: "admin",
+    description: "Leads a senior cell and the cells inside it: their members, attendance and follow-ups.",
     baseCaps: ["view_members", "view_contact_details", "view_attendance", "record_follow_up"],
   },
   {
-    key: "fs_teacher", label: "Foundation School Teacher", rank: 4, scope: "self", loginRole: "admin",
+    key: "cell_leader", label: "Cell Leader", rank: 4, scope: "cell", loginRole: "admin",
+    description: "Leads a cell: its members, their attendance, and following up when someone's been away.",
+    baseCaps: ["view_members", "view_contact_details", "view_attendance", "record_follow_up"],
+  },
+  {
+    key: "assistant_cell_leader", label: "Assistant Cell Leader", rank: 5, scope: "cell", loginRole: "admin",
+    description: "Helps lead the cell they belong to: its members, attendance and follow-ups.",
+    baseCaps: ["view_members", "view_contact_details", "view_attendance", "record_follow_up"],
+  },
+  {
+    key: "fs_teacher", label: "Foundation School Teacher", rank: 5, scope: "self", loginRole: "admin",
+    description: "Teaches their own Foundation School class groups and ticks the register — names only.",
     baseCaps: ["teach_courses"],
   },
   {
-    key: "checkin_volunteer", label: "Check-in Volunteer", rank: 5, scope: "chapter", loginRole: "admin",
+    key: "checkin_volunteer", label: "Check-in Volunteer", rank: 6, scope: "chapter", loginRole: "admin",
+    description: "Checks people in at services in their sub-group, including the self check-in tablet — names only.",
     baseCaps: ["check_in"],
   },
-  { key: "member", label: "Member", rank: 6, scope: "self", loginRole: "member", baseCaps: [] },
+  {
+    key: "member", label: "Member", rank: 7, scope: "self", loginRole: "member", baseCaps: [],
+    description: "Sees and updates their own details.",
+  },
 ];
 
 // CE Sandton. Everything that makes this deployment CE Sandton rather than a
@@ -146,6 +175,11 @@ export const tenant: TenantConfig = {
   attendance: { activeMinSundays: 2, absenceAlertAfter: 2 },
   // The church's own member sheet, as it keeps it — no leadership roster.
   setupImportModes: ["simple"],
+  // A member is a Member or a Worker (serves in a department); leadership is
+  // shown from their role, never typed in twice.
+  memberStatuses: ["Member", "Worker"],
+  // Usual Christ Embassy departments, suggested in Settings → Departments.
+  departmentSuggestions: ["Choir", "Ushering", "Media", "Protocol", "Children's Church", "Follow-up", "Foundation School", "Prayer"],
   // The church's member sheet keeps one tab per group; ranges as confirmed
   // by the pastor (2026-10-07).
   ageGroups: [

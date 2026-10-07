@@ -49,7 +49,7 @@ export default async function ReportsPage({
   if (!modules.giving) {
     if (!modules.attendance) redirect("/dashboard");
     const [ds, cells, data] = await Promise.all([getZoneDataset(profile.zoneId), getZoneCells(profile.zoneId), getAttendanceData()]);
-    const members = ds.members.filter((m) => !m.isVisitor && (profile.scope !== "cell" || m.cellId === profile.cellId));
+    const members = ds.members.filter((m) => !m.isVisitor);
     const standing = summarise(members, data.services, data.attendance, churchToday());
     let course: { name: string; completed: number; inProgress: number } | undefined;
     const c = modules.courses ? await getCourse(profile.zoneId) : undefined;

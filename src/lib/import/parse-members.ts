@@ -1,10 +1,11 @@
 import type { MemberRole } from "@/lib/data/types";
+import { MEMBER_STATUSES } from "@/lib/statuses";
 import type { ParsedMemberRow } from "@/lib/actions/members";
 import { tenant } from "@/tenant";
 import { nameKey, namesAgree } from "@/lib/name-match";
 import { buildHeaderMap, normalizeHeader, readAllExcelSheets, readTableFile, type SheetTable, type TableFile } from "./read-table-file";
 
-const ROLE_VALUES: MemberRole[] = ["Member", "Worker", "Cell Leader", "Pastor"];
+const ROLE_VALUES = MEMBER_STATUSES;
 
 // Header aliases, matched case-insensitively with whitespace collapsed —
 // this is the "reads the file's own headers" auto-detection. Every column is
