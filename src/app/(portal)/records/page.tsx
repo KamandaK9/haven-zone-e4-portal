@@ -26,7 +26,7 @@ export default async function RecordsPage({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  requireModule("records");
+  await requireModule("records");
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
   if (profile.role === "member") redirect("/me");

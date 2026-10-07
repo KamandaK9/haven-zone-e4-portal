@@ -9,6 +9,7 @@ import { isGivingCategory } from "@/lib/giving";
 import { mapEventRow } from "./events";
 import { CAPABILITIES, hasCapability, isPortfolio, isPosition, type Capability, type Portfolio, type Position, type Scope } from "@/lib/access";
 import { tenant } from "@/tenant";
+import { getModules } from "@/lib/modules-server";
 import type {
   ActivityItem,
   ActivityType,
@@ -335,7 +336,7 @@ export async function getZoneDataset(zoneId: string): Promise<Dataset & { zoneNa
     subZones,
     giving,
     individualGiving:
-      tenant.modules.giving && !!viewer && (viewer.role === "member" || can(viewer, "view_giving_individual")),
+      (await getModules()).giving && !!viewer && (viewer.role === "member" || can(viewer, "view_giving_individual")),
   };
 }
 

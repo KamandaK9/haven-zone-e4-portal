@@ -13,7 +13,7 @@ export default async function CourseEditorPage({
 }: {
   params: Promise<{ programId: string }>;
 }) {
-  requireModule("training");
+  await requireModule("training");
   const { programId } = await params;
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");

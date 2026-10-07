@@ -12,7 +12,7 @@ import { getVideoProvider } from "@/lib/video/providers";
 import { tenant } from "@/tenant";
 
 export default async function LiveStreamPage({ params }: { params: Promise<{ streamId: string }> }) {
-  requireModule("livestreams");
+  await requireModule("livestreams");
   const { streamId } = await params;
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");

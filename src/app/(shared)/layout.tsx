@@ -5,6 +5,7 @@ import { PortalFrame } from "@/components/layout/portal-shell";
 import { MemberSidebar } from "@/components/member-portal/member-sidebar";
 import { MemberTopbar } from "@/components/member-portal/member-topbar";
 import { getCurrentProfile } from "@/lib/data/get-dataset";
+import { getModules } from "@/lib/modules-server";
 import { requireAal2IfEnrolled, requireOwnPassword } from "@/lib/mfa";
 import { requirePrivacyAccepted } from "@/lib/privacy-server";
 import { IdleSignOut } from "@/components/layout/idle-sign-out";
@@ -20,6 +21,7 @@ export default async function SharedLayout({ children }: { children: React.React
   await requireOwnPassword();
   await requirePrivacyAccepted(profile.userId, profile.zoneId);
   await requireAal2IfEnrolled();
+  const modules = await getModules();
   const idleMinutes = profile.role === "member" ? MEMBER_IDLE_MINUTES : LEADER_IDLE_MINUTES;
 
   if (profile.role === "member") {
@@ -36,7 +38,7 @@ export default async function SharedLayout({ children }: { children: React.React
 
   return (
     <PortalFrame
-      sidebar={<SidebarNav zoneName={profile.zoneName} role={profile.role} caps={profile.caps} hiddenNavItems={profile.hiddenNavItems} />}
+      sidebar={<SidebarNav zoneName={profile.zoneName} role={profile.role} caps={profile.caps} hiddenNavItems={profile.hiddenNavItems} modules={modules} />}
       topbar={
         <Topbar
           zoneName={profile.zoneName}
@@ -45,6 +47,7 @@ export default async function SharedLayout({ children }: { children: React.React
           role={profile.role}
           caps={profile.caps}
           hiddenNavItems={profile.hiddenNavItems}
+          modules={modules}
         />
       }
     >

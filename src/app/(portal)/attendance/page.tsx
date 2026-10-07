@@ -21,7 +21,7 @@ const formatDate = (iso: string) =>
   new Date(`${iso}T12:00:00`).toLocaleDateString("en-ZA", { weekday: "short", day: "numeric", month: "short" });
 
 export default async function AttendancePage() {
-  requireModule("attendance");
+  await requireModule("attendance");
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
   if (!can(profile, "view_attendance")) redirect(can(profile, "check_in") ? "/check-in" : "/dashboard");

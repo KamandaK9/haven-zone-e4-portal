@@ -10,7 +10,7 @@ import { SERIES_ICON_BY_SLUG } from "@/lib/event-series";
 import { pluralize } from "@/lib/utils";
 
 export default async function EventsIndexPage() {
-  requireModule("events");
+  await requireModule("events");
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
   const [seriesList, latestBySeries] = await Promise.all([

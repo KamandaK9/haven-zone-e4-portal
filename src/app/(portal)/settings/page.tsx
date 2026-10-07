@@ -4,6 +4,7 @@ import { History } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { NavVisibilityForm } from "@/components/settings/nav-visibility-form";
+import { FeaturesForm } from "@/components/settings/features-form";
 import { CurrencySelectForm } from "@/components/settings/currency-select-form";
 import { HandbookRulesForm } from "@/components/settings/handbook-rules-form";
 import { restartWizardAction } from "@/lib/actions/auth";
@@ -13,6 +14,7 @@ import { tenant } from "@/tenant";
 import { legalGaps } from "@/lib/privacy";
 import { labels, lower } from "@/lib/labels";
 import { getLegal } from "@/lib/legal-server";
+import { getModules } from "@/lib/modules-server";
 
 const ACTION_LABELS: Record<string, string> = {
   "member.create": "Added member",
@@ -72,6 +74,7 @@ const ACTION_LABELS: Record<string, string> = {
 
 export default async function SettingsPage() {
   const profile = await getCurrentProfile();
+  const modules = await getModules();
   if (!profile) redirect("/");
   if (!can(profile, "manage_access")) redirect("/dashboard");
 
@@ -141,7 +144,20 @@ export default async function SettingsPage() {
         </Card>
       )}
 
-      {tenant.modules.attendance && (
+      <Card>
+        <CardHeader>
+          <CardTitle>Features</CardTitle>
+          <CardDescription>
+            Everything Stratum offers. Turn the features in your plan on or off for everyone — a feature that&apos;s off
+            disappears from every sidebar and its pages, and its information is kept for when you turn it back on.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <FeaturesForm included={tenant.modules} modules={modules} canEdit={can(profile, "manage_settings")} />
+        </CardContent>
+      </Card>
+
+      {modules.attendance && (
         <Card>
           <CardHeader>
             <CardTitle>Self check-in screen</CardTitle>
@@ -221,7 +237,7 @@ export default async function SettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <NavVisibilityForm initialHidden={profile.hiddenNavItems} />
+          <NavVisibilityForm initialHidden={profile.hiddenNavItems} modules={modules} />
         </CardContent>
       </Card>
 

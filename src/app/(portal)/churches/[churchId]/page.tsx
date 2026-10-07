@@ -25,6 +25,7 @@ import { givingFilterLabel, parseGivingFilter } from "@/lib/giving";
 import { tenant } from "@/tenant";
 import { labels, lower } from "@/lib/labels";
 import { Network } from "lucide-react";
+import { getModules } from "@/lib/modules-server";
 
 export default async function ChurchPage({
   params,
@@ -36,6 +37,7 @@ export default async function ChurchPage({
   const { churchId } = await params;
   const givingFilter = parseGivingFilter((await searchParams).giving);
   const profile = await getCurrentProfile();
+  const modules = await getModules();
   if (!profile) redirect("/");
   const ds = await getZoneDataset(profile.zoneId);
   const { currency, rates } = await getDisplayCurrency(profile.zoneCurrency);
@@ -88,7 +90,7 @@ export default async function ChurchPage({
         )}
       </div>
 
-      {tenant.modules.giving && (
+      {modules.giving && (
         <div className="flex items-center justify-end">
           <GivingCategorySelect value={givingFilter} />
         </div>
@@ -96,7 +98,7 @@ export default async function ChurchPage({
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard label="Members" value={stats.memberCount.toLocaleString()} icon={Users} />
-        {tenant.modules.giving ? (
+        {modules.giving ? (
           <StatCard
             label={givingFilter === "all" ? "Total giving" : `${givingFilterLabel(givingFilter)} giving`}
             value={formatMoney(stats.totalGiving, currency, rates)}

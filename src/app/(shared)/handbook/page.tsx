@@ -9,7 +9,7 @@ import { pluralize } from "@/lib/utils";
 import { tenant } from "@/tenant";
 
 export default async function HandbookPage() {
-  requireModule("handbook");
+  await requireModule("handbook");
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
   const content = tenant.handbook;

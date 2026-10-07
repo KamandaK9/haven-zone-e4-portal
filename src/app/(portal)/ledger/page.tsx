@@ -21,7 +21,7 @@ import { getDisplayCurrency } from "@/lib/currency-server";
 import { formatMoney } from "@/lib/currency";
 
 export default async function LedgerPage() {
-  requireModule("ledger");
+  await requireModule("ledger");
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
   if (profile.role === "member") redirect("/me");

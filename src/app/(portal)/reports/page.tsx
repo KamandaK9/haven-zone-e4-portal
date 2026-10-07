@@ -32,6 +32,7 @@ import {
   getZoneStats,
 } from "@/lib/data/analytics";
 import { tenant } from "@/tenant";
+import { getModules } from "@/lib/modules-server";
 
 export default async function ReportsPage({
   searchParams,
@@ -41,16 +42,17 @@ export default async function ReportsPage({
   const giving = parseGivingFilter((await searchParams).giving);
   const givingLabel = givingFilterLabel(giving);
   const profile = await getCurrentProfile();
+  const modules = await getModules();
   if (!profile) redirect("/");
   if (!can(profile, "view_reports")) redirect("/dashboard");
   // Without giving, reports are attendance reports.
-  if (!tenant.modules.giving) {
-    if (!tenant.modules.attendance) redirect("/dashboard");
+  if (!modules.giving) {
+    if (!modules.attendance) redirect("/dashboard");
     const [ds, cells, data] = await Promise.all([getZoneDataset(profile.zoneId), getZoneCells(profile.zoneId), getAttendanceData()]);
     const members = ds.members.filter((m) => !m.isVisitor && (profile.scope !== "cell" || m.cellId === profile.cellId));
     const standing = summarise(members, data.services, data.attendance, churchToday());
     let course: { name: string; completed: number; inProgress: number } | undefined;
-    const c = tenant.modules.courses ? await getCourse(profile.zoneId) : undefined;
+    const c = modules.courses ? await getCourse(profile.zoneId) : undefined;
     if (c) {
       const byMember = new Map<string, string[]>();
       for (const a of await getVisibleClassAttendance()) byMember.set(a.memberId, [...(byMember.get(a.memberId) ?? []), a.classId]);

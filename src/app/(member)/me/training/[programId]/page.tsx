@@ -22,7 +22,7 @@ export default async function MemberCoursePage({
   params: Promise<{ programId: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  requireModule("training");
+  await requireModule("training");
   const { programId } = await params;
   const lessonParam = (await searchParams).lesson;
   const profile = await getCurrentProfile();
