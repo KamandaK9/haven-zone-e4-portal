@@ -64,6 +64,10 @@ const ACTION_LABELS: Record<string, string> = {
   "training_lesson.update": "Edited a lesson",
   "training_lesson.delete": "Deleted a lesson",
   "newsletter.send": "Sent a newsletter",
+  "member_field.create": "Added a member field",
+  "member_field.update": "Changed a member field",
+  "import_template.update": "Member import columns",
+  "member.update_fields": "Edited a member's extra details",
 };
 
 export default async function SettingsPage() {
@@ -119,6 +123,23 @@ export default async function SettingsPage() {
           </Button>
         </CardContent>
       </Card>
+
+      {can(profile, "manage_settings") && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Member fields &amp; imports</CardTitle>
+            <CardDescription>
+              Your own details about people (with who may see each one), and how your spreadsheet&apos;s columns are
+              matched when importing.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/settings/fields">Manage member fields</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {tenant.modules.attendance && (
         <Card>

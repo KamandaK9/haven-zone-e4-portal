@@ -71,7 +71,7 @@ const Z = id(1), CO = id(2), C1 = id(3), C2 = id(4), SZ = id(5);
 const D = id(10), G = id(11), M = id(12), M2 = id(13);
 const MD = id(20), MG = id(21), MM = id(22), MM2 = id(23);
 const P = id(30), L1 = id(31), LQ = id(32), T = id(33), REC = id(34), STREAM = id(35);
-const ALL = "{view_members,view_contact_details,manage_members,view_giving_totals,view_giving_individual,import_giving,manage_ledger,manage_training,manage_calendar,send_newsletter,view_reports,manage_access,manage_events,manage_records,manage_livestreams}";
+const ALL = "{view_members,view_contact_details,manage_members,view_giving_totals,view_giving_individual,import_giving,manage_ledger,manage_training,manage_calendar,send_newsletter,view_reports,manage_access,manage_events,manage_records,manage_livestreams,manage_settings}";
 await db.exec(`
   insert into zones (id, name, setup_complete) values ('${Z}', 'Z', true);
   insert into countries (id, zone_id, name) values ('${CO}', '${Z}', 'X');
@@ -285,6 +285,46 @@ r = await as(V, "authenticated", `select title from check_in_screen`);
 expect("the check-in volunteer can read it (they run the kiosk)", r.ok && r.rows.length === 1, r);
 r = await as(M, "authenticated", `select title from check_in_screen`);
 expect("members can't read it", r.ok && r.rows.length === 0, r);
+
+// ── Custom member fields ─────────────────────────────────────────────
+const FL = id(60), FA = id(61), FS = id(62);
+await db.exec(`
+  insert into member_fields (id, zone_id, key, label, type, visibility, member_access) values
+    ('${FL}', '${Z}', 'department', 'Department', 'text', 'leaders', 'hidden'),
+    ('${FA}', '${Z}', 'pastoral', 'Pastoral note', 'text', 'admins', 'hidden'),
+    ('${FS}', '${Z}', 'shirt_size', 'Shirt size', 'select', 'leaders', 'edit');
+  insert into member_field_values (member_id, field_id, zone_id, value) values
+    ('${MM}', '${FL}', '${Z}', 'Choir'), ('${MM}', '${FA}', '${Z}', 'Sensitive'), ('${MM}', '${FS}', '${Z}', 'M'),
+    ('${MM2}', '${FL}', '${Z}', 'Ushers');
+`);
+r = await as(G, "authenticated", `select field_id from member_field_values where member_id = '${MM}' order by field_id`);
+expect("leader sees a member's leader-visible fields, not admin-only ones", r.ok && r.rows.length === 2 && !r.rows.some((x) => x.field_id === FA), r);
+r = await as(G, "authenticated", `select field_id from member_field_values where member_id = '${MM2}'`);
+expect("leader can't see fields of members outside their area", r.ok && r.rows.length === 0, r);
+r = await as(D, "authenticated", `select field_id from member_field_values where field_id = '${FA}'`);
+expect("admin (manage_settings) sees admin-only fields", r.ok && r.rows.length === 1, r);
+r = await as(M, "authenticated", `select field_id from member_field_values`);
+expect("member sees only their own fields that are shown to members", r.ok && r.rows.length === 1 && r.rows[0].field_id === FS, r);
+r = await as(M, "authenticated", `update member_field_values set value = 'L' where member_id = '${MM}' and field_id = '${FS}'`);
+expect("member can edit their own member-editable field", changed(r), r);
+r = await as(M, "authenticated", `update member_field_values set value = 'Hacked' where member_id = '${MM}' and field_id = '${FL}'`);
+expect("member can't edit a leader-only field", r.ok && r.affected === 0, r);
+r = await as(G, "authenticated", `insert into member_field_values (member_id, field_id, zone_id, value) values ('${MG}', '${FL}', '${Z}', 'Media')`);
+expect("leader with manage_members can fill in a field in their area", r.ok, r);
+r = await as(G, "authenticated", `insert into member_field_values (member_id, field_id, zone_id, value) values ('${MG}', '${FA}', '${Z}', 'x')`);
+expect("leader can't write an admin-only field", denied(r), r);
+r = await as(G, "authenticated", `insert into member_fields (zone_id, key, label, type) values ('${Z}', 'x', 'X', 'text')`);
+expect("only admins (manage_settings) define fields", denied(r), r);
+r = await as(D, "authenticated", `insert into member_fields (zone_id, key, label, type) values ('${Z}', 'baptism', 'Baptism date', 'date')`);
+expect("admin can define a field", r.ok, r);
+r = await as(G, "authenticated", `update member_field_values set member_id = '${MG}' where member_id = '${MM}' and field_id = '${FL}'`);
+expect("a value can't be moved to another member", denied(r), r);
+r = await as(D, "authenticated", `insert into import_templates (zone_id, kind, mapping) values ('${Z}', 'members', '{"surname":"builtin:lastName"}')`);
+expect("admin can save the import template", r.ok, r);
+r = await as(G, "authenticated", `select mapping from import_templates`);
+expect("leaders who import can read the template", r.ok && r.rows.length === 1, r);
+r = await as(G, "authenticated", `update import_templates set mapping = '{}'`);
+expect("leaders without manage_settings can't change the template", r.ok && r.affected === 0, r);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

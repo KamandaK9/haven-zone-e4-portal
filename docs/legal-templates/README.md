@@ -45,4 +45,6 @@ this), replace every `[placeholder]`, and keep the filled-in versions there —
 7. **Leaders.** Brief leaders on confidentiality — they accept the terms of
    use at first sign-in, but a short conversation matters more.
 8. **Review yearly**, and whenever a new feature collects new kinds of
-   information.
+   information — including a new member field added in Settings → Member
+   fields. Mark sensitive ones (health, beliefs beyond membership, anything
+   about children) "Admins only".
