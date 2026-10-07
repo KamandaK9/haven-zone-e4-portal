@@ -413,5 +413,20 @@ expect("an admin can switch features on and off", changed(r), r);
   expect("members don't see who else is in a department", r.ok && r.rows.length === 0, r);
 }
 
+// ── Class materials ───────────────────────────────────────────────────
+await db.exec(`update profiles set caps = array_append(caps, 'manage_courses') where id = '${D}' and not 'manage_courses' = any(caps)`);
+r = await as(D, "authenticated", `insert into class_materials (zone_id, class_id, title, url) values ('${Z}', '${CL1}', 'Manual', 'https://example.org/manual')`);
+expect("whoever manages courses can add class materials", r.ok, r);
+r = await as(TT, "authenticated", `select title from class_materials`);
+expect("a teacher can open class materials", r.ok && r.rows.length === 1, r);
+r = await as(TT, "authenticated", `insert into class_materials (zone_id, class_id, title, url) values ('${Z}', '${CL1}', 'Mine', 'https://example.org/x')`);
+expect("a teacher can't add materials", denied(r), r);
+r = await as(M, "authenticated", `select title from class_materials`);
+expect("members can't see class materials", r.ok && r.rows.length === 0, r);
+r = await as(D, "authenticated", `insert into class_materials (zone_id, class_id, title, url) values ('${Z}', '${CL1}', 'Bad', 'javascript:alert(1)')`);
+expect("a link must be a web address", denied(r), r);
+r = await as(D, "authenticated", `insert into class_materials (zone_id, class_id, title, file_path, file_name) values ('${Z}', '${CL1}', 'Elsewhere', '${id(99)}/x.pdf', 'x.pdf')`);
+expect("an uploaded file must be in the zone's own folder", denied(r), r);
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

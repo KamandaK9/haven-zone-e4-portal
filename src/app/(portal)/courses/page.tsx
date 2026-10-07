@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { NewCohortDialog } from "@/components/courses/new-cohort-dialog";
 import { ClassTitles } from "@/components/courses/class-titles";
 import { can, getCurrentProfile } from "@/lib/data/get-dataset";
-import { getCohorts, getOrCreateCourse, getTeachers, getVisibleClassAttendance } from "@/lib/data/courses";
+import { getClassMaterials, getCohorts, getOrCreateCourse, getTeachers, getVisibleClassAttendance } from "@/lib/data/courses";
 import { courseProgress } from "@/lib/courses/progress";
 import { requireModule } from "@/lib/require-module";
 import { createClient } from "@/lib/supabase/server";
@@ -34,11 +34,12 @@ export default async function CoursesPage() {
   }
 
   const supabase = await createClient();
-  const [cohorts, teachers, attendance, { data: churches }] = await Promise.all([
+  const [cohorts, teachers, attendance, { data: churches }, materials] = await Promise.all([
     getCohorts(course.id),
     manages ? getTeachers(profile.zoneId) : Promise.resolve([]),
     getVisibleClassAttendance(),
     supabase.from("churches").select("id, name, is_office").order("name"),
+    getClassMaterials(),
   ]);
   const locations = (churches ?? []).filter((c) => !c.is_office).map((c) => ({ id: c.id, name: c.name }));
   const churchName = new Map(locations.map((c) => [c.id, c.name]));
@@ -112,11 +113,13 @@ export default async function CoursesPage() {
         <CardHeader>
           <CardTitle>Classes</CardTitle>
           <CardDescription>
-            {manages ? "Name each class — the names show on every group's register." : `The ${course.classes.length} classes of ${course.name}`}
+            {manages
+              ? "Name each class and add what it's taught from — every teacher can open the materials."
+              : `The ${course.classes.length} classes of ${course.name} and their materials`}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ClassTitles classes={course.classes} editable={manages} />
+          <ClassTitles classes={course.classes} editable={manages} materials={materials} />
         </CardContent>
       </Card>
       {locations.length === 0 && <p className="text-xs text-muted-foreground">Add a {labels.location.toLowerCase()} first.</p>}
