@@ -1,5 +1,6 @@
 import { tenant } from "@/tenant";
 import { labels } from "@/lib/labels";
+import type { Modules } from "@/lib/modules";
 
 // The dashboard's "Getting started" checklist for a new organisation. Most
 // steps tick themselves off from what exists; the rest an admin marks done.
@@ -28,7 +29,7 @@ export type Step = {
 
 const l = (s: string) => s.toLowerCase();
 
-export function gettingStartedSteps(f: StepFacts, markedDone: string[]): Step[] {
+export function gettingStartedSteps(f: StepFacts, markedDone: string[], modules: Modules): Step[] {
   const marked = new Set(markedDone);
   const steps: Step[] = [
     {
@@ -62,7 +63,7 @@ export function gettingStartedSteps(f: StepFacts, markedDone: string[]): Step[] 
       done: f.logins > 1,
     },
   ];
-  if (tenant.modules.resources) {
+  if (modules.resources) {
     steps.push({
       key: "logo",
       title: "Upload your logo",
@@ -71,7 +72,7 @@ export function gettingStartedSteps(f: StepFacts, markedDone: string[]): Step[] 
       done: f.logos > 0,
     });
   }
-  if (tenant.modules.courses && tenant.course) {
+  if (modules.courses && tenant.course) {
     steps.push({
       key: "course",
       title: `Start a ${tenant.course.name} class group`,
@@ -80,7 +81,7 @@ export function gettingStartedSteps(f: StepFacts, markedDone: string[]): Step[] 
       done: f.cohorts > 0,
     });
   }
-  if (tenant.modules.attendance) {
+  if (modules.attendance) {
     steps.push({
       key: "check-in",
       title: "Check people in on Sunday",

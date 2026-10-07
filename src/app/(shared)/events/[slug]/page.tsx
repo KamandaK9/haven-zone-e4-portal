@@ -17,7 +17,7 @@ export default async function EventSeriesPage({
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  requireModule("events");
+  await requireModule("events");
   const { slug } = await params;
   const edit = (await searchParams).edit === "1";
   const profile = await getCurrentProfile();

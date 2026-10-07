@@ -12,7 +12,7 @@ import { tenant } from "@/tenant";
 export const metadata = { title: "Self check-in screen" };
 
 export default async function CheckInScreenSettingsPage() {
-  requireModule("attendance");
+  await requireModule("attendance");
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
   if (!can(profile, "manage_access")) redirect("/settings");

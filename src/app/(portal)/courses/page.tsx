@@ -17,7 +17,7 @@ import { tenant } from "@/tenant";
 export const metadata = { title: tenant.course?.name ?? "Courses" };
 
 export default async function CoursesPage() {
-  requireModule("courses");
+  await requireModule("courses");
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
   const manages = can(profile, "manage_courses");

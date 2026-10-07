@@ -16,7 +16,7 @@ const KIND: Record<ServiceKind, string> = { sunday: "Sunday service", midweek: "
 // A printable poster (or something to put on the screen) with the service's
 // QR code: people scan it and check themselves in on their own phone.
 export default async function QrPosterPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
-  requireModule("attendance");
+  await requireModule("attendance");
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
   if (!can(profile, "check_in")) redirect("/dashboard");

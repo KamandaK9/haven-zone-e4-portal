@@ -30,9 +30,11 @@ import { getTrainingLevel } from "@/lib/training-icons";
 import { getMemberAchievementStats } from "@/lib/data/achievements";
 import { isLeader, positionLabel } from "@/lib/access";
 import { tenant } from "@/tenant";
+import { getModules } from "@/lib/modules-server";
 
 export default async function MemberDashboardPage() {
   const profile = await getCurrentProfile();
+  const modules = await getModules();
   if (!profile) redirect("/");
   if (!profile.linkedMemberId) {
     return (
@@ -52,7 +54,7 @@ export default async function MemberDashboardPage() {
   const church = getChurch(ds, member.churchId);
   const country = getCountry(ds, member.countryId);
   const totalGiving = memberTotalGiving(member);
-  const handbookRules = tenant.modules.giving && tenant.modules.handbook ? await getHandbookRules(profile.zoneId) : null;
+  const handbookRules = modules.giving && modules.handbook ? await getHandbookRules(profile.zoneId) : null;
   const tenure = memberTenureYears(member);
   const completed = member.trainings.filter((t) => t.status === "completed").length;
   const trainingPoints = memberTrainingPoints(member);
@@ -100,7 +102,7 @@ export default async function MemberDashboardPage() {
         <StatCard label="Trainings complete" value={`${completed}/${member.trainings.length}`} icon={CheckCircle2} />
       </div>
 
-      {tenant.modules.giving && (
+      {modules.giving && (
         <ContributionsCard
           summary={summariseContributions(member.giving)}
           standing={handbookRules ? memberStanding(handbookRules.rules, member.giving) : null}

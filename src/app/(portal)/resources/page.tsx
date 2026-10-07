@@ -22,7 +22,7 @@ const sizeLabel = (bytes: number) => (bytes > 1_000_000 ? `${(bytes / 1_000_000)
 const formatOf = (r: { file_name: string }) => r.file_name.split(".").pop()?.toUpperCase() ?? "";
 
 export default async function ResourcesPage() {
-  requireModule("resources");
+  await requireModule("resources");
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
   const isAdmin = can(profile, "manage_access");

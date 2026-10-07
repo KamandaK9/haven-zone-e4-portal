@@ -360,5 +360,13 @@ expect("a 'first-timer' with a member's number is sent back to check in", r.ok &
 r = await as(null, "service_role", `select qr_add_visitor('good-token', 'New', 'Person', '0710000000') as res`);
 expect("a real first-timer is added and checked in", r.ok && r.rows[0].res.status === "checked_in", r);
 
+// ── Features ──────────────────────────────────────────────────────────
+r = await as(G, "authenticated", `update zones set disabled_modules = '{attendance}' where id = '${Z}'`);
+expect("a leader without manage_access can't switch features off", r.ok && r.affected === 0, r);
+r = await as(M, "authenticated", `update zones set disabled_modules = '{attendance}' where id = '${Z}'`);
+expect("a member can't switch features off", r.ok && r.affected === 0, r);
+r = await as(D, "authenticated", `update zones set disabled_modules = '{}' where id = '${Z}'`);
+expect("an admin can switch features on and off", changed(r), r);
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

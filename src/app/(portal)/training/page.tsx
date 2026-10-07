@@ -15,7 +15,7 @@ import { getTrainingIcon } from "@/lib/training-icons";
 import { pluralize } from "@/lib/utils";
 
 export default async function TrainingPage() {
-  requireModule("training");
+  await requireModule("training");
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
   if (profile.role === "member") redirect("/me");

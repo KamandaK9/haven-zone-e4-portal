@@ -23,7 +23,7 @@ import { labels, lower } from "@/lib/labels";
 import { getZoneCells } from "@/lib/data/cells";
 import { AddLocationDialog } from "@/components/dashboard/add-location-dialog";
 import { Network } from "lucide-react";
-import { tenant } from "@/tenant";
+import { getModules } from "@/lib/modules-server";
 
 export default async function CountryPage({
   params,
@@ -35,6 +35,7 @@ export default async function CountryPage({
   const { countryId } = await params;
   const givingFilter = parseGivingFilter((await searchParams).giving);
   const profile = await getCurrentProfile();
+  const modules = await getModules();
   if (!profile) redirect("/");
   const ds = await getZoneDataset(profile.zoneId);
   const { currency, rates } = await getDisplayCurrency(profile.zoneCurrency);
@@ -58,7 +59,7 @@ export default async function CountryPage({
   const givingByChurchId = new Map(giving.map((g) => [g.churchId, g.amount]));
   const totalGiving = giving.reduce((sum, g) => sum + g.amount, 0);
   const canRename = can(profile, "manage_members");
-  const showGiving = tenant.modules.giving;
+  const showGiving = modules.giving;
   // One country: this page *is* the list of locations, so it's titled that way.
   const single = ds.countries.length === 1;
   const churchIds = new Set(churches.map((c) => c.id));

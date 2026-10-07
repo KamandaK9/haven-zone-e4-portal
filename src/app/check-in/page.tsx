@@ -15,7 +15,7 @@ export const metadata = { title: `Check-in · ${tenant.portalName}` };
 // Full-screen check-in for phones and tablets at the door. Installable
 // (app/manifest.ts) and usable offline once opened online (public/sw.js).
 export default async function CheckInPage() {
-  requireModule("attendance");
+  await requireModule("attendance");
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
   if (!profile.setupComplete) redirect("/setup");

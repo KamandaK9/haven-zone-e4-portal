@@ -3,6 +3,7 @@ import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { Topbar } from "@/components/layout/topbar";
 import { PortalFrame } from "@/components/layout/portal-shell";
 import { getCurrentProfile } from "@/lib/data/get-dataset";
+import { getModules } from "@/lib/modules-server";
 import { requireAal2IfEnrolled, requireOwnPassword } from "@/lib/mfa";
 import { requirePrivacyAccepted } from "@/lib/privacy-server";
 import { IdleSignOut } from "@/components/layout/idle-sign-out";
@@ -17,11 +18,12 @@ export default async function PortalLayout({ children }: { children: React.React
   await requireOwnPassword();
   await requirePrivacyAccepted(profile.userId, profile.zoneId);
   await requireAal2IfEnrolled();
+  const modules = await getModules();
   const idleMinutes = LEADER_IDLE_MINUTES;
 
   return (
     <PortalFrame
-      sidebar={<SidebarNav zoneName={profile.zoneName} role={profile.role} caps={profile.caps} hiddenNavItems={profile.hiddenNavItems} />}
+      sidebar={<SidebarNav zoneName={profile.zoneName} role={profile.role} caps={profile.caps} hiddenNavItems={profile.hiddenNavItems} modules={modules} />}
       topbar={
         <Topbar
           zoneName={profile.zoneName}
@@ -30,6 +32,7 @@ export default async function PortalLayout({ children }: { children: React.React
           role={profile.role}
           caps={profile.caps}
           hiddenNavItems={profile.hiddenNavItems}
+          modules={modules}
         />
       }
     >

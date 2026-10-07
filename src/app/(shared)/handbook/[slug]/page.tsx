@@ -22,7 +22,7 @@ export default async function HandbookSectionPage({
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  requireModule("handbook");
+  await requireModule("handbook");
   const { slug } = await params;
   const query = await searchParams;
   const profile = await getCurrentProfile();

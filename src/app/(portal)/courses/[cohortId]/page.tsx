@@ -15,7 +15,7 @@ import { createClient } from "@/lib/supabase/server";
 import { tenant } from "@/tenant";
 
 export default async function CohortPage({ params }: { params: Promise<{ cohortId: string }> }) {
-  requireModule("courses");
+  await requireModule("courses");
   const { cohortId } = await params;
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");

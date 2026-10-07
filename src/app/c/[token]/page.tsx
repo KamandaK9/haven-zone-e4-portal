@@ -4,6 +4,7 @@ import { getCheckInScreenForZone } from "@/lib/data/check-in-screen";
 import { resolveCheckInScreen } from "@/lib/check-in/screen";
 import { QrCheckIn } from "@/components/check-in/qr-check-in";
 import { tenant } from "@/tenant";
+import { getModules } from "@/lib/modules-server";
 
 export const metadata: Metadata = { title: `Check in · ${tenant.name}`, robots: { index: false } };
 
@@ -14,7 +15,8 @@ const KIND = { sunday: "Sunday service", midweek: "Midweek service", special: "S
 export default async function QrCheckInPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   const { data } = await createAdminClient().rpc("qr_link_info", { p_token: token.slice(0, 64) });
-  const link = data?.[0];
+  // A link only works while attendance is switched on.
+  const link = (await getModules()).attendance ? data?.[0] : undefined;
   const look = link ? await getCheckInScreenForZone(link.zone_id) : resolveCheckInScreen(null);
   const service = link
     ? {
