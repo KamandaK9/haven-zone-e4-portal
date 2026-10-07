@@ -29,7 +29,7 @@ describe("clusterCellNames", () => {
   });
 
   it("prefers normal capitalisation on a tie and drops a trailing 'Cell'", () => {
-    expect(clusterCellNames(["HAVEN", "Haven"]).map((c) => c.name)).toEqual(["Haven"]);
+    expect(clusterCellNames(["GRACE", "Grace"]).map((c) => c.name)).toEqual(["Grace"]);
     expect(clusterCellNames(["Platinum Cell"]).map((c) => c.name)).toEqual(["Platinum"]);
   });
 
