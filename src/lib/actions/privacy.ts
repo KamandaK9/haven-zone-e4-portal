@@ -8,9 +8,12 @@ import { TOO_MANY, withinRateLimit } from "@/lib/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { DataRequestKind, DataRequestStatus } from "@/lib/supabase/types";
-import { tenant } from "@/tenant";
 import { logAudit } from "./audit";
 import type { ActionResult } from "./members";
+import { getLegal } from "@/lib/legal-server";
+import { applyLegalOverrides, nextNoticeVersion, validateLegal } from "@/lib/legal-settings";
+import type { LegalConfig, LegalContact } from "@/lib/tenant";
+import { tenant } from "@/tenant";
 
 // Records that this login accepted the current privacy notice. profiles has
 // no write policies, so the server writes it — for the signed-in user only.
@@ -19,7 +22,7 @@ export async function acceptPrivacyNotice(): Promise<ActionResult> {
   if (!profile) return { ok: false, error: "Please sign in again." };
   const { error } = await createAdminClient()
     .from("profiles")
-    .update({ privacy_accepted_version: tenant.legal.privacyNoticeVersion, privacy_accepted_at: new Date().toISOString() })
+    .update({ privacy_accepted_version: (await getLegal(profile.zoneId)).privacyNoticeVersion, privacy_accepted_at: new Date().toISOString() })
     .eq("id", profile.userId);
   if (error) return { ok: false, error: "Couldn't save that — please try again." };
   redirect(profile.role === "member" ? "/me" : "/dashboard");
@@ -81,5 +84,57 @@ export async function updateDataRequest(requestId: string, status: DataRequestSt
     entity: { type: "data_request", id: requestId },
   });
   revalidatePath("/settings/privacy");
+  return { ok: true };
+}
+
+export type LegalSettingsInput = {
+  organisationName: string;
+  physicalAddress: string;
+  informationOfficer: LegalContact;
+  deputyInformationOfficer: LegalContact | null;
+  operators: { name: string; purpose: string; location: string }[];
+  retention: LegalConfig["retention"];
+  // A change in substance: publish it as a new version, so everyone is asked
+  // to read and accept the notice again.
+  republish: boolean;
+};
+
+// Saves the organisation's privacy details over the tenant's defaults.
+export async function updateLegalSettings(input: LegalSettingsInput): Promise<ActionResult> {
+  const profile = await getCurrentProfile();
+  if (!profile) return { ok: false, error: "Not signed in." };
+  if (!can(profile, "manage_access")) return { ok: false, error: "Not permitted." };
+
+  const current = await getLegal(profile.zoneId);
+  const stored = {
+    organisationName: input.organisationName,
+    physicalAddress: input.physicalAddress,
+    informationOfficer: input.informationOfficer,
+    deputyInformationOfficer: input.deputyInformationOfficer,
+    operators: input.operators,
+    retention: input.retention,
+    privacyNoticeVersion: input.republish ? nextNoticeVersion(current.privacyNoticeVersion) : current.privacyNoticeVersion,
+  };
+  // Validate exactly what will be in force.
+  const merged = applyLegalOverrides(tenant.legal, stored);
+  const problem = validateLegal(merged);
+  if (problem) return { ok: false, error: problem };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("zones").update({ legal_settings: stored }).eq("id", profile.zoneId).select("id");
+  if (error) return { ok: false, error: error.message };
+  if (!data?.length) return { ok: false, error: "Couldn't save — apply the latest database migration and try again." };
+
+  await logAudit(
+    profile,
+    "settings.update_legal",
+    input.republish ? `Updated the privacy details and published notice version ${stored.privacyNoticeVersion}` : "Updated the privacy details",
+    {
+      entity: { type: "zone", id: profile.zoneId },
+      before: { informationOfficer: current.informationOfficer, version: current.privacyNoticeVersion },
+      after: { informationOfficer: merged.informationOfficer, version: merged.privacyNoticeVersion },
+    }
+  );
+  revalidatePath("/", "layout");
   return { ok: true };
 }

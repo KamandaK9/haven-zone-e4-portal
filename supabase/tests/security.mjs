@@ -31,6 +31,19 @@ await db.exec(`
   alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
 `);
 
+// ── Migration versions must be unique ─────────────────────────────────
+// Supabase records a migration by the number before the "_"; two files with
+// the same number (easy when two branches add one the same day) means one is
+// silently skipped on a real database.
+{
+  const versions = readdirSync(MIG).filter((f) => f.endsWith(".sql")).map((f) => f.split("_")[0]);
+  const dupes = versions.filter((v, i) => versions.indexOf(v) !== i);
+  if (dupes.length) {
+    console.log("DUPLICATE MIGRATION VERSION", [...new Set(dupes)].join(", "), "— renumber one of them");
+    process.exit(1);
+  }
+}
+
 // ── Migrations, in order ──────────────────────────────────────────────
 for (const f of readdirSync(MIG).filter((f) => f.endsWith(".sql")).sort()) {
   try {
@@ -252,6 +265,14 @@ r = await as(TT2, "authenticated", `delete from class_attendance where cohort_id
 expect("another teacher can't change the register", r.ok && r.affected === 0, r);
 r = await as(M, "authenticated", `select id from resources`);
 expect("members can't see the leaders' resources", r.ok && r.rows.length === 0, r);
+
+// ── Privacy details (zones.legal_settings) ───────────────────────────
+r = await as(M, "authenticated", `update zones set legal_settings = '{"organisationName":"Hijacked"}' where id = '${Z}'`);
+expect("member can't change the privacy details", r.ok && r.affected === 0, r);
+r = await as(G, "authenticated", `update zones set legal_settings = '{"organisationName":"Hijacked"}' where id = '${Z}'`);
+expect("leader without manage_access can't change the privacy details", r.ok && r.affected === 0, r);
+r = await as(D, "authenticated", `update zones set legal_settings = '{"organisationName":"Grace NPC"}' where id = '${Z}'`);
+expect("whoever manages access can change the privacy details", changed(r), r);
 
 // ── Self check-in screen ──────────────────────────────────────────────
 r = await as(D, "authenticated", `insert into check_in_screen (zone_id, title, background_path) values ('${Z}', 'Welcome', '${Z}/bg.jpg')`);

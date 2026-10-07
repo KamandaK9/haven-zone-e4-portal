@@ -172,8 +172,10 @@ export type TenantConfig = {
   handbook?: HandbookContent;
   // The organisation as the responsible party under privacy law (POPIA in
   // South Africa). Shown in the privacy notice (/privacy), the terms (/terms)
-  // and on data-request screens. Values in [square brackets] are treated as
-  // unfinished placeholders and flagged to admins in Settings.
+  // and on data-request screens. These are the starting defaults — the
+  // organisation edits them in Settings → Privacy (zones.legal_settings,
+  // read through getLegal()). Values in [square brackets] are flagged there
+  // as unfinished.
   legal: LegalConfig;
 };
 

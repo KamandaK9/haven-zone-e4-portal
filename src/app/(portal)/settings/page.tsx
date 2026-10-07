@@ -12,6 +12,7 @@ import { getHandbookRules } from "@/lib/handbook/rules-server";
 import { tenant } from "@/tenant";
 import { legalGaps } from "@/lib/privacy";
 import { labels, lower } from "@/lib/labels";
+import { getLegal } from "@/lib/legal-server";
 
 const ACTION_LABELS: Record<string, string> = {
   "member.create": "Added member",
@@ -48,6 +49,7 @@ const ACTION_LABELS: Record<string, string> = {
   "cheque.update": "Updated a cheque",
   "cheque.delete": "Deleted a cheque",
   "privacy.request_update": "Answered a privacy request",
+  "settings.update_legal": "Privacy details",
   "livestream.create": "Scheduled a stream",
   "livestream.update": "Edited a stream",
   "livestream.end": "Ended a stream",
@@ -98,7 +100,7 @@ export default async function SettingsPage() {
           <CardDescription>
             Requests from people to see, correct or delete their information (30-day deadline), and the privacy notice
             and terms everyone accepts.
-            {legalGaps(tenant.legal).length > 0 && (
+            {legalGaps(await getLegal(profile.zoneId)).length > 0 && (
               <span className="mt-1 block text-amber-700 dark:text-amber-400">
                 The privacy notice still has placeholders to fill in before launch.
               </span>
@@ -107,7 +109,7 @@ export default async function SettingsPage() {
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" asChild>
-            <Link href="/settings/privacy">Privacy requests</Link>
+            <Link href="/settings/privacy">Privacy details &amp; requests</Link>
           </Button>
           <Button variant="ghost" size="sm" asChild>
             <Link href="/privacy">Privacy notice</Link>

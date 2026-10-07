@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentProfile } from "@/lib/data/get-dataset";
 import { createClient } from "@/lib/supabase/server";
-import { tenant } from "@/tenant";
+import { getLegal } from "@/lib/legal-server";
 
 // "Download my data": everything the portal holds about the signed-in
 // person, as JSON. Read with their own session, so RLS guarantees it's only
@@ -31,7 +31,7 @@ export async function GET() {
 
   const body = {
     exportedAt: new Date().toISOString(),
-    organisation: tenant.legal.organisationName,
+    organisation: (await getLegal(profile.zoneId)).organisationName,
     note: "Amounts are in US dollars, as stored. Ask the Information Officer for anything not included here.",
     account: login,
     member: member ? { ...member, photo_path: undefined } : null,

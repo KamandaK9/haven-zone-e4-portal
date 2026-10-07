@@ -1,4 +1,5 @@
 import { tenant } from "@/tenant";
+import { getLegal } from "@/lib/legal-server";
 
 // The privacy notice (POPIA s18), built from the tenant's legal details and
 // the features this deployment has switched on — so it lists only data the
@@ -16,8 +17,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export function PrivacyNotice() {
-  const { legal, modules, name } = tenant;
+export async function PrivacyNotice() {
+  const { modules, name } = tenant;
+  const legal = await getLegal();
   const io = legal.informationOfficer;
   const deputy = legal.deputyInformationOfficer;
   const r = legal.retention;

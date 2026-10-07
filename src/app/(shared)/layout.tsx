@@ -18,7 +18,7 @@ export default async function SharedLayout({ children }: { children: React.React
   if (!profile) redirect("/");
   if (!profile.setupComplete) redirect("/setup");
   await requireOwnPassword();
-  await requirePrivacyAccepted(profile.userId);
+  await requirePrivacyAccepted(profile.userId, profile.zoneId);
   await requireAal2IfEnrolled();
   const idleMinutes = profile.role === "member" ? MEMBER_IDLE_MINUTES : LEADER_IDLE_MINUTES;
 

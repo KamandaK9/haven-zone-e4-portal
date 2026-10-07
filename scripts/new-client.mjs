@@ -278,8 +278,8 @@ ${eventSeries.map((e) => `    { slug: ${JSON.stringify(slugify(e))}, name: ${JSO
     meetingTypes: ${JSON.stringify(meetingTypes)},
   },
 
-  // Values in [square brackets] are placeholders — Settings flags them until
-  // they're filled in. Bump privacyNoticeVersion whenever the notice changes.
+  // Starting defaults only: the organisation keeps these current in
+  // Settings → Privacy. [Placeholders] are flagged there until filled in.
   legal: ${json(legal)},
 ${modules.handbook ? "\n  handbook,\n" : ""}};
 `;
@@ -378,5 +378,5 @@ Next:
   3. Apply the dashboard settings in Stratum's README → Security.
   4. Deploy, set the same env vars there (incl. SETUP_KEY and NEXT_PUBLIC_SITE_URL),
      and open /setup?key=<SETUP_KEY from .env.local> to create the first admin.
-  5. ${gaps ? `Fill in the ${gaps} privacy placeholder(s) in src/tenant/index.ts (legal) and ` : ""}complete docs/legal/ — start with docs/legal/README.md.
+  5. ${gaps ? `Fill in the ${gaps} remaining privacy detail(s) in the portal (Settings → Privacy) and ` : ""}complete docs/legal/ — start with docs/legal/README.md.
 `);

@@ -15,7 +15,7 @@ export default async function PortalLayout({ children }: { children: React.React
   if (!profile.setupComplete) redirect("/setup");
   if (profile.role === "member") redirect("/me");
   await requireOwnPassword();
-  await requirePrivacyAccepted(profile.userId);
+  await requirePrivacyAccepted(profile.userId, profile.zoneId);
   await requireAal2IfEnrolled();
   const idleMinutes = LEADER_IDLE_MINUTES;
 

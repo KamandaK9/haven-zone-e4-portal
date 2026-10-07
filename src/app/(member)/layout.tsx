@@ -18,7 +18,7 @@ export default async function MemberLayout({ children }: { children: React.React
   if (!profile.setupComplete) redirect("/setup");
   if (profile.role !== "member") redirect("/dashboard");
   await requireOwnPassword();
-  await requirePrivacyAccepted(profile.userId);
+  await requirePrivacyAccepted(profile.userId, profile.zoneId);
   await requireAal2IfEnrolled();
   const idleMinutes = MEMBER_IDLE_MINUTES;
 
