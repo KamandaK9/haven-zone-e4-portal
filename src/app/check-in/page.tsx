@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Tablet } from "lucide-react";
 import { BrandMark } from "@/components/brand-mark";
 import { CheckInLoader } from "@/components/check-in/check-in-loader";
 import { can, getCurrentProfile } from "@/lib/data/get-dataset";
@@ -33,7 +33,10 @@ export default async function CheckInPage() {
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <BrandMark size={28} />
-        <p className="font-semibold">Check-in</p>
+        <p className="flex-1 font-semibold">Check-in</p>
+        <Link href="/check-in/kiosk" className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm hover:bg-muted">
+          <Tablet className="h-4 w-4" /> Self check-in
+        </Link>
       </header>
       {locations.length === 0 ? (
         <p className="p-6 text-sm text-muted-foreground">You don&apos;t have a {labels.location.toLowerCase()} to check people in to yet.</p>

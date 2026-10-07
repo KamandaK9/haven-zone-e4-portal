@@ -8,3 +8,8 @@ export const CheckInLoader = dynamic(() => import("./check-in-app").then((m) => 
   ssr: false,
   loading: () => <p className="p-6 text-sm text-muted-foreground">Opening check-in…</p>,
 });
+
+export const KioskLoader = dynamic(() => import("./kiosk-app").then((m) => m.KioskApp), {
+  ssr: false,
+  loading: () => <p className="p-6 text-sm text-muted-foreground">Opening self check-in…</p>,
+});

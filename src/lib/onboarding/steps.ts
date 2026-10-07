@@ -84,7 +84,8 @@ export function gettingStartedSteps(f: StepFacts, markedDone: string[]): Step[] 
     steps.push({
       key: "check-in",
       title: "Check people in on Sunday",
-      detail: "Open Check-in on a phone or tablet while online once, add it to the home screen — then it works without internet.",
+      detail:
+        "A volunteer checks people in, or put a tablet at the door in self check-in mode. Open it online once and add it to the home screen — then it works without internet.",
       href: "/check-in",
       done: f.services > 0,
     });

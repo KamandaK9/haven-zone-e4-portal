@@ -1,7 +1,7 @@
 // Service worker: lets the check-in screen open with no internet.
 //
-// - The check-in page itself: network first, falling back to the copy saved
-//   the last time it opened online.
+// - The check-in pages (staffed and self check-in): network first, falling
+//   back to the copy saved the last time each opened online.
 // - Next's build assets (/_next/static, content-hashed so never stale) and
 //   brand images: cache first.
 // - Everything else, including every POST (server actions, sync), goes
@@ -10,7 +10,9 @@
 // The page tells us which assets it loaded ({ type: "cache", urls }), since
 // the very first load happens before this worker is in control.
 
-const CACHE = "check-in-v1";
+const CACHE = "check-in-v2";
+// The pages that must open offline: staffed check-in and the self check-in kiosk.
+const OFFLINE_PAGES = ["/check-in", "/check-in/kiosk"];
 
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (event) => {
@@ -45,14 +47,15 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  if (request.mode === "navigate" && url.pathname === "/check-in") {
+  if (request.mode === "navigate" && OFFLINE_PAGES.includes(url.pathname)) {
+    const page = url.pathname;
     event.respondWith(
       fetch(request)
         .then((res) => {
-          if (res.ok) caches.open(CACHE).then((c) => c.put("/check-in", res.clone()));
+          if (res.ok) caches.open(CACHE).then((c) => c.put(page, res.clone()));
           return res;
         })
-        .catch(() => caches.match("/check-in").then((hit) => hit || Response.error()))
+        .catch(() => caches.match(page).then((hit) => hit || Response.error()))
     );
     return;
   }
