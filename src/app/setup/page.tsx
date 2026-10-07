@@ -27,6 +27,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { StepProgress } from "@/components/setup/step-progress";
 import { SETUP_IMPORT_MODES, STEP_LABELS, type WizardState, type WizardCountry } from "@/components/setup/types";
 import { MemberListImportPanel } from "@/components/setup/member-list-import";
+import { cellMapFor, loadMemberSheet, memberCount, resolveMemberList } from "@/components/setup/member-list";
 import { completeZoneSetup, type CompleteZoneSetupResult } from "@/lib/actions/setup";
 import { createClient } from "@/lib/supabase/client";
 import { parseStructureSheet } from "@/lib/import/parse-structure";
@@ -56,7 +57,7 @@ const EMPTY_WIZARD: WizardState = {
   importFileName: null,
   importedMembers: [],
   churchMeta: {},
-  cellMap: {},
+  memberList: null,
 };
 
 type AssistantCredential = Extract<CompleteZoneSetupResult, { ok: true }>["assistantCredentials"];
@@ -129,9 +130,8 @@ function SetupWizard({ setupKey }: { setupKey: string }) {
       countries: filteredCountries.map((c) => ({ name: c.name })),
       churchesByCountryIndex,
       assistants: wizard.assistants.filter((a) => a.name.trim() && a.email.trim()),
-      importedMembers: wizard.importedMembers,
+      ...resolveMemberList(wizard),
       churchMeta: wizard.churchMeta,
-      cellMap: wizard.cellMap,
     });
 
     if (!result.ok) {
@@ -404,6 +404,7 @@ function StepCountriesAndChurches({
     null
   );
   const [importError, setImportError] = useState<string | null>(null);
+  const [memberListNote, setMemberListNote] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function updateCountryName(i: number, name: string) {
@@ -447,15 +448,24 @@ function StepCountriesAndChurches({
     setImportState("parsing");
     setImportError(null);
     setImportSummary(null);
+    setMemberListNote(null);
     try {
       const result = await parseStructureSheet(file);
+      if (result.countries.length === 0 && result.skipped[0]?.reason === 'No "Country" column found' && !SETUP_IMPORT_MODES.includes("roster")) {
+        // Not a list of churches — most likely the member list. Take it.
+        const loaded = await loadMemberSheet(file);
+        if (loaded.ok) {
+          setWizard(loaded.apply);
+          setMemberListNote(`That's your member list — ${loaded.summary} It's ready on the Import members step, where you'll check the ${tenant.labels.cellPlural.toLowerCase()}. Make sure your church is below.`);
+          setImportState("idle");
+          return;
+        }
+      }
       if (result.countries.length === 0) {
         setImportError(
           result.skipped[0]?.reason !== 'No "Country" column found'
             ? "No countries found in that file."
-            : SETUP_IMPORT_MODES.includes("roster")
-              ? 'No "Country" column found in that file. If this is the leadership roster workbook (one tab per sub-zone), skip this step and import it on the "Import members" step instead — it builds the countries and chapters for you.'
-              : "That looks like a member list rather than a list of churches. Type your church below, then add the member list on the next step."
+            : 'No "Country" column found in that file. If this is the leadership roster workbook (one tab per sub-zone), skip this step and import it on the "Import members" step instead — it builds the countries and chapters for you.'
         );
         setImportState("error");
         return;
@@ -525,6 +535,12 @@ function StepCountriesAndChurches({
           Imported {importSummary.countries} countr{importSummary.countries === 1 ? "y" : "ies"} and{" "}
           {importSummary.churches} church{importSummary.churches === 1 ? "" : "es"}
           {importSummary.skipped > 0 ? ` — ${importSummary.skipped} row(s) skipped` : ""}. Edit below if needed.
+        </div>
+      )}
+      {memberListNote && (
+        <div className="flex items-start gap-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-2.5 text-xs">
+          <CheckCircle2 className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+          {memberListNote}
         </div>
       )}
       {importState === "error" && importError && (
@@ -833,7 +849,7 @@ function RosterImportPanel({
 
     const countries: WizardCountry[] = countryOrder.map((name) => ({ name, churches: [...byCountry.get(name)!] }));
 
-    setWizard((w) => ({ ...w, countries, importedMembers, churchMeta }));
+    setWizard((w) => ({ ...w, countries, importedMembers, churchMeta, memberList: null }));
     setConfirmedSummary({
       people: importedMembers.length,
       leaders: leaderCount,
@@ -852,7 +868,7 @@ function RosterImportPanel({
     setConfirmedSummary(null);
     setGivingMap(new Map());
     setGivingFileName(null);
-    setWizard((w) => ({ ...w, importFileName: null, importedMembers: [] }));
+    setWizard((w) => ({ ...w, importFileName: null, importedMembers: [], memberList: null }));
   }
 
   if (stage === "idle" || stage === "parsing" || stage === "error") {
@@ -1003,7 +1019,9 @@ function StepReview({ wizard }: { wizard: WizardState }) {
   const countries = wizard.countries.filter((c) => c.name.trim());
   const totalChurches = countries.reduce((sum, c) => sum + c.churches.filter((n) => n.trim()).length, 0);
   const assistants = wizard.assistants.filter((a) => a.name.trim() && a.email.trim());
-  const cellsToCreate = [...new Set(Object.values(wizard.cellMap).filter((n): n is string => !!n?.trim()))].sort();
+  const cellsToCreate = wizard.memberList
+    ? [...new Set(Object.values(cellMapFor(wizard.memberList)).filter((n): n is string => !!n?.trim()))].sort()
+    : [];
 
   return (
     <div className="space-y-6">
@@ -1016,7 +1034,7 @@ function StepReview({ wizard }: { wizard: WizardState }) {
         <SummaryStat label="Countries" value={countries.length} icon={Globe2} />
         <SummaryStat label="Churches" value={totalChurches} icon={ChurchIcon} />
         <SummaryStat label="Assistants" value={assistants.length} icon={Users} />
-        <SummaryStat label="Members" value={wizard.importedMembers.length} icon={Users} />
+        <SummaryStat label="Members" value={memberCount(wizard)} icon={Users} />
       </div>
 
       <div className="space-y-1.5">
@@ -1055,7 +1073,7 @@ function StepReview({ wizard }: { wizard: WizardState }) {
         <div className="space-y-1.5">
           <p className="text-sm font-medium">Import</p>
           <p className="text-sm text-muted-foreground">
-            {wizard.importFileName} &middot; {wizard.importedMembers.length.toLocaleString()} members ready to
+            {wizard.importFileName} &middot; {memberCount(wizard).toLocaleString()} members ready to
             create
             {cellsToCreate.length > 0 &&
               ` · ${cellsToCreate.length} ${tenant.labels.cellPlural.toLowerCase()} (${cellsToCreate.join(", ")})`}

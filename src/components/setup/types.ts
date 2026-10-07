@@ -1,5 +1,6 @@
 import type { Portfolio, Position } from "@/lib/access";
 import { tenant } from "@/tenant";
+import type { MemberList } from "./member-list";
 
 export type WizardCountry = {
   name: string;
@@ -51,9 +52,9 @@ export type WizardState = {
   // Keyed `${country}::${chapter}` — sub-zone and Zonal-Office flags from the
   // roster import's review step.
   churchMeta: Record<string, { subZoneName?: string; isOffice?: boolean }>;
-  // Simple import: each cell name as spelled in the sheet → the cell it
-  // becomes (created in that member's church), or null for "not a cell".
-  cellMap: Record<string, string | null>;
+  // A member list with no Country/Church columns (see member-list.ts); its
+  // members are placed in a church when setup is submitted.
+  memberList: MemberList | null;
 };
 
 const ALL_STEP_LABELS = ["Zone basics", "Countries & churches", "Assistants", "Import members", "Review"] as const;
