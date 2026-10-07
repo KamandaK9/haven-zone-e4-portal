@@ -30,6 +30,11 @@ import { getTrainingIcon, getTrainingLevel } from "@/lib/training-icons";
 import type { LessonStatus } from "@/lib/data/types";
 import { cn } from "@/lib/utils";
 import { tenant } from "@/tenant";
+import { labels } from "@/lib/labels";
+import { churchToday, getMemberAttendance } from "@/lib/data/attendance";
+import { ATTENDANCE_RULES, attendanceStatus, consecutiveMissedSundays, sundayServicesFor } from "@/lib/attendance/rules";
+import { FollowUpDialog, OUTCOMES } from "@/components/attendance/follow-up-dialog";
+import { ConfirmVisitorButton } from "@/components/attendance/confirm-visitor-button";
 import { formatBirthday } from "@/lib/birthday";
 
 const STATUS_META: Record<LessonStatus, { label: string; className: string }> = {
@@ -71,6 +76,13 @@ export default async function MemberPage({
   const completed = member.trainings.filter((t) => t.status === "completed").length;
   const trainingPoints = memberTrainingPoints(member);
   const level = getTrainingLevel(trainingPoints);
+  const single = ds.countries.length === 1;
+  const showAttendance = tenant.modules.attendance && can(profile, "view_attendance");
+  const att = showAttendance ? await getMemberAttendance(member.id, member.churchId) : undefined;
+  const today = churchToday();
+  const sundays = att ? sundayServicesFor(att.services, member.churchId, today) : [];
+  const standing = att ? attendanceStatus(sundays, att.attended, today) : undefined;
+  const missed = att && sundays.length ? consecutiveMissedSundays(sundays, att.attended) : 0;
   const LevelIcon = level.icon;
 
   return (
@@ -78,8 +90,8 @@ export default async function MemberPage({
       <Breadcrumb
         items={[
           { label: "Dashboard", href: "/dashboard" },
-          { label: country?.name ?? "Country", href: `/countries/${member.countryId}` },
-          { label: church?.name ?? "Church", href: `/churches/${member.churchId}` },
+          { label: single ? labels.locations : (country?.name ?? labels.country), href: `/countries/${member.countryId}` },
+          { label: church?.name ?? labels.location, href: `/churches/${member.churchId}` },
           { label: memberFullName(member) },
         ]}
       />
@@ -105,6 +117,7 @@ export default async function MemberPage({
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-semibold tracking-tight">{memberFullName(member)}</h1>
+            {member.isVisitor && <Badge className="font-normal">First-timer</Badge>}
             <Badge variant="secondary" className="font-normal">
               {isLeader(member.position) ? positionLabel(member.position) : member.title || member.role}
             </Badge>
@@ -118,9 +131,11 @@ export default async function MemberPage({
                 {cell.name}
               </Link>
             )}
-            <span className="flex items-center gap-1">
-              {country?.flag} {country?.name}
-            </span>
+            {!single && (
+              <span className="flex items-center gap-1">
+                {country?.flag} {country?.name}
+              </span>
+            )}
             <span className="flex items-center gap-1">
               <Calendar className="h-3.5 w-3.5" />
               {member.joinDate
@@ -145,7 +160,8 @@ export default async function MemberPage({
               )}
             </div>
           )}
-          <div className="mt-3">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {member.isVisitor && can(profile, "manage_members") && <ConfirmVisitorButton memberId={member.id} />}
             <InviteMemberButton
               memberId={member.id}
               hasPortalAccess={member.hasPortalAccess}
@@ -160,7 +176,23 @@ export default async function MemberPage({
           <StatCard label="Total giving" value={formatMoney(totalGiving, currency, rates)} icon={HandCoins} />
         )}
         <StatCard label={`Time in ${tenant.name}`} value={formatTenure(tenure)} icon={Clock} />
-        <StatCard label="Trainings complete" value={`${completed}/${member.trainings.length}`} icon={CheckCircle2} />
+        {tenant.modules.training && (
+          <StatCard label="Trainings complete" value={`${completed}/${member.trainings.length}`} icon={CheckCircle2} />
+        )}
+        {standing && (
+          <StatCard
+            label="Attendance"
+            value={standing === "active" ? "Active" : standing === "irregular" ? "Irregular" : "Not enough data"}
+            icon={CheckCircle2}
+          />
+        )}
+        {att && (
+          <StatCard
+            label="Missed in a row"
+            value={sundays.length ? `${missed} Sunday${missed === 1 ? "" : "s"}` : "—"}
+            icon={Calendar}
+          />
+        )}
         {ds.individualGiving && (
           <StatCard
             label="Avg. gift"
@@ -187,6 +219,7 @@ export default async function MemberPage({
           </Card>
         )}
 
+        {tenant.modules.training && (
         <Card>
           <CardHeader className="flex flex-row items-start justify-between space-y-0">
             <div>
@@ -232,6 +265,49 @@ export default async function MemberPage({
             })}
           </CardContent>
         </Card>
+        )}
+        {att && (
+          <Card className={!ds.individualGiving && !tenant.modules.training ? "lg:col-span-3" : undefined}>
+            <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0">
+              <div>
+                <CardTitle>Recent Sundays</CardTitle>
+                <CardDescription>At {church?.name}, newest first</CardDescription>
+              </div>
+              {missed >= ATTENDANCE_RULES.absenceAlertAfter && can(profile, "record_follow_up") && (
+                <FollowUpDialog memberId={member.id} memberName={memberFullName(member)} />
+              )}
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {sundays.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No Sunday services checked in yet.</p>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  {sundays.slice(0, 8).map((s) => (
+                    <span
+                      key={s.id}
+                      title={s.date}
+                      className={`rounded-md px-2 py-1 text-xs ${att.attended.has(s.id) ? "bg-emerald-100 text-emerald-800" : "bg-muted text-muted-foreground"}`}
+                    >
+                      {new Date(`${s.date}T12:00:00`).toLocaleDateString("en-ZA", { day: "numeric", month: "short" })}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {att.followUps.length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-xs font-medium text-muted-foreground">Follow-ups</p>
+                  {att.followUps.map((f) => (
+                    <div key={f.id} className="text-sm">
+                      <span className="font-medium">{OUTCOMES.find((o) => o.value === f.outcome)?.label ?? f.outcome}</span>
+                      <span className="text-muted-foreground"> · {new Date(f.createdAt).toLocaleDateString("en-ZA")}</span>
+                      {f.note && <p className="text-xs text-muted-foreground">{f.note}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {(member.profession || member.spouseName || member.birthday || member.weddingAnniversary || member.kcHandle || ageGroupLabel) && (

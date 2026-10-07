@@ -32,7 +32,10 @@ import { Download, CalendarClock } from "lucide-react";
 import { describeScope } from "@/lib/scope-label";
 import Link from "next/link";
 import { tenant } from "@/tenant";
-import { OverviewDashboard } from "@/components/dashboard/overview-dashboard";
+import { OverviewDashboard, type AttendanceTiles } from "@/components/dashboard/overview-dashboard";
+import { churchToday, getAttendanceData } from "@/lib/data/attendance";
+import { summarise } from "@/lib/attendance/summary";
+import { ATTENDANCE_RULES } from "@/lib/attendance/rules";
 import { getZoneCells } from "@/lib/data/cells";
 import { labels, lower } from "@/lib/labels";
 
@@ -45,7 +48,29 @@ export default async function DashboardPage({
     const profile = await getCurrentProfile();
     if (!profile) redirect("/");
     const ds = await getZoneDataset(profile.zoneId);
-    return <OverviewDashboard ds={ds} cells={await getZoneCells(profile.zoneId)} scopeName={describeScope(profile, ds)} />;
+    let attendance: AttendanceTiles | undefined;
+    if (tenant.modules.attendance && can(profile, "view_attendance")) {
+      const data = await getAttendanceData();
+      const members = ds.members.filter((m) => !m.isVisitor && (profile.scope !== "cell" || m.cellId === profile.cellId));
+      const standing = [...summarise(members, data.services, data.attendance, churchToday()).values()];
+      const lastSunday = data.services.find((s) => s.kind === "sunday");
+      const lastSundayCount = lastSunday
+        ? data.services.filter((s) => s.kind === "sunday" && s.date === lastSunday.date).reduce((n, s) => n + s.attendees, 0)
+        : 0;
+      attendance = {
+        lastSunday: lastSunday ? { date: lastSunday.date, count: lastSundayCount } : undefined,
+        active: standing.filter((s) => s.status === "active").length,
+        needFollowUp: standing.filter((s) => s.missedInARow >= ATTENDANCE_RULES.absenceAlertAfter).length,
+      };
+    }
+    return (
+      <OverviewDashboard
+        ds={ds}
+        cells={await getZoneCells(profile.zoneId)}
+        scopeName={describeScope(profile, ds)}
+        attendance={attendance}
+      />
+    );
   }
   const giving = parseGivingFilter((await searchParams).giving);
   const givingLabel = giving === "all" ? "Total giving" : givingFilterLabel(giving);

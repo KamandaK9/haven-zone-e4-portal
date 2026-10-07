@@ -38,6 +38,8 @@ export type CurrentProfile = {
   scope: Scope;
   subZoneId: string | null;
   churchId: string | null;
+  // A cell-scoped login's cell (scope "cell").
+  cellId: string | null;
   // Effective capabilities, already including any per-person grants/revokes.
   caps: string[];
   fullName: string;
@@ -64,7 +66,7 @@ export const getCurrentProfile = cache(async (): Promise<CurrentProfile | null> 
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "zone_id, role, full_name, email, hidden_nav_items, position, portfolio, scope, sub_zone_id, church_id, caps, zones(name, setup_complete, display_currency)"
+      "zone_id, role, full_name, email, hidden_nav_items, position, portfolio, scope, sub_zone_id, church_id, cell_id, caps, zones(name, setup_complete, display_currency)"
     )
     .eq("id", user.id)
     .single();
@@ -105,6 +107,7 @@ export const getCurrentProfile = cache(async (): Promise<CurrentProfile | null> 
     scope: profile.scope,
     subZoneId: profile.sub_zone_id,
     churchId: profile.church_id,
+    cellId: profile.cell_id ?? null,
     caps,
     fullName: profile.full_name,
     email: profile.email,
@@ -138,6 +141,8 @@ type MemberRow = {
   cell_id?: string | null;
   // Absent until the member-age-group migration has been applied.
   age_group?: string | null;
+  // Absent until the attendance migration has been applied.
+  is_visitor?: boolean;
   giving_entries: { month: string; amount: number; category: string | null }[] | null;
   trainings:
     | {
@@ -296,6 +301,7 @@ export async function getZoneDataset(zoneId: string): Promise<Dataset & { zoneNa
     photoUrl: m.photo_url ?? undefined,
     cellId: m.cell_id ?? undefined,
     ageGroup: m.age_group ?? undefined,
+    isVisitor: m.is_visitor ?? false,
   }));
 
   const activity: ActivityItem[] = (activityRes.data ?? []).map((a) => ({

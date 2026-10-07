@@ -100,6 +100,11 @@ export type TenantConfig = {
     // "chapter" if omitted.
     elevatedMemberScope?: Scope;
   };
+  // Attendance rules (src/lib/attendance/rules.ts): a member is active with at
+  // least `activeMinSundays` Sunday services in the last 30 days, and flagged
+  // for follow-up after `absenceAlertAfter` missed Sundays in a row. Both
+  // default to 2.
+  attendance?: { activeMinSundays?: number; absenceAlertAfter?: number };
   // Which spreadsheet imports /setup's "Import members" step offers:
   // "roster" (a leadership-roster workbook with a giving file — zone-shaped
   // orgs) and/or "simple" (a member list as the org already keeps it; members

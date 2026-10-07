@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Users, Church, Network, TrendingUp } from "lucide-react";
+import { Users, Church, Network, TrendingUp, CalendarCheck, UserCheck, PhoneCall } from "lucide-react";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { ActivityFeed } from "@/components/dashboard/activity-feed";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +13,19 @@ import { tenant } from "@/tenant";
 // The dashboard for a deployment that doesn't track giving: membership,
 // structure and age groups — the figures it does have. (Attendance figures
 // join here once that module is built.)
-export function OverviewDashboard({ ds, cells, scopeName }: { ds: Dataset; cells: Cell[]; scopeName: string }) {
+export type AttendanceTiles = { lastSunday?: { date: string; count: number }; active: number; needFollowUp: number };
+
+export function OverviewDashboard({
+  ds,
+  cells,
+  scopeName,
+  attendance,
+}: {
+  ds: Dataset;
+  cells: Cell[];
+  scopeName: string;
+  attendance?: AttendanceTiles;
+}) {
   const stats = getZoneStats(ds);
   const activity = getRecentActivity(ds, 7);
   const locations = ds.churches.filter((c) => !c.isOffice);
@@ -43,6 +55,22 @@ export function OverviewDashboard({ ds, cells, scopeName }: { ds: Dataset; cells
         <StatCard label={labels.cells} value={String(cells.length)} icon={Network} />
         <StatCard label="New this month" value={String(stats.newThisMonth)} icon={TrendingUp} />
       </div>
+
+      {attendance && (
+        <Link href="/attendance" className="grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-xl transition-opacity hover:opacity-90">
+          <StatCard
+            label={
+              attendance.lastSunday
+                ? `Last Sunday (${new Date(`${attendance.lastSunday.date}T12:00:00`).toLocaleDateString("en-ZA", { day: "numeric", month: "short" })})`
+                : "Last Sunday"
+            }
+            value={attendance.lastSunday ? attendance.lastSunday.count.toLocaleString() : "—"}
+            icon={CalendarCheck}
+          />
+          <StatCard label="Active members" value={attendance.active.toLocaleString()} icon={UserCheck} />
+          <StatCard label="Need follow-up" value={attendance.needFollowUp.toLocaleString()} icon={PhoneCall} />
+        </Link>
+      )}
 
       <div className="grid lg:grid-cols-2 gap-4">
         {ageGroups.length > 0 && (

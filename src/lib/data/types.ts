@@ -98,6 +98,7 @@ export type Member = {
   photoUrl?: string;
   cellId?: string;
   ageGroup?: string; // a tenant.ageGroups key
+  isVisitor: boolean; // a first-timer added at check-in, not yet confirmed
 };
 
 // A group below a chapter; parentId unset = the upper level (e.g. a senior

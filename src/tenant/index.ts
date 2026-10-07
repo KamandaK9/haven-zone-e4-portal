@@ -118,6 +118,9 @@ export const tenant: TenantConfig = {
     portfolios: [],
     positions,
   },
+  // From the pastor (2026-10-07): active = 2+ Sunday services a month;
+  // follow up after 2 missed Sundays in a row.
+  attendance: { activeMinSundays: 2, absenceAlertAfter: 2 },
   // The church's own member sheet, as it keeps it — no leadership roster.
   setupImportModes: ["simple"],
   // The church's member sheet keeps one tab per group; ranges as confirmed

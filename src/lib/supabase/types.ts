@@ -191,6 +191,7 @@ export type Database = {
           photo_path: string | null;
           cell_id: string | null;
           age_group: string | null;
+          is_visitor: boolean;
           created_at: string;
         };
         Insert: {
@@ -218,6 +219,7 @@ export type Database = {
           photo_path?: string | null;
           cell_id?: string | null;
           age_group?: string | null;
+          is_visitor?: boolean;
           created_at?: string;
         };
         Update: Partial<{
@@ -243,6 +245,7 @@ export type Database = {
           photo_path: string | null;
           cell_id: string | null;
           age_group: string | null;
+          is_visitor: boolean;
         }>;
         Relationships: [];
       };
@@ -933,6 +936,76 @@ export type Database = {
         }>;
         Relationships: [];
       };
+      services: {
+        Row: {
+          id: string;
+          zone_id: string;
+          church_id: string;
+          service_date: string;
+          kind: "sunday" | "midweek" | "special";
+          name: string;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          zone_id: string;
+          church_id: string;
+          service_date: string;
+          kind?: "sunday" | "midweek" | "special";
+          name?: string;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<{ service_date: string; kind: "sunday" | "midweek" | "special"; name: string }>;
+        Relationships: [];
+      };
+      attendance: {
+        Row: {
+          id: string;
+          zone_id: string;
+          service_id: string;
+          member_id: string;
+          checked_in_at: string;
+          checked_in_by: string | null;
+          device_id: string | null;
+          synced_at: string;
+        };
+        Insert: {
+          id: string;
+          zone_id: string;
+          service_id: string;
+          member_id: string;
+          checked_in_at?: string;
+          checked_in_by?: string | null;
+          device_id?: string | null;
+          synced_at?: string;
+        };
+        Update: Partial<{ checked_in_at: string }>;
+        Relationships: [];
+      };
+      follow_ups: {
+        Row: {
+          id: string;
+          zone_id: string;
+          member_id: string;
+          created_by: string | null;
+          created_at: string;
+          outcome: "reached" | "no_answer" | "visited" | "other";
+          note: string | null;
+        };
+        Insert: {
+          id?: string;
+          zone_id: string;
+          member_id: string;
+          created_by?: string | null;
+          created_at?: string;
+          outcome?: "reached" | "no_answer" | "visited" | "other";
+          note?: string | null;
+        };
+        Update: Partial<{ outcome: "reached" | "no_answer" | "visited" | "other"; note: string | null }>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -951,6 +1024,14 @@ export type Database = {
       giving_totals_in_scope: {
         Args: Record<string, never>;
         Returns: { church_id: string; month: string; category: string | null; amount: number }[];
+      };
+      checkin_roster: {
+        Args: { p_church_id: string };
+        Returns: { id: string; first_name: string; last_name: string; cell_name: string | null; age_group: string | null; is_visitor: boolean }[];
+      };
+      checkin_add_visitor: {
+        Args: { p_id: string; p_church_id: string; p_first_name: string; p_last_name: string; p_phone: string };
+        Returns: string;
       };
     };
   };
