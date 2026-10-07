@@ -59,6 +59,11 @@ export async function deviceId(): Promise<string> {
   return id;
 }
 
+// The kiosk's background image, kept on the device so it shows offline.
+type SavedImage = { url: string; blob: Blob };
+export const getSavedBackground = () => run<SavedImage | undefined>("meta", "readonly", (s) => s.get("kiosk-background"));
+export const saveBackground = (image: SavedImage) => run<IDBValidKey>("meta", "readwrite", (s) => s.put(image, "kiosk-background"));
+
 // Signing out: the member list goes; check-ins still waiting to sync stay,
 // so nobody's attendance is lost — they sync on the next sign-in.
 export async function clearDeviceData() {

@@ -253,5 +253,17 @@ expect("another teacher can't change the register", r.ok && r.affected === 0, r)
 r = await as(M, "authenticated", `select id from resources`);
 expect("members can't see the leaders' resources", r.ok && r.rows.length === 0, r);
 
+// ── Self check-in screen ──────────────────────────────────────────────
+r = await as(D, "authenticated", `insert into check_in_screen (zone_id, title, background_path) values ('${Z}', 'Welcome', '${Z}/bg.jpg')`);
+expect("an admin can set the check-in screen", r.ok, r);
+r = await as(D, "authenticated", `update check_in_screen set background_path = '${id(99)}/bg.jpg' where zone_id = '${Z}'`);
+expect("the background must be in the zone's own folder", denied(r), r);
+r = await as(G, "authenticated", `update check_in_screen set title = 'Hijacked' where zone_id = '${Z}'`);
+expect("a leader without manage_access can't change it", r.ok && r.affected === 0, r);
+r = await as(V, "authenticated", `select title from check_in_screen`);
+expect("the check-in volunteer can read it (they run the kiosk)", r.ok && r.rows.length === 1, r);
+r = await as(M, "authenticated", `select title from check_in_screen`);
+expect("members can't read it", r.ok && r.rows.length === 0, r);
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

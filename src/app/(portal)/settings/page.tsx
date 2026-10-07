@@ -118,6 +118,20 @@ export default async function SettingsPage() {
         </CardContent>
       </Card>
 
+      {tenant.modules.attendance && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Self check-in screen</CardTitle>
+            <CardDescription>The welcome on the tablet at the door — title, tagline and a background picture.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/settings/check-in">Customise the screen</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>Support requests</CardTitle>
