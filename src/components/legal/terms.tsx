@@ -1,9 +1,11 @@
 import { tenant } from "@/tenant";
+import { getLegal } from "@/lib/legal-server";
 
 // Terms of use for the portal. Short and plain; the leader confidentiality
 // clause is what matters most — leaders see other people's information.
-export function TermsOfUse() {
-  const { legal, name } = tenant;
+export async function TermsOfUse() {
+  const { name } = tenant;
+  const legal = await getLegal();
   const items: [string, React.ReactNode][] = [
     [
       "Who can use the portal",

@@ -8,7 +8,7 @@ import { LegalFrame } from "@/components/legal/legal-frame";
 import { getCurrentProfile } from "@/lib/data/get-dataset";
 import { dataRequestKindLabel } from "@/lib/privacy";
 import { createClient } from "@/lib/supabase/server";
-import { tenant } from "@/tenant";
+import { getLegal } from "@/lib/legal-server";
 
 export const metadata: Metadata = { title: "Your data" };
 
@@ -20,6 +20,7 @@ const STATUS: Record<string, string> = { open: "Received", in_progress: "Being h
 export default async function MyDataPage() {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/?next=/my-data");
+  const legal = await getLegal(profile.zoneId);
   const supabase = await createClient();
   const { data: requests } = await supabase
     .from("data_requests")
@@ -49,7 +50,7 @@ export default async function MyDataPage() {
         <CardHeader>
           <CardTitle>Make a privacy request</CardTitle>
           <CardDescription>
-            Goes to {tenant.legal.organisationName}&apos;s Information Officer, who must respond within 30 days.
+            Goes to {legal.organisationName}&apos;s Information Officer, who must respond within 30 days.
           </CardDescription>
         </CardHeader>
         <CardContent>

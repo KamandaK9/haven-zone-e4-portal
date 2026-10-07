@@ -253,5 +253,13 @@ expect("another teacher can't change the register", r.ok && r.affected === 0, r)
 r = await as(M, "authenticated", `select id from resources`);
 expect("members can't see the leaders' resources", r.ok && r.rows.length === 0, r);
 
+// ── Privacy details (zones.legal_settings) ───────────────────────────
+r = await as(M, "authenticated", `update zones set legal_settings = '{"organisationName":"Hijacked"}' where id = '${Z}'`);
+expect("member can't change the privacy details", r.ok && r.affected === 0, r);
+r = await as(G, "authenticated", `update zones set legal_settings = '{"organisationName":"Hijacked"}' where id = '${Z}'`);
+expect("leader without manage_access can't change the privacy details", r.ok && r.affected === 0, r);
+r = await as(D, "authenticated", `update zones set legal_settings = '{"organisationName":"Grace NPC"}' where id = '${Z}'`);
+expect("whoever manages access can change the privacy details", changed(r), r);
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

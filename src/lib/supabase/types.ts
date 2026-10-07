@@ -39,6 +39,7 @@ export type Database = {
           display_currency: string;
           default_programs_seeded: boolean;
           handbook_rules: Json | null;
+          legal_settings: Json | null;
           created_at: string;
         };
         Insert: {
@@ -57,6 +58,7 @@ export type Database = {
           display_currency: string;
           default_programs_seeded: boolean;
           handbook_rules: Json | null;
+          legal_settings: Json | null;
         }>;
         Relationships: [];
       };
