@@ -44,6 +44,25 @@ their default permissions (`src/lib/access.ts`), the zone → sub-zone →
 chapter structure (`zones`, `sub_zones`, `churches` tables), and the
 leadership-roster spreadsheet importer.
 
+## Member fields & imports (no code per client)
+
+An organisation's extra details about people — a baptism date, a department —
+are **member fields**, set up in the portal (Settings → Member fields), not in
+code. Each field has a type (text, number, date, choice, yes/no), which leaders
+see it (all leaders / leaders who see contact details / admins only) and
+whether members see or edit their own. Values live one row per member and
+field in `member_field_values`, so the database enforces each field's
+visibility (`can_access_member_field`).
+
+Importing members, the admin **matches each spreadsheet column** to a member
+detail, one of their fields, a new field made on the spot, or "Don't import".
+Ticking "Remember these choices" saves it as the organisation's import
+template (`import_templates`), so their next sheet matches itself. Fields and
+the template need `manage_settings`; importing needs `manage_members`.
+
+Adding a field that collects a new kind of information? Check the privacy
+notice still covers it.
+
 ## Security
 
 The data is personal and financial, so the rule is: **the server never sends

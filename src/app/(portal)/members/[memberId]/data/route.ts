@@ -1,6 +1,7 @@
 import { can, getCurrentProfile } from "@/lib/data/get-dataset";
 import { createClient } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/actions/audit";
+import { getMemberDetailsForExport } from "@/lib/data/member-fields";
 
 // POPIA access request: everything held about one member, as a JSON file.
 // Needs manage_members; pastoral notes only for view_pastoral_notes. Logged.
@@ -32,6 +33,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ memberI
     exportedAt: new Date().toISOString(),
     exportedBy: profile.fullName,
     member: { ...details, location: church.data?.name ?? null, cell: cell.data?.name ?? null },
+    // The organisation's own member fields (those this leader may see).
+    otherDetails: await getMemberDetailsForExport(memberId, profile.zoneId),
     attendance: attendance.data ?? [],
     courseClasses: classes.data ?? [],
     courseGroups: cohorts.data ?? [],

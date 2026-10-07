@@ -2,7 +2,7 @@ import type { MemberRole } from "@/lib/data/types";
 import type { ParsedMemberRow } from "@/lib/actions/members";
 import { tenant } from "@/tenant";
 import { nameKey, namesAgree } from "@/lib/name-match";
-import { buildHeaderMap, readAllExcelSheets, readTableFile, type SheetTable, type TableFile } from "./read-table-file";
+import { buildHeaderMap, normalizeHeader, readAllExcelSheets, readTableFile, type SheetTable, type TableFile } from "./read-table-file";
 
 const ROLE_VALUES: MemberRole[] = ["Member", "Worker", "Cell Leader", "Pastor"];
 
@@ -13,8 +13,16 @@ const ROLE_VALUES: MemberRole[] = ["Member", "Worker", "Cell Leader", "Pastor"];
 //
 // "Cell" means the person's cell group (as church member sheets use it), not a
 // cellphone — phone columns are matched by their "phone"/"mobile" names.
-type Field = keyof ParsedMemberRow | "fullName";
-const HEADER_ALIASES: Partial<Record<Field, string[]>> = {
+type Field = Exclude<keyof ParsedMemberRow, "custom"> | "fullName";
+export type BuiltinMemberField = Field;
+
+// How an organisation's columns map onto members, keyed by normalised
+// column name (normalizeHeader): "builtin:<field>", "custom:<field key>"
+// (an organisation's own member field) or "skip". Built in the import's
+// column-matching step and saved as the organisation's template.
+export type ColumnMapping = Record<string, string>;
+
+export const HEADER_ALIASES: Partial<Record<Field, string[]>> = {
   firstName: ["first name", "firstname", "first", "name", "given name", "first names"],
   lastName: ["last name", "lastname", "surname", "last", "family name"],
   fullName: ["full name", "fullname", "name and surname", "member name"],
@@ -28,7 +36,29 @@ const HEADER_ALIASES: Partial<Record<Field, string[]>> = {
   birthday: ["birthday", "date of birth", "dob", "birth date"],
   cellName: ["cell", "cell group", "cell name"],
   ageGroup: ["age group", "age band", "category"],
+  profession: ["profession", "occupation", "job"],
+  spouseName: ["spouse", "spouse name", "name of spouse", "husband", "wife"],
+  weddingAnniversary: ["wedding anniversary", "anniversary"],
+  kcHandle: ["kc handle", "kingschat", "kingschat handle"],
 };
+
+// The column → field positions for one sheet: from the organisation's
+// mapping when there is one, otherwise by recognising header names.
+function resolveColumns(headers: string[], mapping?: ColumnMapping) {
+  if (!mapping) return { builtin: buildHeaderMap(headers, HEADER_ALIASES), custom: [] as [string, number][] };
+  const builtin: Partial<Record<Field, number>> = {};
+  const custom: [string, number][] = [];
+  headers.forEach((h, i) => {
+    const target = mapping[normalizeHeader(h)];
+    if (target?.startsWith("builtin:")) {
+      const field = target.slice(8) as Field;
+      if (!(field in builtin)) builtin[field] = i;
+    } else if (target?.startsWith("custom:")) {
+      custom.push([target.slice(7), i]);
+    }
+  });
+  return { builtin, custom };
+}
 
 // "Teens", "teen", "TEENS " → the tenant's "teens" age group.
 export function ageGroupFor(raw: string | undefined): string | undefined {
@@ -47,7 +77,7 @@ const clean = (raw: string | undefined) => {
 // Excel dates already arrive as "YYYY-MM-DD" (read-table-file). Anything
 // typed is parsed as a local date and kept as one — going through
 // toISOString() would shift it a day east of UTC (SAST: 12 April → 11 April).
-function parseDate(raw: string | undefined): string | undefined {
+export function parseDate(raw: string | undefined): string | undefined {
   if (!raw) return undefined;
   if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
   const d = new Date(raw);
@@ -96,15 +126,15 @@ export type ParseResult = {
   ignoredHeaders: string[];
 };
 
-export function parseMemberTable({ headers, rows: dataRows }: TableFile): ParseResult {
+export function parseMemberTable({ headers, rows: dataRows }: TableFile, mapping?: ColumnMapping): ParseResult {
   if (headers.length === 0) return { rows: [], skipped: [], matchedHeaders: [], ignoredHeaders: [] };
 
-  const headerMap = buildHeaderMap(headers, HEADER_ALIASES);
+  const { builtin: headerMap, custom: customColumns } = resolveColumns(headers, mapping);
   const matchedHeaders = (Object.entries(headerMap) as [Field, number][]).map(([field, idx]) => ({
     field,
     header: headers[idx],
   }));
-  const matchedIdx = new Set(Object.values(headerMap));
+  const matchedIdx = new Set([...Object.values(headerMap), ...customColumns.map(([, i]) => i)]);
   const ignoredHeaders = headers.filter((h, i) => h.trim() && !matchedIdx.has(i));
 
   const rows: ParsedMemberRow[] = [];
@@ -134,6 +164,12 @@ export function parseMemberTable({ headers, rows: dataRows }: TableFile): ParseR
       return;
     }
 
+    const custom: Record<string, string> = {};
+    for (const [key, idx] of customColumns) {
+      const v = clean(cells[idx]);
+      if (v) custom[key] = v;
+    }
+
     const givingRaw = get("givingTotal");
     const givingTotal = givingRaw ? Number(givingRaw) : undefined;
 
@@ -150,6 +186,11 @@ export function parseMemberTable({ headers, rows: dataRows }: TableFile): ParseR
       birthday: parseBirthday(get("birthday")),
       cellName: get("cellName"),
       ageGroup: ageGroupFor(get("ageGroup")),
+      profession: get("profession"),
+      spouseName: get("spouseName"),
+      weddingAnniversary: parseBirthday(get("weddingAnniversary")),
+      kcHandle: get("kcHandle"),
+      ...(Object.keys(custom).length ? { custom } : {}),
     });
   });
 
@@ -161,9 +202,9 @@ export function parseMemberTable({ headers, rows: dataRows }: TableFile): ParseR
 // name (allowing for typos) and given that group. Someone only on a group tab
 // is added from it. If the first sheet is itself a group tab, there's no
 // main list and the group tabs together are the members.
-export function mergeAgeGroupSheets(sheets: SheetTable[]): ParseResult {
+export function mergeAgeGroupSheets(sheets: SheetTable[], mapping?: ColumnMapping): ParseResult {
   const mainSheet = sheets[0] && !ageGroupFor(sheets[0].sheetName) ? sheets[0] : undefined;
-  const main = mainSheet ? parseMemberTable(mainSheet) : undefined;
+  const main = mainSheet ? parseMemberTable(mainSheet, mapping) : undefined;
   const rows = [...(main?.rows ?? [])];
   const byKey = new Map(rows.map((r) => [nameKey(r), r]));
   let firstTab: ParseResult | undefined;
@@ -171,7 +212,7 @@ export function mergeAgeGroupSheets(sheets: SheetTable[]): ParseResult {
   for (const tab of sheets) {
     const group = ageGroupFor(tab.sheetName);
     if (!group) continue;
-    const parsed = parseMemberTable(tab);
+    const parsed = parseMemberTable(tab, mapping);
     firstTab ??= parsed;
     for (const r of parsed.rows) {
       const exact = byKey.get(nameKey(r));
@@ -197,12 +238,20 @@ export function mergeAgeGroupSheets(sheets: SheetTable[]): ParseResult {
   };
 }
 
-export async function parseMemberSheet(file: File): Promise<ParseResult> {
+// The sheets a member file is read from: every tab when it keeps one per
+// age group (see mergeAgeGroupSheets), otherwise just the first.
+export async function memberSheets(file: File): Promise<{ sheets: SheetTable[]; ageGroupTabs: boolean }> {
   if (!file.name.toLowerCase().endsWith(".csv") && tenant.ageGroups?.length) {
     const sheets = await readAllExcelSheets(file);
-    if (sheets.some((s) => ageGroupFor(s.sheetName))) {
-      return mergeAgeGroupSheets(sheets);
-    }
+    if (sheets.some((s) => ageGroupFor(s.sheetName))) return { sheets, ageGroupTabs: true };
   }
-  return parseMemberTable(await readTableFile(file));
+  return { sheets: [{ ...(await readTableFile(file)), sheetName: "" }], ageGroupTabs: false };
+}
+
+export function parseMemberSheets({ sheets, ageGroupTabs }: { sheets: SheetTable[]; ageGroupTabs: boolean }, mapping?: ColumnMapping): ParseResult {
+  return ageGroupTabs ? mergeAgeGroupSheets(sheets, mapping) : parseMemberTable(sheets[0] ?? { headers: [], rows: [] }, mapping);
+}
+
+export async function parseMemberSheet(file: File, mapping?: ColumnMapping): Promise<ParseResult> {
+  return parseMemberSheets(await memberSheets(file), mapping);
 }

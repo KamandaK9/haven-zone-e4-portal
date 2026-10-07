@@ -23,6 +23,8 @@ import {
 } from "@/components/ui/table";
 import { AddMemberDialog } from "./add-member-dialog";
 import { ImportMembersDialog } from "./import-members-dialog";
+import type { MemberField } from "@/lib/custom-fields";
+import type { ColumnMapping } from "@/lib/import/parse-members";
 import { formatTenure, memberFullName, memberTenureYears, memberTotalGiving } from "@/lib/data/analytics";
 import { isLeader, positionLabel } from "@/lib/access";
 import type { Member, MemberRole } from "@/lib/data/types";
@@ -40,6 +42,9 @@ export function MemberTable({
   showGiving = true,
   canManage = true,
   cellNames,
+  importFields,
+  importTemplate,
+  canManageSettings,
 }: {
   // Cell id → name; the Cell column only shows when the chapter has cells.
   cellNames?: Record<string, string>;
@@ -49,6 +54,9 @@ export function MemberTable({
   churchId: string;
   countryId: string;
   churchName: string;
+  importFields?: MemberField[];
+  importTemplate?: ColumnMapping | null;
+  canManageSettings?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [role, setRole] = useState<(typeof ROLES)[number]>("All roles");
@@ -110,7 +118,14 @@ export function MemberTable({
         </div>
         {canManage && (
           <div className="flex gap-2 shrink-0">
-            <ImportMembersDialog churchName={churchName} churchId={churchId} countryId={countryId} />
+            <ImportMembersDialog
+              churchName={churchName}
+              churchId={churchId}
+              countryId={countryId}
+              fields={importFields}
+              template={importTemplate}
+              canManageSettings={canManageSettings}
+            />
             <AddMemberDialog churchId={churchId} countryId={countryId} />
           </div>
         )}
