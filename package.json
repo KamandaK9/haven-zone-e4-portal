@@ -31,6 +31,7 @@
     "lucide-react": "^1.46.0",
     "next": "16.3.5",
     "papaparse": "^5.7.0",
+    "qrcode": "^1.5.4",
     "radix-ui": "^1.6.7",
     "react": "19.2.8",
     "react-dom": "19.2.8",
@@ -45,6 +46,7 @@
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",
     "@types/papaparse": "^5.5.2",
+    "@types/qrcode": "^1.5.6",
     "eslint": "^9",
     "eslint-config-next": "16.3.5",
     "supabase": "^2.118.0",

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { getCheckInRoster, getServiceCheckIns, syncCheckIns, undoCheckIn } from "@/lib/actions/check-in";
+import { checkInStillOpen, getCheckInRoster, getServiceCheckIns, syncCheckIns, undoCheckIn } from "@/lib/actions/check-in";
 import { deviceId, getRoster, queueAdd, queueAll, queueRemove, saveRoster } from "@/lib/check-in/store";
 import { serviceKeyString, type QueuedCheckIn, type Roster, type ServiceKey, type ServiceKind } from "@/lib/check-in/types";
 
@@ -138,6 +138,14 @@ export function useCheckIn(key: ServiceKey) {
     }, 30_000);
     return () => clearInterval(t);
   }, [queue.length, sync]);
+  // Keeps the volunteer signed in while the screen is open (see
+  // checkInStillOpen) — a quiet door during the sermon isn't "idle".
+  useEffect(() => {
+    const t = setInterval(() => {
+      if (navigator.onLine) checkInStillOpen().catch(() => {});
+    }, 4 * 60_000);
+    return () => clearInterval(t);
+  }, []);
 
   const queuedHere = useMemo(
     () => new Map(queue.filter((q) => serviceKeyString(q.service) === serviceKeyString(key)).map((q) => [q.memberId, q])),

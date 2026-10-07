@@ -326,5 +326,39 @@ expect("leaders who import can read the template", r.ok && r.rows.length === 1, 
 r = await as(G, "authenticated", `update import_templates set mapping = '{}'`);
 expect("leaders without manage_settings can't change the template", r.ok && r.affected === 0, r);
 
+// ── QR check-in ───────────────────────────────────────────────────────
+await db.exec(`
+  update members set phone = '+27 82 111 2222' where id = '${MM}';
+  update members set phone = '0821112222' where id = '${MD}';
+  update members set phone = '0829998888' where id = '${MM2}';
+  insert into check_in_links (token, zone_id, church_id, service_date, kind, expires_at) values
+    ('good-token', '${Z}', '${C1}', current_date, 'sunday', now() + interval '1 day'),
+    ('old-token', '${Z}', '${C1}', current_date - 7, 'sunday', now() - interval '1 day');
+`);
+r = await as(null, "anon", `select qr_check_in('good-token', '0821112222')`);
+expect("the public can't call QR check-in directly (only the server can)", denied(r), r);
+r = await as(V, "authenticated", `select qr_check_in('good-token', '0821112222')`);
+expect("signed-in browsers can't call it directly either", denied(r), r);
+r = await as(null, "service_role", `select qr_check_in('old-token', '0829998888') as res`);
+expect("an expired QR code checks nobody in", r.ok && r.rows[0].res.status === "expired", r);
+r = await as(null, "service_role", `select qr_check_in('good-token', '082 999 8888') as res`);
+expect("someone from another chapter isn't found by their number", r.ok && r.rows[0].res.status === "not_found", r);
+r = await as(null, "service_role", `select qr_check_in('good-token', '+27821112222') as res`);
+expect(
+  "a shared number offers first names only",
+  r.ok && r.rows[0].res.status === "choose" && r.rows[0].res.choices.length === 2 && !("last_name" in r.rows[0].res.choices[0]),
+  r
+);
+r = await as(null, "service_role", `select qr_check_in('good-token', '0821112222', '${MM}') as res`);
+expect("picking yourself from a shared number checks you in", r.ok && r.rows[0].res.status === "checked_in", r);
+r = await as(null, "service_role", `select qr_check_in('good-token', '0821112222', '${MM}') as res`);
+expect("scanning twice doesn't check you in twice", r.ok && r.rows[0].res.status === "already", r);
+r = await as(null, "service_role", `select qr_check_in('good-token', '0821112222', '${MM2}') as res`);
+expect("you can't pick someone who doesn't share your number", r.ok && r.rows[0].res.status === "not_found", r);
+r = await as(null, "service_role", `select qr_add_visitor('good-token', 'New', 'Person', '0821112222') as res`);
+expect("a 'first-timer' with a member's number is sent back to check in", r.ok && r.rows[0].res.status === "known_number", r);
+r = await as(null, "service_role", `select qr_add_visitor('good-token', 'New', 'Person', '0710000000') as res`);
+expect("a real first-timer is added and checked in", r.ok && r.rows[0].res.status === "checked_in", r);
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
