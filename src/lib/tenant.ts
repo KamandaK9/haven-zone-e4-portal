@@ -48,6 +48,8 @@ export type TenantConfig = {
   defaultOrgName: string;
   // Placeholder for the super admin's name on the setup wizard.
   adminNameExample: string;
+  // Placeholder for a church name on the setup wizard.
+  churchNameExample?: string;
   // Display currency a new org starts with (amounts are always stored in USD;
   // admins can change this later in Settings).
   defaultCurrency: CurrencyCode;
@@ -60,6 +62,10 @@ export type TenantConfig = {
     group: string; groupPlural: string;
     location: string; locationPlural: string;
     cell: string; cellPlural: string;
+    // The top level (a zones row) and the country level. Optional — they
+    // default to "Zone"/"Country" (see src/lib/labels.ts, which UI reads).
+    zone?: string; zonePlural?: string;
+    country?: string; countryPlural?: string;
   };
   // Which optional feature areas this deployment ships with. Off hides the
   // nav item and its routes return 404 (src/lib/nav-items.ts, ModuleKey).
@@ -77,6 +83,7 @@ export type TenantConfig = {
     attendance: boolean; // services, check-in, absence, follow-up
     courses: boolean; // cohort-based courses (e.g. Foundation School)
     messaging: boolean; // SMS/email campaigns + birthdays
+    resources?: boolean; // media set: logos, brand assets, press releases (/resources)
   };
   access: {
     positions: readonly PositionDef[];
@@ -94,6 +101,26 @@ export type TenantConfig = {
     // "chapter" if omitted.
     elevatedMemberScope?: Scope;
   };
+  // The cohort-based course the courses module runs (modules.courses): its
+  // name, how many classes it has, and how many distinct classes complete it.
+  course?: { name: string; classes: number; requiredClasses: number };
+  // Attendance rules (src/lib/attendance/rules.ts): a member is active with at
+  // least `activeMinSundays` Sunday services in the last 30 days, and flagged
+  // for follow-up after `absenceAlertAfter` missed Sundays in a row. Both
+  // default to 2.
+  attendance?: { activeMinSundays?: number; absenceAlertAfter?: number };
+  // Which spreadsheet imports /setup's "Import members" step offers:
+  // "roster" (a leadership-roster workbook with a giving file — zone-shaped
+  // orgs) and/or "simple" (a member list as the org already keeps it; members
+  // go into the church entered on the previous step, and its cells are set up
+  // from the sheet). Defaults to both; [] drops the step.
+  setupImportModes?: readonly ("roster" | "simple")[];
+  // The age groups members are sorted into, youngest first. Optional: with
+  // none defined, age groups don't appear anywhere. A member's group is
+  // stored (members.age_group = key), not computed from birthday; the age
+  // range is a guide for whoever assigns it. Import also reads a workbook tab
+  // or an "Age group" column named after a group's label or key.
+  ageGroups?: readonly { key: string; label: string; minAge?: number; maxAge?: number }[];
   // Marketing panel on the login page.
   login: { headline: string; blurb: string };
   // Parent-organisation line under the login panel ("An arm of ..."), or
@@ -141,8 +168,10 @@ export type TenantConfig = {
   handbook?: HandbookContent;
   // The organisation as the responsible party under privacy law (POPIA in
   // South Africa). Shown in the privacy notice (/privacy), the terms (/terms)
-  // and on data-request screens. Values in [square brackets] are treated as
-  // unfinished placeholders and flagged to admins in Settings.
+  // and on data-request screens. These are the starting defaults — the
+  // organisation edits them in Settings → Privacy (zones.legal_settings,
+  // read through getLegal()). Values in [square brackets] are flagged there
+  // as unfinished.
   legal: LegalConfig;
 };
 

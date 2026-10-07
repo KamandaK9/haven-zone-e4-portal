@@ -26,8 +26,11 @@ import { ImportMembersDialog } from "./import-members-dialog";
 import { formatTenure, memberFullName, memberTenureYears, memberTotalGiving } from "@/lib/data/analytics";
 import { isLeader, positionLabel } from "@/lib/access";
 import type { Member, MemberRole } from "@/lib/data/types";
+import { tenant } from "@/tenant";
 
 const ROLES: (MemberRole | "All roles")[] = ["All roles", "Member", "Worker", "Cell Leader", "Pastor"];
+const AGE_GROUPS = tenant.ageGroups ?? [];
+const ageGroupLabel = (key?: string) => AGE_GROUPS.find((g) => g.key === key)?.label;
 
 export function MemberTable({
   members,
@@ -49,6 +52,7 @@ export function MemberTable({
 }) {
   const [query, setQuery] = useState("");
   const [role, setRole] = useState<(typeof ROLES)[number]>("All roles");
+  const [ageGroup, setAgeGroup] = useState("all");
 
   const filtered = useMemo(() => {
     return members.filter((m) => {
@@ -57,9 +61,10 @@ export function MemberTable({
         memberFullName(m).toLowerCase().includes(query.toLowerCase()) ||
         m.email.toLowerCase().includes(query.toLowerCase());
       const matchesRole = role === "All roles" || m.role === role;
-      return matchesQuery && matchesRole;
+      const matchesAgeGroup = ageGroup === "all" || (ageGroup === "none" ? !ageGroupLabel(m.ageGroup) : m.ageGroup === ageGroup);
+      return matchesQuery && matchesRole && matchesAgeGroup;
     });
-  }, [members, query, role]);
+  }, [members, query, role, ageGroup]);
 
   return (
     <div className="space-y-4">
@@ -86,6 +91,22 @@ export function MemberTable({
               ))}
             </SelectContent>
           </Select>
+          {AGE_GROUPS.length > 0 && (
+            <Select value={ageGroup} onValueChange={setAgeGroup}>
+              <SelectTrigger className="w-[140px] shrink-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All ages</SelectItem>
+                {AGE_GROUPS.map((g) => (
+                  <SelectItem key={g.key} value={g.key}>
+                    {g.label}
+                  </SelectItem>
+                ))}
+                <SelectItem value="none">No age group</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
         </div>
         {canManage && (
           <div className="flex gap-2 shrink-0">
@@ -101,6 +122,7 @@ export function MemberTable({
             <TableRow>
               <TableHead>Member</TableHead>
               <TableHead>Role</TableHead>
+              {AGE_GROUPS.length > 0 && <TableHead>Age group</TableHead>}
               {cellNames && <TableHead>Cell</TableHead>}
               <TableHead>Tenure</TableHead>
               <TableHead>Training</TableHead>
@@ -134,6 +156,9 @@ export function MemberTable({
                       {isLeader(member.position) ? positionLabel(member.position) : member.role}
                     </Badge>
                   </TableCell>
+                  {AGE_GROUPS.length > 0 && (
+                    <TableCell className="text-sm text-muted-foreground">{ageGroupLabel(member.ageGroup) ?? "—"}</TableCell>
+                  )}
                   {cellNames && (
                     <TableCell className="text-sm text-muted-foreground">
                       {(member.cellId && cellNames[member.cellId]) || "—"}
@@ -157,7 +182,7 @@ export function MemberTable({
             })}
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={(showGiving ? 5 : 4) + (cellNames ? 1 : 0)} className="text-center text-sm text-muted-foreground py-10">
+                <TableCell colSpan={(showGiving ? 5 : 4) + (cellNames ? 1 : 0) + (AGE_GROUPS.length > 0 ? 1 : 0)} className="text-center text-sm text-muted-foreground py-10">
                   No members match your search.
                 </TableCell>
               </TableRow>

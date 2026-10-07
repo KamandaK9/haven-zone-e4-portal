@@ -5,6 +5,7 @@ import { CalendarNav, MonthCalendar } from "@/components/calendar/month-calendar
 import { AddEventDialog } from "@/components/calendar/add-event-dialog";
 import type { Dataset } from "@/lib/data/analytics";
 import type { CalendarEvent } from "@/lib/data/types";
+import { labels } from "@/lib/labels";
 
 const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
@@ -43,7 +44,7 @@ export function CalendarView({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Calendar</h1>
-          <p className="text-sm text-muted-foreground">Zone-wide meetings, trainings, and services.</p>
+          <p className="text-sm text-muted-foreground">{labels.zone}-wide meetings, trainings, and services.</p>
         </div>
         <div className="flex items-center gap-2">
           <CalendarNav

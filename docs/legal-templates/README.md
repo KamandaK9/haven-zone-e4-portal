@@ -18,7 +18,8 @@ this), replace every `[placeholder]`, and keep the filled-in versions there —
 | Right of access — self-service download | `/my-data` → Download my data |
 | Requests for access, correction, deletion, objection, with the 30-day clock | `/my-data` → request; `/settings/privacy` for the Information Officer |
 | Security safeguards (s19) | Database-enforced access by role, private documents, encryption, MFA, idle sign-out, audit log — see the main README's Security section |
-| Placeholders flagged before launch | Settings → Privacy & legal |
+| Privacy details editable any time (Information Officer, providers, retention…) | Settings → Privacy |
+| Placeholders flagged before launch | Settings → Privacy |
 
 ## What the organisation must do
 
@@ -26,16 +27,19 @@ this), replace every `[placeholder]`, and keep the filled-in versions there —
    duty is delegated in writing — use `information-officer-appointment.md`.
    **Register** the Information Officer (and any deputy) with the Information
    Regulator through its online portal.
-2. **Fill in `tenant.legal`** in `src/tenant/index.ts` (name, address,
-   Information Officer, operators and their locations, retention). When you
-   change the notice in substance, bump `privacyNoticeVersion`.
+2. **Fill in the privacy details in the portal: Settings → Privacy** (registered
+   name, address, Information Officer, service providers and where they're
+   based, retention). Keep it current — when the Information Officer changes,
+   update it there. For a change in substance, tick "Ask everyone to accept the
+   updated notice". (`tenant.legal` in `src/tenant/index.ts` holds only the
+   starting defaults.)
 3. **PAIA manual.** Complete `paia-manual.md`, have it signed, and make it
    available (on the website and at the office).
 4. **Operators.** List every service provider in `operator-register.md` and
    make sure each has a written agreement covering confidentiality and
    security (most providers publish a Data Processing Agreement — accept it in
    their dashboard and keep a copy).
-5. **Retention.** Agree `retention-schedule.md` and match `tenant.legal.retention`.
+5. **Retention.** Agree `retention-schedule.md` and set the same periods in Settings → Privacy.
 6. **Breaches.** Adopt `breach-response.md` and make sure leaders know whom to
    tell.
 7. **Leaders.** Brief leaders on confidentiality — they accept the terms of

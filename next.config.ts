@@ -9,7 +9,18 @@ const supabaseHost = process.env.NEXT_PUBLIC_SUPABASE_URL ? new URL(process.env.
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   async headers() {
-    return [{ source: "/:path*", headers: STATIC_SECURITY_HEADERS }];
+    return [
+      { source: "/:path*", headers: STATIC_SECURITY_HEADERS },
+      // The check-in service worker must never be served stale, or a fix to
+      // it would take a device's cache lifetime to arrive.
+      {
+        source: "/sw.js",
+        headers: [
+          { key: "Content-Type", value: "application/javascript; charset=utf-8" },
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+        ],
+      },
+    ];
   },
   turbopack: {
     root: path.resolve(__dirname),

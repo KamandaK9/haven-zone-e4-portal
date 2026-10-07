@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 import { tenant } from "@/tenant";
+import { labels, singleCountry } from "@/lib/labels";
 
 export default function LandingPage() {
   return (
@@ -73,8 +74,8 @@ function LoginForm() {
 
           <div className="grid grid-cols-3 gap-4 pt-4">
             <StatBlock icon={Users2} label="Members" />
-            <StatBlock icon={Globe2} label={tenant.labels.groupPlural} />
-            <StatBlock icon={TrendingUp} label={tenant.labels.locationPlural} />
+            <StatBlock icon={Globe2} label={singleCountry ? labels.cells : labels.countries} />
+            <StatBlock icon={TrendingUp} label={labels.locations} />
           </div>
         </div>
 
@@ -95,7 +96,9 @@ function LoginForm() {
             <h2 className="text-2xl font-semibold tracking-tight">{isMember ? "Member sign in" : "Welcome back"}</h2>
             <p className="text-sm text-muted-foreground">
               {isMember
-                ? "Sign in to see your profile, giving history, and the calendar."
+                ? tenant.modules.giving
+                  ? "Sign in to see your profile, giving history, and the calendar."
+                  : "Sign in to see your profile and the calendar."
                 : "Sign in to access your leadership dashboard."}
             </p>
           </div>

@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { createCalendarEvent } from "@/lib/actions/calendar";
 import type { CalendarEventType, Church } from "@/lib/data/types";
+import { labels, lower } from "@/lib/labels";
 
 const TYPES: { value: CalendarEventType; label: string }[] = [
   { value: "meeting", label: "Meeting" },
@@ -97,7 +98,7 @@ export function AddEventDialog({ churches }: { churches: Church[] }) {
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Add event</DialogTitle>
-            <DialogDescription>Shows up on the zone calendar for everyone, including members.</DialogDescription>
+            <DialogDescription>Shows up on the {lower(labels.zone)} calendar for everyone, including members.</DialogDescription>
           </DialogHeader>
 
           <div className="grid grid-cols-2 gap-3 py-4">
@@ -129,13 +130,13 @@ export function AddEventDialog({ churches }: { churches: Church[] }) {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Church</Label>
+              <Label>{labels.location}</Label>
               <Select value={churchId} onValueChange={setChurchId}>
                 <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Zone-wide</SelectItem>
+                  <SelectItem value="none">{labels.zone}-wide</SelectItem>
                   {churches.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.name}

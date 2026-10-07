@@ -9,6 +9,7 @@ import { requireAal2IfEnrolled, requireOwnPassword } from "@/lib/mfa";
 import { requirePrivacyAccepted } from "@/lib/privacy-server";
 import { IdleSignOut } from "@/components/layout/idle-sign-out";
 import { LEADER_IDLE_MINUTES, MEMBER_IDLE_MINUTES } from "@/lib/idle";
+import { positionLabel } from "@/lib/access";
 
 // Pages everyone signed in can open — leaders and members alike. Same portal
 // frame for both; only which nav items show up differs, via PortalFrame.
@@ -17,7 +18,7 @@ export default async function SharedLayout({ children }: { children: React.React
   if (!profile) redirect("/");
   if (!profile.setupComplete) redirect("/setup");
   await requireOwnPassword();
-  await requirePrivacyAccepted(profile.userId);
+  await requirePrivacyAccepted(profile.userId, profile.zoneId);
   await requireAal2IfEnrolled();
   const idleMinutes = profile.role === "member" ? MEMBER_IDLE_MINUTES : LEADER_IDLE_MINUTES;
 
@@ -40,6 +41,7 @@ export default async function SharedLayout({ children }: { children: React.React
         <Topbar
           zoneName={profile.zoneName}
           fullName={profile.fullName}
+          positionLabel={positionLabel(profile.position)}
           role={profile.role}
           caps={profile.caps}
           hiddenNavItems={profile.hiddenNavItems}

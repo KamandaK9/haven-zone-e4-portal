@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { renameChapter } from "@/lib/actions/churches";
+import { labels, lower } from "@/lib/labels";
 
 export function RenameChapterDialog({
   churchId,
@@ -68,8 +69,10 @@ export function RenameChapterDialog({
       </Button>
       <DialogContent className="sm:max-w-sm" onClick={(e) => e.stopPropagation()}>
         <DialogHeader>
-          <DialogTitle>Rename chapter</DialogTitle>
-          <DialogDescription>This changes the name everywhere it appears — the dashboard, reports, and this chapter&apos;s own page.</DialogDescription>
+          <DialogTitle>Rename {lower(labels.location)}</DialogTitle>
+          <DialogDescription>
+            This changes the name everywhere it appears — the dashboard, reports, and this {lower(labels.location)}&apos;s own page.
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-2">
           <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus />
