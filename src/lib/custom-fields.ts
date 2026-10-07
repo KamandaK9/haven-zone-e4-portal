@@ -37,6 +37,30 @@ export const FIELD_MEMBER_ACCESS: { value: MemberFieldAccess; label: string }[] 
   { value: "edit", label: "Members can edit their own" },
 ];
 
+export type MemberFieldInput = {
+  label: string;
+  type: MemberFieldType;
+  options: string[];
+  visibility: MemberFieldVisibility;
+  memberAccess: MemberFieldAccess;
+};
+
+// What's wrong with a field definition, if anything.
+export function memberFieldProblem(input: MemberFieldInput): string | null {
+  if (!input.label.trim()) return "Give the field a name.";
+  if (input.label.trim().length > 80) return "Keep the name under 80 characters.";
+  if (
+    !FIELD_TYPES.some((t) => t.value === input.type) ||
+    !FIELD_VISIBILITY.some((v) => v.value === input.visibility) ||
+    !FIELD_MEMBER_ACCESS.some((a) => a.value === input.memberAccess)
+  )
+    return "Invalid field settings.";
+  const options = input.options.map((o) => o.trim()).filter(Boolean);
+  if (input.type === "select" && options.length < 2) return "A choice field needs at least two options.";
+  if (options.some((o) => o.length > 80) || options.length > 50) return "Keep options short (up to 50 of them).";
+  return null;
+}
+
 // "Baptism date" → "baptism_date", unique among `taken`.
 export function fieldKeyFrom(label: string, taken: readonly string[]): string {
   const base =

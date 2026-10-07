@@ -90,3 +90,13 @@ export function mappingProblem(mapping: ColumnMapping): string | null {
   if (dupe) return `Two columns are set to the same detail (${dupe.slice(8)}) — pick one.`;
   return null;
 }
+
+// A mapping as received from a browser, reduced to well-formed entries.
+export function cleanColumnMapping(mapping: unknown): ColumnMapping {
+  const clean: ColumnMapping = {};
+  if (!mapping || typeof mapping !== "object" || Array.isArray(mapping)) return clean;
+  for (const [k, v] of Object.entries(mapping).slice(0, 200)) {
+    if (typeof v === "string" && /^(skip|builtin:[a-zA-Z]+|custom:[a-z][a-z0-9_]*)$/.test(v) && k.length <= 120) clean[k] = v;
+  }
+  return clean;
+}

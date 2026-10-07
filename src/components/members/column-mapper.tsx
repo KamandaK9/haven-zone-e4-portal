@@ -6,13 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createMemberField } from "@/lib/actions/member-fields";
-import { distinctOptions, FIELD_TYPES, FIELD_VISIBILITY, guessFieldType, type MemberField } from "@/lib/custom-fields";
+import { distinctOptions, FIELD_TYPES, FIELD_VISIBILITY, guessFieldType, type MemberField, type MemberFieldInput } from "@/lib/custom-fields";
 import { BUILTIN_TARGETS, type ImportColumn } from "@/lib/import/column-mapping";
 import type { ColumnMapping } from "@/lib/import/parse-members";
 import type { MemberFieldType, MemberFieldVisibility } from "@/lib/supabase/types";
 import { tenant } from "@/tenant";
 
 const NEW = "__new";
+
+type CreateField = (input: MemberFieldInput) => Promise<{ ok: true; field: MemberField } | { ok: false; error: string }>;
 
 function builtinLabel(field: string, label: string): string {
   if (field === "cellName") return tenant.labels.cell;
@@ -29,6 +31,7 @@ export function ColumnMapper({
   fields,
   onFieldCreated,
   canCreateFields,
+  createField = createMemberField,
 }: {
   columns: ImportColumn[];
   mapping: ColumnMapping;
@@ -36,6 +39,8 @@ export function ColumnMapper({
   fields: MemberField[];
   onFieldCreated: (field: MemberField) => void;
   canCreateFields: boolean;
+  // Saves straight away by default; setup keeps drafts until it's submitted.
+  createField?: CreateField;
 }) {
   const [creating, setCreating] = useState<string | null>(null);
   const live = fields.filter((f) => !f.archived);
@@ -104,6 +109,7 @@ export function ColumnMapper({
             {creating === col.key && (
               <NewFieldForm
                 column={col}
+                createField={createField}
                 onCancel={() => setCreating(null)}
                 onCreated={(field) => {
                   onFieldCreated(field);
@@ -119,7 +125,17 @@ export function ColumnMapper({
   );
 }
 
-function NewFieldForm({ column, onCancel, onCreated }: { column: ImportColumn; onCancel: () => void; onCreated: (f: MemberField) => void }) {
+function NewFieldForm({
+  column,
+  createField,
+  onCancel,
+  onCreated,
+}: {
+  column: ImportColumn;
+  createField: CreateField;
+  onCancel: () => void;
+  onCreated: (f: MemberField) => void;
+}) {
   const guessed = guessFieldType(column.samples);
   const [label, setLabel] = useState(column.header);
   const [type, setType] = useState<MemberFieldType>(guessed);
@@ -131,7 +147,7 @@ function NewFieldForm({ column, onCancel, onCreated }: { column: ImportColumn; o
   async function create() {
     setBusy(true);
     setError(null);
-    const result = await createMemberField({
+    const result = await createField({
       label,
       type,
       options: options.split(",").map((o) => o.trim()).filter(Boolean),
