@@ -94,6 +94,10 @@ export type TenantConfig = {
     // "chapter" if omitted.
     elevatedMemberScope?: Scope;
   };
+  // Whether /setup offers to import a member spreadsheet. Defaults to true;
+  // false when members are imported afterwards from the Members page (whose
+  // importer also sorts cells and age groups, which don't exist yet at setup).
+  setupMemberImport?: boolean;
   // The age groups members are sorted into, youngest first. Optional: with
   // none defined, age groups don't appear anywhere. A member's group is
   // stored (members.age_group = key), not computed from birthday; the age

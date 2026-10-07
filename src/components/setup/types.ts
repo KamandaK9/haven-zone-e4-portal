@@ -1,4 +1,5 @@
 import type { Portfolio, Position } from "@/lib/access";
+import { tenant } from "@/tenant";
 
 export type WizardCountry = {
   name: string;
@@ -49,10 +50,10 @@ export type WizardState = {
   churchMeta: Record<string, { subZoneName?: string; isOffice?: boolean }>;
 };
 
-export const STEP_LABELS = [
-  "Zone basics",
-  "Countries & churches",
-  "Assistants",
-  "Import members",
-  "Review",
-] as const;
+const ALL_STEP_LABELS = ["Zone basics", "Countries & churches", "Assistants", "Import members", "Review"] as const;
+
+// A tenant that imports its members after setup (tenant.setupMemberImport
+// false) doesn't get the import step at all.
+export const STEP_LABELS: readonly (typeof ALL_STEP_LABELS)[number][] = ALL_STEP_LABELS.filter(
+  (label) => label !== "Import members" || tenant.setupMemberImport !== false
+);
