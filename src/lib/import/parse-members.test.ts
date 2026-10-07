@@ -59,9 +59,9 @@ describe("parseMemberTable", () => {
     const thisYear = new Date().getFullYear();
     const result = parseMemberTable({
       headers: ["Name", "Birthday"],
-      rows: [["Ama", `${thisYear}-04-12`], ["Kofi", "1990-04-12"]],
+      rows: [["Ama", `${thisYear}-04-12`], ["Kofi", "1990-04-12"], ["Esi", "12 April"]],
     });
-    expect(result.rows.map((r) => r.birthday)).toEqual(["04-12", "1990-04-12"]);
+    expect(result.rows.map((r) => r.birthday)).toEqual(["04-12", "1990-04-12", "04-12"]);
   });
 });
 

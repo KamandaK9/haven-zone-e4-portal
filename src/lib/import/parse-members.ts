@@ -44,20 +44,27 @@ const clean = (raw: string | undefined) => {
   return v && !BLANKS.has(v.toLowerCase()) ? v : undefined;
 };
 
+// Excel dates already arrive as "YYYY-MM-DD" (read-table-file). Anything
+// typed is parsed as a local date and kept as one — going through
+// toISOString() would shift it a day east of UTC (SAST: 12 April → 11 April).
 function parseDate(raw: string | undefined): string | undefined {
   if (!raw) return undefined;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
   const d = new Date(raw);
   if (Number.isNaN(d.getTime())) return undefined;
-  return d.toISOString().slice(0, 10);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
 // Sheets often hold only a day and month, which Excel completes with the
 // year it was typed in — so a "birthday" in the last year or the future
 // means the year is unknown, and only "MM-DD" is kept.
+// Typed text with no year ("12 April") is also day-and-month only — the date
+// parser would otherwise fill in a default year (2001).
 function parseBirthday(raw: string | undefined): string | undefined {
   const iso = parseDate(raw);
   if (!iso) return undefined;
-  const yearUnknown = Number(iso.slice(0, 4)) >= new Date().getFullYear() - 1;
+  const yearUnknown = !/\d{4}/.test(raw!) || Number(iso.slice(0, 4)) >= new Date().getFullYear() - 1;
   return yearUnknown ? iso.slice(5) : iso;
 }
 

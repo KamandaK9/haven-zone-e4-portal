@@ -113,8 +113,8 @@ export const tenant: TenantConfig = {
     portfolios: [],
     positions,
   },
-  // Members are imported from the Members page once cells exist, not in /setup.
-  setupMemberImport: false,
+  // The church's own member sheet, as it keeps it — no leadership roster.
+  setupImportModes: ["simple"],
   // The church's member sheet keeps one tab per group; ranges as confirmed
   // by the pastor (2026-10-07).
   ageGroups: [

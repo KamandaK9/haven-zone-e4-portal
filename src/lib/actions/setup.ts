@@ -30,6 +30,9 @@ type SetupPayload = {
   // Keyed `${countryName}::${churchName}`. Sub-zone and Zonal-Office flags come
   // from the roster import's review step.
   churchMeta?: Record<string, { subZoneName?: string; isOffice?: boolean }>;
+  // Simple member-list import: each cell name as spelled in the sheet → the
+  // cell to create for it in that member's church, or null for "not a cell".
+  cellMap?: Record<string, string | null>;
 };
 
 type AssistantCredential = { name: string; email: string; tempPassword: string };
@@ -93,6 +96,17 @@ export async function completeZoneSetup(payload: SetupPayload): Promise<Complete
   }
   const zoneId = zone.id;
 
+  // From here on, a failure undoes everything created so far — the zone
+  // (which cascades to everything in it) and every login made — so setup
+  // can simply be run again rather than tripping over a half-made zone or
+  // an "already registered" email.
+  const createdUserIds = [authUser.user.id];
+  const fail = async (error: string): Promise<CompleteZoneSetupResult> => {
+    await admin.from("zones").delete().eq("id", zoneId);
+    for (const id of createdUserIds) await admin.auth.admin.deleteUser(id);
+    return { ok: false, error };
+  };
+
   // 3. Super Admin profile.
   const { error: profileError } = await admin.from("profiles").insert({
     id: authUser.user.id,
@@ -107,7 +121,7 @@ export async function completeZoneSetup(payload: SetupPayload): Promise<Complete
     caps: [...CAPABILITIES],
   });
   if (profileError) {
-    return { ok: false, error: profileError.message };
+    return fail(profileError.message);
   }
 
   // 4a. Sub-zones (SZ1, SZ2, ...) named in the roster review step.
@@ -125,7 +139,7 @@ export async function completeZoneSetup(payload: SetupPayload): Promise<Complete
       .insert(subZoneNames.map((name) => ({ zone_id: zoneId, name })))
       .select("id, name");
     if (subZoneError || !subZones) {
-      return { ok: false, error: subZoneError?.message ?? "Could not create sub-zones." };
+      return fail(subZoneError?.message ?? "Could not create sub-zones.");
     }
     for (const z of subZones) subZoneIdByName.set(z.name, z.id);
   }
@@ -144,7 +158,7 @@ export async function completeZoneSetup(payload: SetupPayload): Promise<Complete
       .select("id")
       .single();
     if (countryError || !country) {
-      return { ok: false, error: countryError?.message ?? "Could not create a country." };
+      return fail(countryError?.message ?? "Could not create a country.");
     }
     countryIdByName.set(name, country.id);
 
@@ -166,10 +180,34 @@ export async function completeZoneSetup(payload: SetupPayload): Promise<Complete
         )
         .select("id, name");
       if (churchError || !churches) {
-        return { ok: false, error: churchError?.message ?? "Could not create churches." };
+        return fail(churchError?.message ?? "Could not create churches.");
       }
       for (const c of churches) churchIdByKey.set(`${name}::${c.name}`, c.id);
     }
+  }
+
+  // 4a'. Cells named by a simple member-list import, created in each
+  // member's church (see payload.cellMap).
+  const cellIdByKey = new Map<string, string>(); // key: `${churchId}::${cellName}`
+  const cellFor = (churchId: string, sheetName: string | undefined) => {
+    const name = sheetName ? payload.cellMap?.[sheetName]?.trim() : undefined;
+    return name ? `${churchId}::${name}` : undefined;
+  };
+  const wantedCells = new Map<string, { church_id: string; name: string }>();
+  for (const row of payload.importedMembers ?? []) {
+    const churchId = churchIdByKey.get(`${row.countryName}::${row.churchName}`);
+    const key = churchId ? cellFor(churchId, row.member.cellName) : undefined;
+    if (churchId && key) wantedCells.set(key, { church_id: churchId, name: key.slice(churchId.length + 2) });
+  }
+  if (wantedCells.size > 0) {
+    const { data: cells, error: cellError } = await admin
+      .from("cells")
+      .insert([...wantedCells.values()].map((c) => ({ ...c, zone_id: zoneId })))
+      .select("id, church_id, name");
+    if (cellError || !cells) {
+      return fail(cellError?.message ?? "Could not create cells.");
+    }
+    for (const c of cells) cellIdByKey.set(`${c.church_id}::${c.name}`, c.id);
   }
 
   const assistantCredentials: AssistantCredential[] = [];
@@ -196,6 +234,8 @@ export async function completeZoneSetup(payload: SetupPayload): Promise<Complete
       spouse_name: string | null;
       birthday: string | null;
       wedding_anniversary: string | null;
+      age_group: string | null;
+      cell_id: string | null;
     };
     const toInsert: MemberInsert[] = [];
     const givingByRow: (number | undefined)[] = [];
@@ -223,6 +263,8 @@ export async function completeZoneSetup(payload: SetupPayload): Promise<Complete
         spouse_name: row.member.spouseName ?? null,
         birthday: row.member.birthday ?? null,
         wedding_anniversary: row.member.weddingAnniversary ?? null,
+        age_group: row.member.ageGroup ?? null,
+        cell_id: cellIdByKey.get(cellFor(churchId, row.member.cellName) ?? "") ?? null,
       });
       givingByRow.push(row.member.givingTotal && row.member.givingTotal > 0 ? row.member.givingTotal : undefined);
       givingMonthByRow.push((row.member.givingDate ?? new Date().toISOString().slice(0, 10)).slice(0, 7));
@@ -233,7 +275,7 @@ export async function completeZoneSetup(payload: SetupPayload): Promise<Complete
     for (const batch of chunk(toInsert, 400)) {
       const { data: inserted, error: memberError } = await admin.from("members").insert(batch).select("id, email, first_name, last_name");
       if (memberError || !inserted) {
-        return { ok: false, error: memberError?.message ?? "Member import failed partway through." };
+        return fail(memberError?.message ?? "Member import failed partway through.");
       }
       importedCount += inserted.length;
 
@@ -289,6 +331,7 @@ export async function completeZoneSetup(payload: SetupPayload): Promise<Complete
       password: tempPassword,
       email_confirm: true,
     });
+    if (assistantUser?.user) createdUserIds.push(assistantUser.user.id);
     if (assistantAuthError || !assistantUser.user) {
       // Don't fail the whole setup over one bad assistant email — surface it
       // via a credential row with an empty password so the UI can flag it.
@@ -320,7 +363,7 @@ export async function completeZoneSetup(payload: SetupPayload): Promise<Complete
   // 6. Mark zone ready.
   const { error: completeError } = await admin.from("zones").update({ setup_complete: true }).eq("id", zoneId);
   if (completeError) {
-    return { ok: false, error: completeError.message };
+    return fail(completeError.message);
   }
 
   return { ok: true, zoneId, assistantCredentials, importedCount };

@@ -31,6 +31,9 @@ export type ImportedMemberRow = {
     weddingAnniversary?: string;
     position?: Position;
     portfolio?: Portfolio;
+    // Simple member-list import only.
+    ageGroup?: string;
+    cellName?: string; // as spelled in the sheet — see WizardState.cellMap
   };
 };
 
@@ -48,12 +51,16 @@ export type WizardState = {
   // Keyed `${country}::${chapter}` — sub-zone and Zonal-Office flags from the
   // roster import's review step.
   churchMeta: Record<string, { subZoneName?: string; isOffice?: boolean }>;
+  // Simple import: each cell name as spelled in the sheet → the cell it
+  // becomes (created in that member's church), or null for "not a cell".
+  cellMap: Record<string, string | null>;
 };
 
 const ALL_STEP_LABELS = ["Zone basics", "Countries & churches", "Assistants", "Import members", "Review"] as const;
 
-// A tenant that imports its members after setup (tenant.setupMemberImport
-// false) doesn't get the import step at all.
+export const SETUP_IMPORT_MODES = tenant.setupImportModes ?? (["roster", "simple"] as const);
+
+// A tenant with no setup import modes doesn't get the import step at all.
 export const STEP_LABELS: readonly (typeof ALL_STEP_LABELS)[number][] = ALL_STEP_LABELS.filter(
-  (label) => label !== "Import members" || tenant.setupMemberImport !== false
+  (label) => label !== "Import members" || SETUP_IMPORT_MODES.length > 0
 );

@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FileSpreadsheet, UploadCloud, CheckCircle2, X, AlertCircle } from "lucide-react";
+import { FileSpreadsheet, UploadCloud, CheckCircle2, X, AlertCircle, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { parseMemberSheet, type ParseResult } from "@/lib/import/parse-members";
+import { downloadMemberTemplate } from "@/lib/import/member-template";
 import { bulkImportMembers, type BulkImportResult } from "@/lib/actions/members";
 
 type Stage = "idle" | "dragging" | "parsing" | "preview" | "importing" | "done" | "error";
@@ -202,6 +203,15 @@ export function ImportMembersDialog({
               </>
             )}
           </div>
+        )}
+        {(stage === "idle" || stage === "dragging") && (
+          <button
+            type="button"
+            onClick={() => downloadMemberTemplate()}
+            className="flex items-center gap-1 self-start text-xs text-primary hover:underline"
+          >
+            <Download className="h-3 w-3" /> No spreadsheet yet? Download a template
+          </button>
         )}
 
         <DialogFooter>

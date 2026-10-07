@@ -8,8 +8,8 @@ export function cellKey(name: string): string {
   return name
     .toLowerCase()
     .replace(/&/g, "and")
-    .replace(/[^a-z0-9]/g, "")
-    .replace(/cell$/, "");
+    .replace(/\bcel{1,2}\b/g, "") // the word "cell" (or "cel") anywhere: "Swan Cell 3" = "Swan3"
+    .replace(/[^a-z0-9]/g, "");
 }
 
 function editDistance(a: string, b: string): number {
