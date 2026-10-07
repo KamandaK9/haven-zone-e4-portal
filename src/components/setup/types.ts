@@ -1,4 +1,7 @@
 import type { Portfolio, Position } from "@/lib/access";
+import { tenant } from "@/tenant";
+import { labels, singleCountry } from "@/lib/labels";
+import type { MemberList } from "./member-list";
 
 export type WizardCountry = {
   name: string;
@@ -30,6 +33,9 @@ export type ImportedMemberRow = {
     weddingAnniversary?: string;
     position?: Position;
     portfolio?: Portfolio;
+    // Simple member-list import only.
+    ageGroup?: string;
+    cellName?: string; // as spelled in the sheet — see WizardState.cellMap
   };
 };
 
@@ -47,12 +53,23 @@ export type WizardState = {
   // Keyed `${country}::${chapter}` — sub-zone and Zonal-Office flags from the
   // roster import's review step.
   churchMeta: Record<string, { subZoneName?: string; isOffice?: boolean }>;
+  // A member list with no Country/Church columns (see member-list.ts); its
+  // members are placed in a church when setup is submitted.
+  memberList: MemberList | null;
 };
 
-export const STEP_LABELS = [
-  "Zone basics",
-  "Countries & churches",
+const IMPORT_STEP_LABEL = "Import members";
+const ALL_STEP_LABELS = [
+  `${labels.zone} basics`,
+  singleCountry ? labels.locations : `${labels.countries} & ${labels.locations.toLowerCase()}`,
   "Assistants",
-  "Import members",
+  IMPORT_STEP_LABEL,
   "Review",
-] as const;
+];
+
+export const SETUP_IMPORT_MODES = tenant.setupImportModes ?? (["roster", "simple"] as const);
+
+// A tenant with no setup import modes doesn't get the import step at all.
+export const STEP_LABELS: readonly string[] = ALL_STEP_LABELS.filter(
+  (label) => label !== IMPORT_STEP_LABEL || SETUP_IMPORT_MODES.length > 0
+);

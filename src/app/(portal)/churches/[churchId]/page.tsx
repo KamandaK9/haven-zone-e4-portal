@@ -22,6 +22,8 @@ import {
 } from "@/lib/data/analytics";
 import { givingFilterLabel, parseGivingFilter } from "@/lib/giving";
 import { tenant } from "@/tenant";
+import { labels, lower } from "@/lib/labels";
+import { Network } from "lucide-react";
 
 export default async function ChurchPage({
   params,
@@ -41,8 +43,8 @@ export default async function ChurchPage({
   if (!church) {
     return (
       <div className="space-y-4">
-        <Breadcrumb items={[{ label: "Zone Dashboard", href: "/dashboard" }, { label: "Not found" }]} />
-        <p className="text-sm text-muted-foreground">This church doesn&apos;t exist.</p>
+        <Breadcrumb items={[{ label: "Dashboard", href: "/dashboard" }, { label: "Not found" }]} />
+        <p className="text-sm text-muted-foreground">This {lower(labels.location)} doesn&apos;t exist.</p>
         <Link href="/countries" className="text-sm text-primary hover:underline">
           Back to countries
         </Link>
@@ -62,8 +64,11 @@ export default async function ChurchPage({
     <div className="space-y-6">
       <Breadcrumb
         items={[
-          { label: "Zone Dashboard", href: "/dashboard" },
-          { label: country?.name ?? "Country", href: `/countries/${church.countryId}` },
+          { label: "Dashboard", href: "/dashboard" },
+          {
+            label: ds.countries.length === 1 ? labels.locations : (country?.name ?? labels.country),
+            href: `/countries/${church.countryId}`,
+          },
           { label: church.name },
         ]}
       />
@@ -78,17 +83,23 @@ export default async function ChurchPage({
         )}
       </div>
 
-      <div className="flex items-center justify-end">
-        <GivingCategorySelect value={givingFilter} />
-      </div>
+      {tenant.modules.giving && (
+        <div className="flex items-center justify-end">
+          <GivingCategorySelect value={givingFilter} />
+        </div>
+      )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard label="Members" value={stats.memberCount.toLocaleString()} icon={Users} />
-        <StatCard
-          label={givingFilter === "all" ? "Total giving" : `${givingFilterLabel(givingFilter)} giving`}
-          value={formatMoney(stats.totalGiving, currency, rates)}
-          icon={HandCoins}
-        />
+        {tenant.modules.giving ? (
+          <StatCard
+            label={givingFilter === "all" ? "Total giving" : `${givingFilterLabel(givingFilter)} giving`}
+            value={formatMoney(stats.totalGiving, currency, rates)}
+            icon={HandCoins}
+          />
+        ) : (
+          <StatCard label={labels.cells} value={String(cells.length)} icon={Network} />
+        )}
         <StatCard label="Avg. tenure" value={stats.avgTenure > 0 ? `${stats.avgTenure.toFixed(1)} yrs` : "—"} icon={Clock} />
         <StatCard label="Founded" value={church.foundedYear ? String(church.foundedYear) : "—"} icon={CalendarDays} />
       </div>

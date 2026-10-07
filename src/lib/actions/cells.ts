@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { can, getCurrentProfile, type CurrentProfile } from "@/lib/data/get-dataset";
 import { logAudit } from "./audit";
 import type { ActionResult } from "./members";
+import { labels, lower } from "@/lib/labels";
 
 export type CellInput = {
   name: string;
@@ -30,7 +31,7 @@ async function checkInput(supabase: Supabase, churchId: string, input: CellInput
   if (input.parentId) {
     if (input.parentId === selfId) return "A group can't sit inside itself.";
     const { data: parent } = await supabase.from("cells").select("church_id, parent_id").eq("id", input.parentId).maybeSingle();
-    if (!parent || parent.church_id !== churchId) return "That group isn't in this chapter.";
+    if (!parent || parent.church_id !== churchId) return `That ${lower(labels.cell)} group isn't in this ${lower(labels.location)}.`;
     if (parent.parent_id) return "Cells can only sit one level deep.";
     if (selfId) {
       const { count } = await supabase.from("cells").select("id", { count: "exact", head: true }).eq("parent_id", selfId);
@@ -39,7 +40,7 @@ async function checkInput(supabase: Supabase, churchId: string, input: CellInput
   }
   if (input.leaderMemberId) {
     const { data: leader } = await supabase.from("members").select("church_id").eq("id", input.leaderMemberId).maybeSingle();
-    if (!leader || leader.church_id !== churchId) return "The leader must be a member of this chapter.";
+    if (!leader || leader.church_id !== churchId) return `The leader must be a member of this ${lower(labels.location)}.`;
   }
   return null;
 }
@@ -119,7 +120,7 @@ export async function setCellMembers(cellId: string, memberIds: string[]): Promi
   if (ids.length > 0) {
     const { data: rows } = await supabase.from("members").select("id, church_id").in("id", ids);
     if ((rows ?? []).length !== ids.length || rows!.some((r) => r.church_id !== cell.church_id)) {
-      return { ok: false, error: "Only members of this chapter can be added." };
+      return { ok: false, error: `Only members of this ${lower(labels.location)} can be added.` };
     }
     const { error } = await supabase.from("members").update({ cell_id: cellId }).in("id", ids);
     if (error) return { ok: false, error: error.message };

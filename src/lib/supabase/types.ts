@@ -35,6 +35,7 @@ export type Database = {
           id: string;
           name: string;
           setup_complete: boolean;
+          getting_started: Json;
           display_currency: string;
           default_programs_seeded: boolean;
           handbook_rules: Json | null;
@@ -44,6 +45,7 @@ export type Database = {
           id?: string;
           name: string;
           setup_complete?: boolean;
+          getting_started?: Json;
           display_currency?: string;
           default_programs_seeded?: boolean;
           created_at?: string;
@@ -51,6 +53,7 @@ export type Database = {
         Update: Partial<{
           name: string;
           setup_complete: boolean;
+          getting_started: Json;
           display_currency: string;
           default_programs_seeded: boolean;
           handbook_rules: Json | null;
@@ -196,6 +199,8 @@ export type Database = {
           photo_url: string | null;
           photo_path: string | null;
           cell_id: string | null;
+          age_group: string | null;
+          is_visitor: boolean;
           created_at: string;
         };
         Insert: {
@@ -222,6 +227,8 @@ export type Database = {
           photo_url?: string | null;
           photo_path?: string | null;
           cell_id?: string | null;
+          age_group?: string | null;
+          is_visitor?: boolean;
           created_at?: string;
         };
         Update: Partial<{
@@ -246,6 +253,8 @@ export type Database = {
           photo_url: string | null;
           photo_path: string | null;
           cell_id: string | null;
+          age_group: string | null;
+          is_visitor: boolean;
         }>;
         Relationships: [];
       };
@@ -971,9 +980,141 @@ export type Database = {
         }>;
         Relationships: [];
       };
+      services: {
+        Row: {
+          id: string;
+          zone_id: string;
+          church_id: string;
+          service_date: string;
+          kind: "sunday" | "midweek" | "special";
+          name: string;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          zone_id: string;
+          church_id: string;
+          service_date: string;
+          kind?: "sunday" | "midweek" | "special";
+          name?: string;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<{ service_date: string; kind: "sunday" | "midweek" | "special"; name: string }>;
+        Relationships: [];
+      };
+      attendance: {
+        Row: {
+          id: string;
+          zone_id: string;
+          service_id: string;
+          member_id: string;
+          checked_in_at: string;
+          checked_in_by: string | null;
+          device_id: string | null;
+          synced_at: string;
+        };
+        Insert: {
+          id: string;
+          zone_id: string;
+          service_id: string;
+          member_id: string;
+          checked_in_at?: string;
+          checked_in_by?: string | null;
+          device_id?: string | null;
+          synced_at?: string;
+        };
+        Update: Partial<{ checked_in_at: string; member_id: string }>;
+        Relationships: [];
+      };
+      follow_ups: {
+        Row: {
+          id: string;
+          zone_id: string;
+          member_id: string;
+          created_by: string | null;
+          created_at: string;
+          outcome: "reached" | "no_answer" | "visited" | "other";
+          note: string | null;
+        };
+        Insert: {
+          id?: string;
+          zone_id: string;
+          member_id: string;
+          created_by?: string | null;
+          created_at?: string;
+          outcome?: "reached" | "no_answer" | "visited" | "other";
+          note?: string | null;
+        };
+        Update: Partial<{ outcome: "reached" | "no_answer" | "visited" | "other"; note: string | null; member_id: string }>;
+        Relationships: [];
+      };
+      courses: {
+        Row: { id: string; zone_id: string; name: string; required_classes: number; created_at: string };
+        Insert: { id?: string; zone_id: string; name: string; required_classes?: number; created_at?: string };
+        Update: Partial<{ name: string; required_classes: number }>;
+        Relationships: [];
+      };
+      course_classes: {
+        Row: { id: string; course_id: string; zone_id: string; number: number; title: string };
+        Insert: { id?: string; course_id: string; zone_id: string; number: number; title?: string };
+        Update: Partial<{ number: number; title: string }>;
+        Relationships: [];
+      };
+      cohorts: {
+        Row: { id: string; zone_id: string; course_id: string; church_id: string; name: string; start_date: string | null; teacher_profile_id: string | null; closed: boolean; created_at: string };
+        Insert: { id?: string; zone_id: string; course_id: string; church_id: string; name: string; start_date?: string | null; teacher_profile_id?: string | null; closed?: boolean; created_at?: string };
+        Update: Partial<{ name: string; start_date: string | null; teacher_profile_id: string | null; closed: boolean; church_id: string }>;
+        Relationships: [];
+      };
+      cohort_students: {
+        Row: { cohort_id: string; member_id: string; zone_id: string; enrolled_at: string };
+        Insert: { cohort_id: string; member_id: string; zone_id: string; enrolled_at?: string };
+        Update: Partial<{ enrolled_at: string; member_id: string }>;
+        Relationships: [];
+      };
+      class_attendance: {
+        Row: { id: string; zone_id: string; class_id: string; cohort_id: string; member_id: string; attended_on: string; marked_by: string | null };
+        Insert: { id?: string; zone_id: string; class_id: string; cohort_id: string; member_id: string; attended_on?: string; marked_by?: string | null };
+        Update: Partial<{ attended_on: string; member_id: string }>;
+        Relationships: [];
+      };
+      resources: {
+        Row: {
+          id: string; zone_id: string; kind: "logo" | "brand" | "press"; title: string; description: string | null;
+          file_path: string; file_name: string; mime: string; bytes: number; width: number | null; height: number | null;
+          uploaded_by: string | null; created_at: string;
+        };
+        Insert: {
+          id?: string; zone_id: string; kind: "logo" | "brand" | "press"; title: string; description?: string | null;
+          file_path: string; file_name: string; mime: string; bytes?: number; width?: number | null; height?: number | null;
+          uploaded_by?: string | null; created_at?: string;
+        };
+        Update: Partial<{ title: string; description: string | null }>;
+        Relationships: [];
+      };
+      resource_settings: {
+        Row: { zone_id: string; logo_guidelines: string | null; updated_by: string | null; updated_at: string };
+        Insert: { zone_id: string; logo_guidelines?: string | null; updated_by?: string | null; updated_at?: string };
+        Update: Partial<{ logo_guidelines: string | null; updated_by: string | null; updated_at: string }>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
+      cohort_roster: {
+        Args: { p_cohort_id: string };
+        Returns: { member_id: string; first_name: string; last_name: string; cell_name: string | null }[];
+      };
+      checkin_add_visitor: {
+        Args: { p_id: string; p_church_id: string; p_first_name: string; p_last_name: string; p_phone: string };
+        Returns: string;
+      };
+      checkin_roster: {
+        Args: { p_church_id: string };
+        Returns: { id: string; first_name: string; last_name: string; cell_name: string | null; age_group: string | null; is_visitor: boolean }[];
+      };
       quiz_questions_for_member: {
         Args: { p_lesson_id: string };
         Returns: { id: string; question: string; options: string[]; sort_order: number }[];

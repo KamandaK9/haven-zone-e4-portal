@@ -13,6 +13,7 @@ import { createCell, deleteCell, setCellMembers, updateCell, type CellInput } fr
 import { buildCellTree, totalMembers, type CellNode } from "@/lib/records/cells";
 import type { Cell } from "@/lib/data/types";
 import { pluralize } from "@/lib/utils";
+import { labels, lower } from "@/lib/labels";
 
 export type CellMember = { id: string; name: string; cellId?: string };
 export type CellLevels = { upper: string; upperPlural: string; lower: string; lowerPlural: string };
@@ -421,7 +422,7 @@ export function CellsDirectory({
               <DialogTitle>Delete {dialog.cell.name}?</DialogTitle>
               <DialogDescription>
                 {dialog.cell.parentId
-                  ? "Its members stay in the chapter, just not in any cell."
+                  ? `Its members stay in the ${lower(labels.location)}, just not in any ${lower(labels.cell)}.`
                   : `Its ${levels.lowerPlural.toLowerCase()} are deleted too. Their members stay in the chapter, just unassigned.`}
               </DialogDescription>
             </DialogHeader>

@@ -47,12 +47,12 @@ export async function mergeDuplicateMembers(keepId: string, mergeId: string): Pr
   const { data: rows } = await supabase
     .from("members")
     .select(
-      "id, first_name, last_name, email, phone, profile_id, title, kc_handle, profession, spouse_name, birthday, wedding_anniversary, join_date, zone_id, position"
+      "id, first_name, last_name, email, phone, profile_id, title, kc_handle, profession, spouse_name, birthday, wedding_anniversary, join_date, zone_id, position, is_visitor"
     )
     .in("id", [keepId, mergeId]);
 
-  const keep = rows?.find((r) => r.id === keepId) as (MemberRow & { zone_id: string }) | undefined;
-  const merge = rows?.find((r) => r.id === mergeId) as (MemberRow & { zone_id: string }) | undefined;
+  const keep = rows?.find((r) => r.id === keepId) as (MemberRow & { zone_id: string; is_visitor: boolean }) | undefined;
+  const merge = rows?.find((r) => r.id === mergeId) as (MemberRow & { zone_id: string; is_visitor: boolean }) | undefined;
   if (!keep || !merge) return { ok: false, error: "One of those members wasn't found, or isn't in your scope." };
   if (keep.zone_id !== profile.zoneId || merge.zone_id !== profile.zoneId) return { ok: false, error: "Not permitted." };
   // Merging rewrites and deletes records, so it's held to the same rule as
@@ -163,6 +163,44 @@ export async function mergeDuplicateMembers(keepId: string, mergeId: string): Pr
       await admin.from("trainings").update({ member_id: keepId }).eq("id", t.id);
     }
   }
+
+  // 4b. Attendance, course classes and enrolments, and follow-ups move to
+  // the surviving row. Where both rows have the same one (same service,
+  // class or class group) the survivor's copy stands and the duplicate goes.
+  const [{ data: keepServices }, { data: mergeServices }] = await Promise.all([
+    admin.from("attendance").select("service_id").eq("member_id", keepId),
+    admin.from("attendance").select("service_id").eq("member_id", mergeId),
+  ]);
+  const keptServices = new Set((keepServices ?? []).map((r) => r.service_id));
+  for (const { service_id } of mergeServices ?? []) {
+    const row = admin.from("attendance");
+    if (keptServices.has(service_id)) await row.delete().eq("member_id", mergeId).eq("service_id", service_id);
+    else await row.update({ member_id: keepId }).eq("member_id", mergeId).eq("service_id", service_id);
+  }
+  const [{ data: keepClasses }, { data: mergeClasses }] = await Promise.all([
+    admin.from("class_attendance").select("class_id").eq("member_id", keepId),
+    admin.from("class_attendance").select("class_id").eq("member_id", mergeId),
+  ]);
+  const keptClasses = new Set((keepClasses ?? []).map((r) => r.class_id));
+  for (const { class_id } of mergeClasses ?? []) {
+    const row = admin.from("class_attendance");
+    if (keptClasses.has(class_id)) await row.delete().eq("member_id", mergeId).eq("class_id", class_id);
+    else await row.update({ member_id: keepId }).eq("member_id", mergeId).eq("class_id", class_id);
+  }
+  const [{ data: keepCohorts }, { data: mergeCohorts }] = await Promise.all([
+    admin.from("cohort_students").select("cohort_id").eq("member_id", keepId),
+    admin.from("cohort_students").select("cohort_id").eq("member_id", mergeId),
+  ]);
+  const keptCohorts = new Set((keepCohorts ?? []).map((r) => r.cohort_id));
+  for (const { cohort_id } of mergeCohorts ?? []) {
+    const row = admin.from("cohort_students");
+    if (keptCohorts.has(cohort_id)) await row.delete().eq("member_id", mergeId).eq("cohort_id", cohort_id);
+    else await row.update({ member_id: keepId }).eq("member_id", mergeId).eq("cohort_id", cohort_id);
+  }
+  await admin.from("follow_ups").update({ member_id: keepId }).eq("member_id", mergeId);
+  // Someone on record as a member stays one, even if the other row was a
+  // first-timer added at check-in.
+  if (keep.is_visitor && !merge.is_visitor) await admin.from("members").update({ is_visitor: false }).eq("id", keepId);
 
   // 5. The losing row's own history is now empty (moved or folded above), so
   // deleting it cascades cleanly.

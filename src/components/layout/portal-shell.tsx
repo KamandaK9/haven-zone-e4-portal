@@ -9,6 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { signOutAction } from "@/lib/actions/auth";
+import { clearDeviceData } from "@/lib/check-in/store";
+
+// Signing out removes the check-in member list saved on this device (POPIA);
+// check-ins still waiting to sync are kept.
+const clearCheckInList = () => {
+  clearDeviceData().catch(() => {});
+};
 import { EVENT_NAV_ITEMS } from "@/lib/nav-items";
 import { cn } from "@/lib/utils";
 import { SupportButton } from "@/components/support/support-button";
@@ -104,7 +111,7 @@ export function PortalSidebar({
 
       <div className="px-3 py-4 border-t border-sidebar-border space-y-1">
         {settingsItem && <NavLink item={settingsItem} active={false} />}
-        <form action={signOutAction}>
+        <form action={signOutAction} onSubmit={clearCheckInList}>
           <button
             type="submit"
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
@@ -148,7 +155,7 @@ export function PortalTopbar({
           </SheetHeader>
           <nav className="p-3 space-y-1">
             <NavList navItems={navItems} settingsItem={settingsItem} />
-            <form action={signOutAction}>
+            <form action={signOutAction} onSubmit={clearCheckInList}>
               <button
                 type="submit"
                 className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent transition-colors"

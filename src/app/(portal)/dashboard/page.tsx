@@ -32,12 +32,82 @@ import { Download, CalendarClock } from "lucide-react";
 import { describeScope } from "@/lib/scope-label";
 import Link from "next/link";
 import { tenant } from "@/tenant";
+import { OverviewDashboard, type AttendanceTiles } from "@/components/dashboard/overview-dashboard";
+import { churchToday, getAttendanceData } from "@/lib/data/attendance";
+import { summarise } from "@/lib/attendance/summary";
+import { ATTENDANCE_RULES } from "@/lib/attendance/rules";
+import { gettingStartedSteps, type Step } from "@/lib/onboarding/steps";
+import { createClient } from "@/lib/supabase/server";
+import { getZoneCells } from "@/lib/data/cells";
+import { labels, lower } from "@/lib/labels";
 
 export default async function DashboardPage({
   searchParams,
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
+  if (!tenant.modules.giving) {
+    const profile = await getCurrentProfile();
+    if (!profile) redirect("/");
+    // A teacher or check-in volunteer can't see members — their screen is
+    // their dashboard.
+    if (!can(profile, "view_members")) {
+      if (tenant.modules.courses && can(profile, "teach_courses")) redirect("/courses");
+      if (tenant.modules.attendance && can(profile, "check_in")) redirect("/check-in");
+    }
+    const ds = await getZoneDataset(profile.zoneId);
+    let attendance: AttendanceTiles | undefined;
+    if (tenant.modules.attendance && can(profile, "view_attendance")) {
+      const data = await getAttendanceData();
+      const members = ds.members.filter((m) => !m.isVisitor && (profile.scope !== "cell" || m.cellId === profile.cellId));
+      const standing = [...summarise(members, data.services, data.attendance, churchToday()).values()];
+      const lastSunday = data.services.find((s) => s.kind === "sunday");
+      const lastSundayCount = lastSunday
+        ? data.services.filter((s) => s.kind === "sunday" && s.date === lastSunday.date).reduce((n, s) => n + s.attendees, 0)
+        : 0;
+      attendance = {
+        lastSunday: lastSunday ? { date: lastSunday.date, count: lastSundayCount } : undefined,
+        active: standing.filter((s) => s.status === "active").length,
+        needFollowUp: standing.filter((s) => s.missedInARow >= ATTENDANCE_RULES.absenceAlertAfter).length,
+      };
+    }
+    const cells = await getZoneCells(profile.zoneId);
+    // The setup checklist, for admins, until it's done or dismissed.
+    let gettingStarted: Step[] | undefined;
+    if (can(profile, "manage_access")) {
+      const supabase = await createClient();
+      const [{ data: zone }, logins, logos, cohorts, services] = await Promise.all([
+        supabase.from("zones").select("getting_started").eq("id", profile.zoneId).single(),
+        supabase.from("profiles").select("id", { count: "exact", head: true }),
+        tenant.modules.resources ? supabase.from("resources").select("id", { count: "exact", head: true }).eq("kind", "logo") : { count: 0 },
+        tenant.modules.courses ? supabase.from("cohorts").select("id", { count: "exact", head: true }) : { count: 0 },
+        tenant.modules.attendance ? supabase.from("services").select("id", { count: "exact", head: true }) : { count: 0 },
+      ]);
+      const state = (zone?.getting_started ?? {}) as { dismissed?: boolean; done?: string[] };
+      const steps = gettingStartedSteps(
+        {
+          locations: ds.churches.filter((c) => !c.isOffice).length,
+          members: ds.members.length,
+          cells: cells.length,
+          logins: logins.count ?? 0,
+          logos: logos.count ?? 0,
+          cohorts: cohorts.count ?? 0,
+          services: services.count ?? 0,
+        },
+        state.done ?? []
+      );
+      if (!state.dismissed && steps.some((s) => !s.done)) gettingStarted = steps;
+    }
+    return (
+      <OverviewDashboard
+        ds={ds}
+        cells={cells}
+        scopeName={describeScope(profile, ds)}
+        attendance={attendance}
+        gettingStarted={gettingStarted}
+      />
+    );
+  }
   const giving = parseGivingFilter((await searchParams).giving);
   const givingLabel = giving === "all" ? "Total giving" : givingFilterLabel(giving);
   const profile = await getCurrentProfile();
@@ -61,7 +131,7 @@ export default async function DashboardPage({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{profile.scope === "zone" ? "Zone Dashboard" : "Dashboard"}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{profile.scope === "zone" ? `${labels.zone} Dashboard` : "Dashboard"}</h1>
           <p className="text-sm text-muted-foreground">
             An overview of membership, giving, and growth across {scopeName}.
           </p>
@@ -78,8 +148,8 @@ export default async function DashboardPage({
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard label="Total members" value={stats.totalMembers.toLocaleString()} icon={Users} delta={stats.growthPct} deltaLabel="vs last quarter" />
-        <StatCard label="Total Chapters" value={String(stats.totalChurches)} icon={Church} />
-        <StatCard label="Countries" value={String(stats.totalCountries)} icon={Globe2} />
+        <StatCard label={`Total ${labels.locations}`} value={String(stats.totalChurches)} icon={Church} />
+        <StatCard label={labels.countries} value={String(stats.totalCountries)} icon={Globe2} />
         <StatCard label="New this month" value={String(stats.newThisMonth)} icon={TrendingUp} />
       </div>
 
@@ -119,8 +189,8 @@ export default async function DashboardPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>Countries in {ds.zoneName}</CardTitle>
-          <CardDescription>Click a country to drill into its chapters</CardDescription>
+          <CardTitle>{labels.countries} in {ds.zoneName}</CardTitle>
+          <CardDescription>Click a {lower(labels.country)} to drill into its {lower(labels.locations)}</CardDescription>
         </CardHeader>
         <CardContent>
           <CountryGrid countries={ds.countries} ds={ds} />
@@ -146,8 +216,8 @@ export default async function DashboardPage({
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Giving by chapter</CardTitle>
-            <CardDescription>Top 8 chapters · {givingFilterLabel(giving)}, 12-month sum</CardDescription>
+            <CardTitle>Giving by {lower(labels.location)}</CardTitle>
+            <CardDescription>Top 8 {lower(labels.locations)} · {givingFilterLabel(giving)}, 12-month sum</CardDescription>
           </CardHeader>
           <CardContent>
             <BarBreakdownChart
@@ -166,7 +236,7 @@ export default async function DashboardPage({
         <Card>
           <CardHeader>
             <CardTitle>Time in {tenant.name}</CardTitle>
-            <CardDescription>Membership tenure distribution, zone-wide</CardDescription>
+            <CardDescription>Membership tenure distribution, {lower(labels.zone)}-wide</CardDescription>
           </CardHeader>
           <CardContent>
             <TenureChart data={tenure} />
@@ -186,8 +256,8 @@ export default async function DashboardPage({
       <div className="grid lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Zone health summary</CardTitle>
-            <CardDescription>Which chapters are growing, flat, or need attention</CardDescription>
+            <CardTitle>{labels.zone} health summary</CardTitle>
+            <CardDescription>Which {lower(labels.locations)} are growing, flat, or need attention</CardDescription>
           </CardHeader>
           <CardContent>
             <ChurchHealthList rows={health} ds={ds} />

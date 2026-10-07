@@ -22,3 +22,19 @@ export async function getChapterCells(churchId: string): Promise<{ cells: Cell[]
     })),
   };
 }
+
+// Every cell in the zone the viewer's RLS allows — for zone-wide summaries.
+export async function getZoneCells(zoneId: string): Promise<Cell[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("cells").select("*").eq("zone_id", zoneId);
+  if (error) return [];
+  return (data ?? []).map((c) => ({
+    id: c.id,
+    churchId: c.church_id,
+    parentId: c.parent_id ?? undefined,
+    name: c.name,
+    leaderMemberId: c.leader_member_id ?? undefined,
+    meetingDay: c.meeting_day ?? undefined,
+    meetingPlace: c.meeting_place ?? undefined,
+  }));
+}

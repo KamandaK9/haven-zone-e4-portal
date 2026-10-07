@@ -11,6 +11,7 @@ import { can, getCurrentProfile, getAuditLog } from "@/lib/data/get-dataset";
 import { getHandbookRules } from "@/lib/handbook/rules-server";
 import { tenant } from "@/tenant";
 import { legalGaps } from "@/lib/privacy";
+import { labels, lower } from "@/lib/labels";
 
 const ACTION_LABELS: Record<string, string> = {
   "member.create": "Added member",
@@ -53,7 +54,8 @@ const ACTION_LABELS: Record<string, string> = {
   "livestream.delete": "Deleted a stream",
   "livestream.mute": "Muted someone in chat",
   "livestream.unmute": "Unmuted someone in chat",
-  "church.rename": "Renamed a chapter",
+  "church.rename": `Renamed a ${lower(labels.location)}`,
+  "church.create": `Added a ${lower(labels.location)}`,
   "member.merge": "Merged duplicate members",
   "member.photo": "Changed a profile photo",
   "training_lesson.create": "Added a lesson",

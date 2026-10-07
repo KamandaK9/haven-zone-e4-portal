@@ -3,6 +3,7 @@ import { ChevronRight } from "lucide-react";
 import { getChurchesByCountry, getCountryStats, type Dataset } from "@/lib/data/analytics";
 import type { Country } from "@/lib/data/types";
 import { pluralize } from "@/lib/utils";
+import { labels, lower } from "@/lib/labels";
 
 export function CountryGrid({ countries, ds }: { countries: Country[]; ds: Dataset }) {
   if (countries.length === 0) {
@@ -31,7 +32,7 @@ export function CountryGrid({ countries, ds }: { countries: Country[]; ds: Datas
                   {country.name}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {pluralize(stats.memberCount, "member")} &middot; {pluralize(churches.length, "chapter")}
+                  {pluralize(stats.memberCount, "member")} &middot; {pluralize(churches.length, lower(labels.location), lower(labels.locations))}
                 </p>
               </div>
             </div>

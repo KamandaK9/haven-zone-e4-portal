@@ -196,5 +196,61 @@ expect("nobody can move a request's deadline", denied(r), r);
 r = await as(M, "authenticated", `update profiles set privacy_accepted_version = 'x' where id = '${M}'`);
 expect("consent is recorded only by the server", r.ok && r.affected === 0, r);
 
+// ── Attendance & check-in ─────────────────────────────────────────────
+const V = id(40), TT = id(41), TT2 = id(42), SVC = id(43), CRS = id(44), CL1 = id(45), COH = id(46);
+await db.exec(`
+  insert into auth.users (id) values ('${V}'), ('${TT}'), ('${TT2}');
+  insert into profiles (id, zone_id, role, full_name, email, position, scope, church_id, caps) values
+    ('${V}', '${Z}', 'admin', 'Volunteer', 'v@x', 'member', 'chapter', '${C1}', '{check_in}'),
+    ('${TT}', '${Z}', 'admin', 'Teacher', 't@x', 'member', 'self', null, '{teach_courses}'),
+    ('${TT2}', '${Z}', 'admin', 'Other Teacher', 't2@x', 'member', 'self', null, '{teach_courses}');
+`);
+r = await as(V, "authenticated", `select id from members`);
+expect("check-in volunteer can't read the members table", r.ok && r.rows.length === 0, r);
+r = await as(V, "authenticated", `select * from checkin_roster('${C1}')`);
+expect(
+  "check-in roster gives names but no contact details",
+  r.ok && r.rows.length > 0 && !("email" in r.rows[0]) && !("phone" in r.rows[0]),
+  r
+);
+r = await as(V, "authenticated", `select * from checkin_roster('${C2}')`);
+expect("check-in roster is limited to the volunteer's own chapter", r.ok && r.rows.length === 0, r);
+r = await as(null, "anon", `select * from checkin_roster('${C1}')`);
+expect("anonymous can't read the check-in roster", denied(r) || r.rows.length === 0, r);
+r = await as(V, "authenticated", `insert into services (id, zone_id, church_id, service_date, kind) values ('${SVC}', '${Z}', '${C1}', '2026-01-04', 'sunday')`);
+expect("volunteer can open a service in their chapter", r.ok, r);
+r = await as(V, "authenticated", `insert into attendance (id, zone_id, service_id, member_id) values (gen_random_uuid(), '${Z}', '${SVC}', '${MM}')`);
+expect("volunteer can check a member in", r.ok, r);
+r = await as(V, "authenticated", `insert into attendance (id, zone_id, service_id, member_id) values (gen_random_uuid(), '${Z}', '${SVC}', '${MM}')`);
+expect("a member can't be checked in to a service twice", denied(r), r);
+r = await as(V, "authenticated", `insert into attendance (id, zone_id, service_id, member_id) values (gen_random_uuid(), '${Z}', '${SVC}', '${MM2}')`);
+expect("volunteer can't check in someone from another chapter", denied(r), r);
+r = await as(V, "authenticated", `insert into follow_ups (zone_id, member_id) values ('${Z}', '${MM}')`);
+expect("volunteer can't record follow-ups", denied(r), r);
+r = await as(M, "authenticated", `select id from attendance`);
+expect("a member sees only their own attendance", r.ok && r.rows.length === 1, r);
+
+// ── Courses ───────────────────────────────────────────────────────────
+await db.exec(`
+  insert into courses (id, zone_id, name, required_classes) values ('${CRS}', '${Z}', 'Course', 2);
+  insert into course_classes (id, course_id, zone_id, number) values ('${CL1}', '${CRS}', '${Z}', 1);
+  insert into cohorts (id, zone_id, course_id, church_id, name, teacher_profile_id) values ('${COH}', '${Z}', '${CRS}', '${C1}', 'A', '${TT}');
+  insert into cohort_students (cohort_id, member_id, zone_id) values ('${COH}', '${MM}', '${Z}');
+`);
+r = await as(TT, "authenticated", `select id from cohorts`);
+expect("teacher sees their own class group", r.ok && r.rows.length === 1, r);
+r = await as(TT2, "authenticated", `select id from cohorts`);
+expect("another teacher doesn't see it", r.ok && r.rows.length === 0, r);
+r = await as(TT, "authenticated", `select * from cohort_roster('${COH}')`);
+expect("teacher's roster has names but no contact details", r.ok && r.rows.length === 1 && !("email" in r.rows[0]), r);
+r = await as(TT, "authenticated", `insert into class_attendance (zone_id, class_id, cohort_id, member_id) values ('${Z}', '${CL1}', '${COH}', '${MM}')`);
+expect("teacher can tick their own student's class", r.ok, r);
+r = await as(TT, "authenticated", `insert into class_attendance (zone_id, class_id, cohort_id, member_id) values ('${Z}', '${CL1}', '${COH}', '${MM2}')`);
+expect("teacher can't tick someone who isn't in the group", denied(r), r);
+r = await as(TT2, "authenticated", `delete from class_attendance where cohort_id = '${COH}'`);
+expect("another teacher can't change the register", r.ok && r.affected === 0, r);
+r = await as(M, "authenticated", `select id from resources`);
+expect("members can't see the leaders' resources", r.ok && r.rows.length === 0, r);
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

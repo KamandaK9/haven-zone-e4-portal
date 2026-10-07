@@ -6,12 +6,15 @@ import { PortalTopbar } from "./portal-shell";
 export function Topbar({
   zoneName,
   fullName,
+  positionLabel,
   role,
   caps,
   hiddenNavItems,
 }: {
   zoneName: string;
   fullName: string;
+  // The person's position ("Group Pastor"), shown under their name.
+  positionLabel: string;
   role: StaffRole;
   caps: string[];
   hiddenNavItems: string[];
@@ -24,7 +27,7 @@ export function Topbar({
     <PortalTopbar
       zoneName={zoneName}
       fullName={fullName}
-      identityLabel={`${zoneName} Office`}
+      identityLabel={positionLabel}
       navItems={navItems}
       settingsItem={settingsItem}
       showNotifications

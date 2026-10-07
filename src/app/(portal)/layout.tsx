@@ -7,6 +7,7 @@ import { requireAal2IfEnrolled, requireOwnPassword } from "@/lib/mfa";
 import { requirePrivacyAccepted } from "@/lib/privacy-server";
 import { IdleSignOut } from "@/components/layout/idle-sign-out";
 import { LEADER_IDLE_MINUTES } from "@/lib/idle";
+import { positionLabel } from "@/lib/access";
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
   const profile = await getCurrentProfile();
@@ -25,6 +26,7 @@ export default async function PortalLayout({ children }: { children: React.React
         <Topbar
           zoneName={profile.zoneName}
           fullName={profile.fullName}
+          positionLabel={positionLabel(profile.position)}
           role={profile.role}
           caps={profile.caps}
           hiddenNavItems={profile.hiddenNavItems}
