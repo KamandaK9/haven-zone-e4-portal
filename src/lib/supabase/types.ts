@@ -1102,6 +1102,12 @@ export type Database = {
         Update: Partial<{ logo_guidelines: string | null; updated_by: string | null; updated_at: string }>;
         Relationships: [];
       };
+      check_in_screen: {
+        Row: { zone_id: string; title: string | null; tagline: string | null; background_path: string | null; updated_by: string | null; updated_at: string };
+        Insert: { zone_id: string; title?: string | null; tagline?: string | null; background_path?: string | null; updated_by?: string | null; updated_at?: string };
+        Update: Partial<{ title: string | null; tagline: string | null; background_path: string | null; updated_by: string | null; updated_at: string }>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {

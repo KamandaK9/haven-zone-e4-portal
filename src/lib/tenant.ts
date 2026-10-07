@@ -104,6 +104,10 @@ export type TenantConfig = {
   // The cohort-based course the courses module runs (modules.courses): its
   // name, how many classes it has, and how many distinct classes complete it.
   course?: { name: string; classes: number; requiredClasses: number };
+  // The self check-in kiosk's look by default; an admin can change the
+  // title, tagline and background image in Settings → Self check-in screen.
+  // `accent` colours buttons and highlights; `dark` uses a dark backdrop.
+  checkInScreen?: { title?: string; tagline?: string; accent?: string; dark?: boolean };
   // Attendance rules (src/lib/attendance/rules.ts): a member is active with at
   // least `activeMinSundays` Sunday services in the last 30 days, and flagged
   // for follow-up after `absenceAlertAfter` missed Sundays in a row. Both

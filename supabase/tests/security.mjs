@@ -31,6 +31,19 @@ await db.exec(`
   alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
 `);
 
+// ── Migration versions must be unique ─────────────────────────────────
+// Supabase records a migration by the number before the "_"; two files with
+// the same number (easy when two branches add one the same day) means one is
+// silently skipped on a real database.
+{
+  const versions = readdirSync(MIG).filter((f) => f.endsWith(".sql")).map((f) => f.split("_")[0]);
+  const dupes = versions.filter((v, i) => versions.indexOf(v) !== i);
+  if (dupes.length) {
+    console.log("DUPLICATE MIGRATION VERSION", [...new Set(dupes)].join(", "), "— renumber one of them");
+    process.exit(1);
+  }
+}
+
 // ── Migrations, in order ──────────────────────────────────────────────
 for (const f of readdirSync(MIG).filter((f) => f.endsWith(".sql")).sort()) {
   try {
@@ -260,6 +273,18 @@ r = await as(G, "authenticated", `update zones set legal_settings = '{"organisat
 expect("leader without manage_access can't change the privacy details", r.ok && r.affected === 0, r);
 r = await as(D, "authenticated", `update zones set legal_settings = '{"organisationName":"Grace NPC"}' where id = '${Z}'`);
 expect("whoever manages access can change the privacy details", changed(r), r);
+
+// ── Self check-in screen ──────────────────────────────────────────────
+r = await as(D, "authenticated", `insert into check_in_screen (zone_id, title, background_path) values ('${Z}', 'Welcome', '${Z}/bg.jpg')`);
+expect("an admin can set the check-in screen", r.ok, r);
+r = await as(D, "authenticated", `update check_in_screen set background_path = '${id(99)}/bg.jpg' where zone_id = '${Z}'`);
+expect("the background must be in the zone's own folder", denied(r), r);
+r = await as(G, "authenticated", `update check_in_screen set title = 'Hijacked' where zone_id = '${Z}'`);
+expect("a leader without manage_access can't change it", r.ok && r.affected === 0, r);
+r = await as(V, "authenticated", `select title from check_in_screen`);
+expect("the check-in volunteer can read it (they run the kiosk)", r.ok && r.rows.length === 1, r);
+r = await as(M, "authenticated", `select title from check_in_screen`);
+expect("members can't read it", r.ok && r.rows.length === 0, r);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
