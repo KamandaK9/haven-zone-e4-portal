@@ -108,6 +108,7 @@ export const tenant: TenantConfig = {
     attendance: true,
     courses: true,
     messaging: true,
+    resources: true,
   },
   access: {
     memberPositionKey: "member",

@@ -83,6 +83,7 @@ export type TenantConfig = {
     attendance: boolean; // services, check-in, absence, follow-up
     courses: boolean; // cohort-based courses (e.g. Foundation School)
     messaging: boolean; // SMS/email campaigns + birthdays
+    resources?: boolean; // media set: logos, brand assets, press releases (/resources)
   };
   access: {
     positions: readonly PositionDef[];

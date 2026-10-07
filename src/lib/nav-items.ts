@@ -2,7 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import type { Capability } from "@/lib/access";
 import type { ModuleKey } from "@/lib/tenant";
 import { EVENT_SERIES_DEFS } from "@/lib/event-series";
-import { LayoutDashboard, Globe2, Church, ClipboardCheck, ScanLine, School, BarChart3, BookOpenText, GraduationCap, CalendarDays, Mail, Settings, BookMarked, FolderOpen, Radio } from "lucide-react";
+import { LayoutDashboard, Globe2, Church, ClipboardCheck, ScanLine, School, FolderDown, BarChart3, BookOpenText, GraduationCap, CalendarDays, Mail, Settings, BookMarked, FolderOpen, Radio } from "lucide-react";
 import { tenant } from "@/tenant";
 import { labels, singleCountry } from "@/lib/labels";
 
@@ -50,6 +50,7 @@ export const NAV_ITEMS: NavItemDef[] = [
   ...(tenant.modules.handbook && tenant.handbook
     ? [{ key: "handbook", href: "/handbook", label: tenant.handbook.title, icon: BookMarked, hideable: true }]
     : []),
+  { key: "resources", href: "/resources", label: "Resources", icon: FolderDown, module: "resources", hideable: true },
   { key: "newsletter", href: "/newsletter", label: "Newsletter", icon: Mail, cap: "send_newsletter", module: "newsletter", hideable: true },
   { key: "settings", href: "/settings", label: "Settings", icon: Settings, cap: "manage_access", hideable: false },
 ];

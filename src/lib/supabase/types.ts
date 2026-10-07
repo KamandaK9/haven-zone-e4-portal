@@ -1036,6 +1036,26 @@ export type Database = {
         Update: Partial<{ attended_on: string }>;
         Relationships: [];
       };
+      resources: {
+        Row: {
+          id: string; zone_id: string; kind: "logo" | "brand" | "press"; title: string; description: string | null;
+          file_path: string; file_name: string; mime: string; bytes: number; width: number | null; height: number | null;
+          uploaded_by: string | null; created_at: string;
+        };
+        Insert: {
+          id?: string; zone_id: string; kind: "logo" | "brand" | "press"; title: string; description?: string | null;
+          file_path: string; file_name: string; mime: string; bytes?: number; width?: number | null; height?: number | null;
+          uploaded_by?: string | null; created_at?: string;
+        };
+        Update: Partial<{ title: string; description: string | null }>;
+        Relationships: [];
+      };
+      resource_settings: {
+        Row: { zone_id: string; logo_guidelines: string | null; updated_by: string | null; updated_at: string };
+        Insert: { zone_id: string; logo_guidelines?: string | null; updated_by?: string | null; updated_at?: string };
+        Update: Partial<{ logo_guidelines: string | null; updated_by: string | null; updated_at: string }>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
