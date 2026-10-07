@@ -26,6 +26,7 @@ function LoginForm() {
   const params = useSearchParams();
   const isMember = params.get("from") === "member";
   const authError = params.get("authError") === "1";
+  const signedOutIdle = params.get("signedOut") === "idle";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -78,12 +79,7 @@ function LoginForm() {
           </div>
         </div>
 
-        <p className="relative text-xs text-primary-foreground/60">
-          {tenant.affiliation && <>{tenant.affiliation} · </>}
-          <Link href="/privacy" className="underline-offset-2 hover:underline">
-            Privacy notice
-          </Link>
-        </p>
+        {tenant.affiliation && <p className="relative text-xs text-primary-foreground/60">{tenant.affiliation}</p>}
       </div>
 
       <div className="flex flex-col items-center justify-center p-6 sm:p-12">
@@ -103,7 +99,7 @@ function LoginForm() {
                 ? tenant.modules.giving
                   ? "Sign in to see your profile, giving history, and the calendar."
                   : "Sign in to see your profile and the calendar."
-                : `Sign in to access your ${labels.zone.toLowerCase()}'s dashboard.`}
+                : "Sign in to access your leadership dashboard."}
             </p>
           </div>
 
@@ -144,6 +140,11 @@ function LoginForm() {
                 </Button>
               </form>
 
+              {signedOutIdle && !error && (
+                <p className="rounded-lg border bg-muted/50 px-3 py-2.5 text-xs text-muted-foreground">
+                  You were signed out after a period of inactivity. Please sign in again.
+                </p>
+              )}
               {(error || authError) && (
                 <div className="mt-4 flex items-center gap-2 rounded-lg bg-red-50 text-red-700 border border-red-200 px-3 py-2.5 text-xs">
                   <AlertCircle className="h-3.5 w-3.5 shrink-0" />
@@ -154,7 +155,12 @@ function LoginForm() {
             </CardContent>
           </Card>
 
-          <p className="text-center text-xs text-muted-foreground">Powered by Stratum KamTech</p>
+          <p className="text-center text-xs text-muted-foreground">
+            <Link href="/privacy" className="hover:text-foreground">Privacy</Link>
+            {" · "}
+            <Link href="/terms" className="hover:text-foreground">Terms</Link>
+            {" · "}Powered by Stratum KamTech
+          </p>
         </div>
       </div>
     </div>

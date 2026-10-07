@@ -5,7 +5,10 @@ import { PortalFrame } from "@/components/layout/portal-shell";
 import { MemberSidebar } from "@/components/member-portal/member-sidebar";
 import { MemberTopbar } from "@/components/member-portal/member-topbar";
 import { getCurrentProfile } from "@/lib/data/get-dataset";
-import { requireAal2IfEnrolled } from "@/lib/mfa";
+import { requireAal2IfEnrolled, requireOwnPassword } from "@/lib/mfa";
+import { requirePrivacyAccepted } from "@/lib/privacy-server";
+import { IdleSignOut } from "@/components/layout/idle-sign-out";
+import { LEADER_IDLE_MINUTES, MEMBER_IDLE_MINUTES } from "@/lib/idle";
 import { positionLabel } from "@/lib/access";
 
 // Pages everyone signed in can open — leaders and members alike. Same portal
@@ -14,7 +17,10 @@ export default async function SharedLayout({ children }: { children: React.React
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
   if (!profile.setupComplete) redirect("/setup");
+  await requireOwnPassword();
+  await requirePrivacyAccepted(profile.userId);
   await requireAal2IfEnrolled();
+  const idleMinutes = profile.role === "member" ? MEMBER_IDLE_MINUTES : LEADER_IDLE_MINUTES;
 
   if (profile.role === "member") {
     return (
@@ -22,6 +28,7 @@ export default async function SharedLayout({ children }: { children: React.React
         sidebar={<MemberSidebar zoneName={profile.zoneName} />}
         topbar={<MemberTopbar zoneName={profile.zoneName} fullName={profile.fullName} />}
       >
+        <IdleSignOut minutes={idleMinutes} />
         {children}
       </PortalFrame>
     );
@@ -41,6 +48,7 @@ export default async function SharedLayout({ children }: { children: React.React
         />
       }
     >
+      <IdleSignOut minutes={idleMinutes} />
       {children}
     </PortalFrame>
   );

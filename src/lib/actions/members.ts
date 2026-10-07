@@ -20,6 +20,8 @@ import { getSiteUrl } from "@/lib/site-url";
 import { matchCell } from "@/lib/import/match-cell";
 import { logAudit } from "./audit";
 import type { MemberRole } from "@/lib/data/types";
+import { randomInt } from "node:crypto";
+import { TOO_MANY, withinRateLimit } from "@/lib/rate-limit";
 import { labels, lower } from "@/lib/labels";
 
 type CreateMemberInput = {
@@ -272,10 +274,12 @@ export async function bulkImportMembers(input: {
   return { ok: true, inserted: inserted.length, errors, unmatchedCells };
 }
 
+// Cryptographically random, from characters that can't be confused when
+// read off a screen. The person must replace it at first sign-in.
 function randomTempPassword(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
   let out = "";
-  for (let i = 0; i < 12; i++) out += chars[Math.floor(Math.random() * chars.length)];
+  for (let i = 0; i < 14; i++) out += chars[randomInt(chars.length)];
   return out;
 }
 
@@ -296,6 +300,7 @@ export async function inviteMemberToPortal(memberId: string): Promise<InviteMemb
   const profile = await getCurrentProfile();
   if (!profile) return { ok: false, error: "Not signed in." };
   if (!can(profile, "manage_members")) return { ok: false, error: "Not permitted." };
+  if (!(await withinRateLimit(`invite:${profile.userId}`, 30, 3600))) return { ok: false, error: TOO_MANY };
 
   const supabase = await createClient();
   const { data: member } = await supabase
@@ -367,6 +372,7 @@ export async function inviteMemberToPortal(memberId: string): Promise<InviteMemb
     email: member.email,
     password: tempPassword,
     email_confirm: true,
+    user_metadata: { must_change_password: true },
   });
   if (authError || !authUser.user) {
     return { ok: false, error: authError?.message ?? invited.error?.message ?? "Could not create a login for this member." };

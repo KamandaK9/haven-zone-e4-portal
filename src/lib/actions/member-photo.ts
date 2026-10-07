@@ -53,6 +53,18 @@ function pathBelongsTo(path: string, zoneId: string, memberId: string): boolean 
   return path.startsWith(`${zoneId}/${memberId}/`) && !path.includes("..");
 }
 
+// A member may only edit their own contact details directly (a database
+// trigger enforces it), so their own photo is saved by the server once the
+// checks above have passed. Leaders write through their own session (RLS).
+async function writerFor(self: boolean) {
+  return self ? createAdminClient() : await createClient();
+}
+
+// Only ever delete a file from this member's own folder, whatever the row says.
+async function removeStoredPhoto(path: string | null | undefined, zoneId: string, memberId: string) {
+  if (path && pathBelongsTo(path, zoneId, memberId)) await createAdminClient().storage.from(MEMBER_PHOTOS_BUCKET).remove([path]);
+}
+
 export async function setMemberPhoto(memberId: string, path: string): Promise<ActionResult> {
   const access = await checkAccess(memberId);
   if (!access.ok) return access;
@@ -61,12 +73,10 @@ export async function setMemberPhoto(memberId: string, path: string): Promise<Ac
   const supabase = await createClient();
   const { data: existing } = await supabase.from("members").select("photo_path").eq("id", memberId).maybeSingle();
 
-  const { error } = await supabase.from("members").update({ photo_url: publicUrl(path), photo_path: path }).eq("id", memberId);
+  const { error } = await (await writerFor(access.self)).from("members").update({ photo_url: publicUrl(path), photo_path: path }).eq("id", memberId);
   if (error) return { ok: false, error: error.message };
 
-  if (existing?.photo_path && existing.photo_path !== path) {
-    await createAdminClient().storage.from(MEMBER_PHOTOS_BUCKET).remove([existing.photo_path]);
-  }
+  if (existing?.photo_path && existing.photo_path !== path) await removeStoredPhoto(existing.photo_path, access.zoneId, memberId);
 
   const profile = await getCurrentProfile();
   if (profile && !access.self) await logAudit(profile, "member.photo", "Changed a member's profile photo");
@@ -81,9 +91,9 @@ export async function removeMemberPhoto(memberId: string): Promise<ActionResult>
   const supabase = await createClient();
   const { data: existing } = await supabase.from("members").select("photo_path").eq("id", memberId).maybeSingle();
 
-  const { error } = await supabase.from("members").update({ photo_url: null, photo_path: null }).eq("id", memberId);
+  const { error } = await (await writerFor(access.self)).from("members").update({ photo_url: null, photo_path: null }).eq("id", memberId);
   if (error) return { ok: false, error: error.message };
-  if (existing?.photo_path) await createAdminClient().storage.from(MEMBER_PHOTOS_BUCKET).remove([existing.photo_path]);
+  await removeStoredPhoto(existing?.photo_path, access.zoneId, memberId);
 
   const profile = await getCurrentProfile();
   if (profile && !access.self) await logAudit(profile, "member.photo", "Removed a member's profile photo");

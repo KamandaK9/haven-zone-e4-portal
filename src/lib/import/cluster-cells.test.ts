@@ -1,5 +1,21 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { clusterCellNames } from "./cluster-cells";
+
+vi.mock("@/tenant", async (importOriginal) => {
+  const { tenant } = await importOriginal<typeof import("@/tenant")>();
+  // Fixed age groups, so the tests don't depend on the deployment's tenant.
+  return {
+    tenant: {
+      ...tenant,
+      ageGroups: [
+        { key: "children", label: "Children", minAge: 0, maxAge: 12 },
+        { key: "teens", label: "Teens", minAge: 13, maxAge: 19 },
+        { key: "youth", label: "Youth", minAge: 20, maxAge: 35 },
+        { key: "adults", label: "Adults", minAge: 36 },
+      ],
+    },
+  };
+});
 
 describe("clusterCellNames", () => {
   it("groups spellings of one cell under its most-used spelling", () => {

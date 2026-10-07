@@ -7,6 +7,8 @@ import { can, getCurrentProfile } from "@/lib/data/get-dataset";
 import { logAudit } from "./audit";
 import type { ActionResult } from "./members";
 import type { LessonStatus } from "@/lib/data/types";
+import { canActOn, isLeader, isPosition } from "@/lib/access";
+import { tenant } from "@/tenant";
 
 const STATUS_RANK: Record<LessonStatus, number> = { not_started: 0, in_progress: 1, completed: 2 };
 
@@ -45,7 +47,7 @@ export async function mergeDuplicateMembers(keepId: string, mergeId: string): Pr
   const { data: rows } = await supabase
     .from("members")
     .select(
-      "id, first_name, last_name, email, phone, profile_id, title, kc_handle, profession, spouse_name, birthday, wedding_anniversary, join_date, zone_id, is_visitor"
+      "id, first_name, last_name, email, phone, profile_id, title, kc_handle, profession, spouse_name, birthday, wedding_anniversary, join_date, zone_id, position, is_visitor"
     )
     .in("id", [keepId, mergeId]);
 
@@ -53,6 +55,14 @@ export async function mergeDuplicateMembers(keepId: string, mergeId: string): Pr
   const merge = rows?.find((r) => r.id === mergeId) as (MemberRow & { zone_id: string; is_visitor: boolean }) | undefined;
   if (!keep || !merge) return { ok: false, error: "One of those members wasn't found, or isn't in your scope." };
   if (keep.zone_id !== profile.zoneId || merge.zone_id !== profile.zoneId) return { ok: false, error: "Not permitted." };
+  // Merging rewrites and deletes records, so it's held to the same rule as
+  // changing access: only people below your own position.
+  for (const row of [keep, merge] as { position?: string }[]) {
+    const position = isPosition(row.position) ? row.position : tenant.access.memberPositionKey;
+    if (isLeader(position) && !canActOn(profile.position, position)) {
+      return { ok: false, error: "You can only merge records of people below your own position." };
+    }
+  }
 
   if (keep.profile_id && merge.profile_id && keep.profile_id !== merge.profile_id) {
     return {

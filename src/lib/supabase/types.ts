@@ -23,6 +23,8 @@ export type LiveStreamStatus = "scheduled" | "live" | "ended";
 export type LiveStreamAudience = "zone" | "chapters" | "leaders";
 export type RecordingStatus = "none" | "processing" | "ready" | "errored";
 export type SupportCategory = "question" | "problem" | "account" | "records" | "other";
+export type DataRequestKind = "access" | "correction" | "deletion" | "objection" | "other";
+export type DataRequestStatus = "open" | "in_progress" | "completed" | "declined";
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
@@ -51,10 +53,10 @@ export type Database = {
         Update: Partial<{
           name: string;
           setup_complete: boolean;
+          getting_started: Json;
           display_currency: string;
           default_programs_seeded: boolean;
           handbook_rules: Json | null;
-          getting_started: Json;
         }>;
         Relationships: [];
       };
@@ -76,6 +78,8 @@ export type Database = {
           caps: string[];
           granted_caps: string[];
           revoked_caps: string[];
+          privacy_accepted_version: string | null;
+          privacy_accepted_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -112,6 +116,8 @@ export type Database = {
           caps: string[];
           granted_caps: string[];
           revoked_caps: string[];
+          privacy_accepted_version: string | null;
+          privacy_accepted_at: string | null;
         }>;
         Relationships: [
           {
@@ -939,6 +945,41 @@ export type Database = {
         }>;
         Relationships: [];
       };
+      data_requests: {
+        Row: {
+          id: string;
+          zone_id: string;
+          profile_id: string | null;
+          member_id: string | null;
+          requester_name: string;
+          requester_email: string;
+          kind: DataRequestKind;
+          details: string;
+          status: DataRequestStatus;
+          response: string | null;
+          created_at: string;
+          due_at: string;
+          resolved_at: string | null;
+          resolved_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          zone_id: string;
+          profile_id: string;
+          member_id?: string | null;
+          requester_name: string;
+          requester_email: string;
+          kind: DataRequestKind;
+          details: string;
+        };
+        Update: Partial<{
+          status: DataRequestStatus;
+          response: string | null;
+          resolved_at: string | null;
+          resolved_by: string | null;
+        }>;
+        Relationships: [];
+      };
       services: {
         Row: {
           id: string;
@@ -1062,6 +1103,18 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      cohort_roster: {
+        Args: { p_cohort_id: string };
+        Returns: { member_id: string; first_name: string; last_name: string; cell_name: string | null }[];
+      };
+      checkin_add_visitor: {
+        Args: { p_id: string; p_church_id: string; p_first_name: string; p_last_name: string; p_phone: string };
+        Returns: string;
+      };
+      checkin_roster: {
+        Args: { p_church_id: string };
+        Returns: { id: string; first_name: string; last_name: string; cell_name: string | null; age_group: string | null; is_visitor: boolean }[];
+      };
       quiz_questions_for_member: {
         Args: { p_lesson_id: string };
         Returns: { id: string; question: string; options: string[]; sort_order: number }[];
@@ -1074,21 +1127,13 @@ export type Database = {
         Args: { e_series: string | null; e_church: string | null };
         Returns: boolean;
       };
+      take_rate_limit: {
+        Args: { p_key: string; p_max: number; p_window_seconds: number };
+        Returns: boolean;
+      };
       giving_totals_in_scope: {
         Args: Record<string, never>;
         Returns: { church_id: string; month: string; category: string | null; amount: number }[];
-      };
-      checkin_roster: {
-        Args: { p_church_id: string };
-        Returns: { id: string; first_name: string; last_name: string; cell_name: string | null; age_group: string | null; is_visitor: boolean }[];
-      };
-      cohort_roster: {
-        Args: { p_cohort_id: string };
-        Returns: { member_id: string; first_name: string; last_name: string; cell_name: string | null }[];
-      };
-      checkin_add_visitor: {
-        Args: { p_id: string; p_church_id: string; p_first_name: string; p_last_name: string; p_phone: string };
-        Returns: string;
       };
     };
   };

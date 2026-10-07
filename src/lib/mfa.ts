@@ -8,6 +8,15 @@ import { createClient } from "@/lib/supabase/server";
 // Called from (portal)/layout.tsx and (member)/layout.tsx, after the
 // profile/setup checks there. A login with no verified factor is unaffected
 // (nextLevel stays aal1) — enrolling via /security is what turns this on.
+// A login created with a temporary password (shown to the inviting leader
+// when no invite email could be sent) has to choose its own before going
+// anywhere else. The flag is cleared when they do (reset-password page).
+export async function requireOwnPassword(): Promise<void> {
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getUser();
+  if (data.user?.user_metadata?.must_change_password === true) redirect("/reset-password?first=1");
+}
+
 export async function requireAal2IfEnrolled(): Promise<void> {
   const supabase = await createClient();
   const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();

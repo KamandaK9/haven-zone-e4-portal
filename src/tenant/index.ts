@@ -119,10 +119,24 @@ export const tenant: TenantConfig = {
     portfolios: [],
     positions,
   },
-  // POPIA: the church's Information Officer and contact details aren't
-  // confirmed yet, and the notice hasn't been reviewed by them — it shows as
-  // a draft until `reviewed: true`.
-  privacy: {},
+  // POPIA (see /privacy, Settings → Privacy). [Bracketed] values are still
+  // to be supplied by the church — Settings flags them until they are.
+  legal: {
+    organisationName: "[Registered name of Christ Embassy Sandton]",
+    physicalAddress: "[Street address, city, postal code]",
+    jurisdiction: "ZA",
+    informationOfficer: { name: "[Name of the Information Officer]", email: "[privacy email address]" },
+    privacyNoticeVersion: "2026-10-07",
+    religiousBody: true,
+    // What this deployment actually uses. Add Twilio/SendGrid when
+    // messaging goes live.
+    operators: [
+      { name: "Supabase", purpose: "Database, sign-in and file storage", location: "Germany (Frankfurt, EU)" },
+      { name: "Vercel", purpose: "Hosting the portal", location: "Germany (Frankfurt, EU), with a global delivery network" },
+    ],
+    // Stratum's defaults — the church to confirm.
+    retention: { membersAfterLeaving: 2, financial: 5, auditLog: 5, supportAndRequests: 2 },
+  },
   // From the pastor (2026-10-07): complete after 7 classes.
   course: { name: "Foundation School", classes: 7, requiredClasses: 7 },
   // From the pastor (2026-10-07): active = 2+ Sunday services a month;

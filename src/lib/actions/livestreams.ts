@@ -8,6 +8,7 @@ import { activeVideoProvider, getVideoProvider } from "@/lib/video/providers";
 import { syncLiveStream } from "@/lib/video/live-stream-sync";
 import { logAudit } from "./audit";
 import type { ActionResult } from "./members";
+import { withinRateLimit } from "@/lib/rate-limit";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -184,6 +185,7 @@ export async function sendChatMessage(streamId: string, body: string): Promise<A
   const text = body.trim().replace(/\s+\n/g, "\n");
   if (!text) return { ok: false, error: "Type a message first." };
   if (text.length > 500) return { ok: false, error: "Keep it under 500 characters." };
+  if (!(await withinRateLimit(`chat:${profile.userId}`, 8, 15))) return { ok: false, error: "Slow down a little — you're sending messages very fast." };
 
   const supabase = await createClient();
   // RLS checks the viewer may watch, the stream isn't over, chat is on and

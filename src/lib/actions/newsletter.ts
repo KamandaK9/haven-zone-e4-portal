@@ -4,6 +4,7 @@ import { can, getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
 import { getMembersByChurch, getMembersByCountry } from "@/lib/data/analytics";
 import { sendEmail, type SendEmailResult } from "@/lib/email";
 import { logAudit } from "./audit";
+import { TOO_MANY, withinRateLimit } from "@/lib/rate-limit";
 
 export type SendNewsletterResult =
   | { ok: true; sent: number; skipped: number }
@@ -45,6 +46,8 @@ export async function sendNewsletter(input: { group: string; subject: string; bo
   const subject = input.subject.trim();
   const body = input.body.trim();
   if (!subject || !body) return { ok: false, error: "Subject and message are both required." };
+  if (subject.length > 200 || body.length > 20000) return { ok: false, error: "That newsletter is too long." };
+  if (!(await withinRateLimit(`newsletter:${profile.zoneId}`, 5, 3600))) return { ok: false, error: TOO_MANY };
 
   const ds = await getZoneDataset(profile.zoneId);
   const audience =
