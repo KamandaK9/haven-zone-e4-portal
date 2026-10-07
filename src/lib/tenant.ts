@@ -48,6 +48,8 @@ export type TenantConfig = {
   defaultOrgName: string;
   // Placeholder for the super admin's name on the setup wizard.
   adminNameExample: string;
+  // Placeholder for a church name on the setup wizard.
+  churchNameExample?: string;
   // Display currency a new org starts with (amounts are always stored in USD;
   // admins can change this later in Settings).
   defaultCurrency: CurrencyCode;

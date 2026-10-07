@@ -79,6 +79,7 @@ export const tenant: TenantConfig = {
   description: "Member management, attendance, Foundation School and communication for CE Sandton",
   defaultOrgName: "CE Sandton",
   adminNameExample: "e.g. Pastor John Doe",
+  churchNameExample: "e.g. CE Sandton",
   defaultCurrency: "ZAR",
   timezone: "Africa/Johannesburg",
   labels: {

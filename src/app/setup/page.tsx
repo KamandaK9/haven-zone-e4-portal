@@ -448,9 +448,11 @@ function StepCountriesAndChurches({
       const result = await parseStructureSheet(file);
       if (result.countries.length === 0) {
         setImportError(
-          result.skipped[0]?.reason === 'No "Country" column found'
-            ? 'No "Country" column found in that file. If this is the leadership roster workbook (one tab per sub-zone), skip this step and import it on the "Import members" step instead — it builds the countries and chapters for you.'
-            : "No countries found in that file."
+          result.skipped[0]?.reason !== 'No "Country" column found'
+            ? "No countries found in that file."
+            : tenant.setupMemberImport === false
+              ? "That file has no \"Country\" column, so it isn't a list of churches — a member list goes in from the Members page once setup is done. Type your church below instead."
+              : 'No "Country" column found in that file. If this is the leadership roster workbook (one tab per sub-zone), skip this step and import it on the "Import members" step instead — it builds the countries and chapters for you.'
         );
         setImportState("error");
         return;
@@ -556,7 +558,7 @@ function StepCountriesAndChurches({
                 <div key={churchIdx} className="flex items-center gap-2">
                   <ChurchIcon className="h-4 w-4 text-muted-foreground shrink-0" />
                   <Input
-                    placeholder="e.g. CE Lusaka Central"
+                    placeholder={tenant.churchNameExample ?? "e.g. CE Lusaka Central"}
                     value={church}
                     onChange={(e) => updateChurch(i, churchIdx, e.target.value)}
                   />
