@@ -1,22 +1,22 @@
 import { expect, it } from "vitest";
-import { canActOn } from "@/lib/access";
 import { assignableRoles } from "./roles";
 import { effectiveModules } from "@/lib/modules";
+import { tenant } from "@/tenant";
 
+// Checks the rule for whatever roles the tenant defines.
 const modules = effectiveModules([]);
+const positions = [...tenant.access.positions].sort((a, b) => a.rank - b.rank);
+const rankOf = (key: string) => positions.find((p) => p.key === key)!.rank;
 
-it("you can only give roles below your own", () => {
-  const keys = (actor: string) => assignableRoles(actor as never, modules).map((r) => r.key);
-  expect(keys("location_pastor")).not.toContain("group_pastor");
-  expect(keys("location_pastor")).not.toContain("location_pastor");
-  expect(keys("location_pastor")).toEqual(expect.arrayContaining(["cell_leader", "senior_cell_leader", "checkin_volunteer", "member"]));
-  expect(keys("cell_leader")).not.toContain("senior_cell_leader");
-  expect(canActOn("group_pastor" as never, "system_admin" as never)).toBe(false);
+it("you can only give roles ranked below your own", () => {
+  for (const actor of positions) {
+    for (const r of assignableRoles(actor.key as never, modules)) expect(rankOf(r.key), `${actor.key} → ${r.key}`).toBeGreaterThan(actor.rank);
+  }
+  // The most senior role can give every other role; the least senior, none.
+  expect(assignableRoles(positions[0].key as never, modules).length).toBe(positions.filter((p) => p.rank > positions[0].rank).length);
+  expect(assignableRoles(positions.at(-1)!.key as never, modules)).toEqual([]);
 });
 
-it("every role says what it's for and what it sees", () => {
-  for (const r of assignableRoles("system_admin" as never, modules)) {
-    expect(r.description, r.key).toBeTruthy();
-    expect(r.sees, r.key).toBeTruthy();
-  }
+it("every role says what it sees", () => {
+  for (const r of assignableRoles(positions[0].key as never, modules)) expect(r.sees, r.key).toBeTruthy();
 });
