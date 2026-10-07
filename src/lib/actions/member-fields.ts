@@ -2,35 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { can, getCurrentProfile } from "@/lib/data/get-dataset";
-import { fieldKeyFrom, normaliseFieldValue, type MemberField } from "@/lib/custom-fields";
+import { fieldKeyFrom, memberFieldProblem, normaliseFieldValue, type MemberField, type MemberFieldInput } from "@/lib/custom-fields";
 import { mapMemberField } from "@/lib/data/member-fields";
 import type { ColumnMapping } from "@/lib/import/parse-members";
+import { cleanColumnMapping } from "@/lib/import/column-mapping";
 import { createClient } from "@/lib/supabase/server";
-import type { MemberFieldAccess, MemberFieldType, MemberFieldVisibility } from "@/lib/supabase/types";
 import { logAudit } from "./audit";
 import type { ActionResult } from "./members";
 
-const TYPES: MemberFieldType[] = ["text", "number", "date", "select", "yes_no"];
-const VISIBILITIES: MemberFieldVisibility[] = ["leaders", "contact", "admins"];
-const ACCESS: MemberFieldAccess[] = ["hidden", "view", "edit"];
-
-export type MemberFieldInput = {
-  label: string;
-  type: MemberFieldType;
-  options: string[];
-  visibility: MemberFieldVisibility;
-  memberAccess: MemberFieldAccess;
-};
-
-function check(input: MemberFieldInput): string | null {
-  if (!input.label.trim()) return "Give the field a name.";
-  if (input.label.trim().length > 80) return "Keep the name under 80 characters.";
-  if (!TYPES.includes(input.type) || !VISIBILITIES.includes(input.visibility) || !ACCESS.includes(input.memberAccess)) return "Invalid field settings.";
-  const options = input.options.map((o) => o.trim()).filter(Boolean);
-  if (input.type === "select" && options.length < 2) return "A choice field needs at least two options.";
-  if (options.some((o) => o.length > 80) || options.length > 50) return "Keep options short (up to 50 of them).";
-  return null;
-}
 
 async function requireSettingsAdmin() {
   const profile = await getCurrentProfile();
@@ -40,7 +19,7 @@ async function requireSettingsAdmin() {
 }
 
 export async function createMemberField(input: MemberFieldInput): Promise<{ ok: true; field: MemberField } | { ok: false; error: string }> {
-  const problem = check(input);
+  const problem = memberFieldProblem(input);
   if (problem) return { ok: false, error: problem };
   const auth = await requireSettingsAdmin();
   if (!auth.ok) return auth;
@@ -79,7 +58,7 @@ export async function updateMemberField(fieldId: string, input: Omit<MemberField
   const { profile, supabase } = auth;
   const { data: field } = await supabase.from("member_fields").select("type, label").eq("id", fieldId).maybeSingle();
   if (!field) return { ok: false, error: "That field no longer exists." };
-  const problem = check({ ...input, type: field.type });
+  const problem = memberFieldProblem({ ...input, type: field.type });
   if (problem) return { ok: false, error: problem };
 
   const { error } = await supabase
@@ -105,10 +84,7 @@ export async function saveImportTemplate(mapping: ColumnMapping): Promise<Action
   const auth = await requireSettingsAdmin();
   if (!auth.ok) return auth;
   const { profile, supabase } = auth;
-  const clean: ColumnMapping = {};
-  for (const [k, v] of Object.entries(mapping).slice(0, 200)) {
-    if (typeof v === "string" && /^(skip|builtin:[a-zA-Z]+|custom:[a-z][a-z0-9_]*)$/.test(v) && k.length <= 120) clean[k] = v;
-  }
+  const clean = cleanColumnMapping(mapping);
   const { error } = await supabase
     .from("import_templates")
     .upsert({ zone_id: profile.zoneId, kind: "members", mapping: clean, updated_by: profile.userId, updated_at: new Date().toISOString() }, { onConflict: "zone_id,kind" });

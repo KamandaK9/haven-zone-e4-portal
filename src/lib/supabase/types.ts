@@ -39,6 +39,7 @@ export type Database = {
           name: string;
           setup_complete: boolean;
           getting_started: Json;
+          disabled_modules: string[];
           display_currency: string;
           default_programs_seeded: boolean;
           handbook_rules: Json | null;
@@ -50,6 +51,7 @@ export type Database = {
           name: string;
           setup_complete?: boolean;
           getting_started?: Json;
+          disabled_modules?: string[];
           display_currency?: string;
           default_programs_seeded?: boolean;
           created_at?: string;
@@ -58,6 +60,7 @@ export type Database = {
           name: string;
           setup_complete: boolean;
           getting_started: Json;
+          disabled_modules: string[];
           display_currency: string;
           default_programs_seeded: boolean;
           handbook_rules: Json | null;
@@ -1159,9 +1162,45 @@ export type Database = {
         Update: Partial<{ mapping: Json; updated_by: string | null; updated_at: string }>;
         Relationships: [];
       };
+      check_in_links: {
+        Row: {
+          token: string; zone_id: string; church_id: string; service_date: string; kind: "sunday" | "midweek" | "special";
+          name: string; created_by: string | null; created_at: string; expires_at: string;
+        };
+        Insert: {
+          token: string; zone_id: string; church_id: string; service_date: string; kind: "sunday" | "midweek" | "special";
+          name?: string; created_by?: string | null; created_at?: string; expires_at: string;
+        };
+        Update: Partial<{ expires_at: string }>;
+        Relationships: [];
+      };
+      departments: {
+        Row: { id: string; zone_id: string; name: string; sort_order: number; created_at: string };
+        Insert: { id?: string; zone_id: string; name: string; sort_order?: number; created_at?: string };
+        Update: Partial<{ name: string; sort_order: number }>;
+        Relationships: [];
+      };
+      member_departments: {
+        Row: { member_id: string; department_id: string; zone_id: string };
+        Insert: { member_id: string; department_id: string; zone_id: string };
+        Update: Partial<{ department_id: string }>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
+      qr_link_info: {
+        Args: { p_token: string };
+        Returns: { zone_id: string; church_name: string; service_date: string; kind: string; name: string }[];
+      };
+      qr_check_in: {
+        Args: { p_token: string; p_phone: string; p_member_id?: string };
+        Returns: Json;
+      };
+      qr_add_visitor: {
+        Args: { p_token: string; p_first_name: string; p_last_name: string; p_phone: string };
+        Returns: Json;
+      };
       cohort_roster: {
         Args: { p_cohort_id: string };
         Returns: { member_id: string; first_name: string; last_name: string; cell_name: string | null }[];

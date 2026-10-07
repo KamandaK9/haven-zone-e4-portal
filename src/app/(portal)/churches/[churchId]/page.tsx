@@ -11,6 +11,7 @@ import { RenameChapterDialog } from "@/components/dashboard/rename-chapter-dialo
 import { GivingCategorySelect } from "@/components/dashboard/giving-category-select";
 import { can, getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
 import { getChapterCells } from "@/lib/data/cells";
+import { getDepartmentMemberships, getDepartments } from "@/lib/data/departments";
 import { getImportTemplate, getMemberFields } from "@/lib/data/member-fields";
 import { getDisplayCurrency } from "@/lib/currency-server";
 import { formatMoney } from "@/lib/currency";
@@ -25,6 +26,7 @@ import { givingFilterLabel, parseGivingFilter } from "@/lib/giving";
 import { tenant } from "@/tenant";
 import { labels, lower } from "@/lib/labels";
 import { Network } from "lucide-react";
+import { getModules } from "@/lib/modules-server";
 
 export default async function ChurchPage({
   params,
@@ -36,6 +38,7 @@ export default async function ChurchPage({
   const { churchId } = await params;
   const givingFilter = parseGivingFilter((await searchParams).giving);
   const profile = await getCurrentProfile();
+  const modules = await getModules();
   if (!profile) redirect("/");
   const ds = await getZoneDataset(profile.zoneId);
   const { currency, rates } = await getDisplayCurrency(profile.zoneCurrency);
@@ -62,6 +65,7 @@ export default async function ChurchPage({
     ? await Promise.all([getMemberFields(profile.zoneId), getImportTemplate(profile.zoneId)])
     : [[], null];
   const cellNames = Object.fromEntries(cells.map((c) => [c.id, c.name]));
+  const [departments, memberDepartments] = await Promise.all([getDepartments(), getDepartmentMemberships()]);
   const levels = tenant.records.cellLevels;
   const subline = [church.city, country?.name, church.pastor].filter(Boolean).join(" · ");
 
@@ -88,7 +92,7 @@ export default async function ChurchPage({
         )}
       </div>
 
-      {tenant.modules.giving && (
+      {modules.giving && (
         <div className="flex items-center justify-end">
           <GivingCategorySelect value={givingFilter} />
         </div>
@@ -96,7 +100,7 @@ export default async function ChurchPage({
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard label="Members" value={stats.memberCount.toLocaleString()} icon={Users} />
-        {tenant.modules.giving ? (
+        {modules.giving ? (
           <StatCard
             label={givingFilter === "all" ? "Total giving" : `${givingFilterLabel(givingFilter)} giving`}
             value={formatMoney(stats.totalGiving, currency, rates)}
@@ -133,6 +137,8 @@ export default async function ChurchPage({
             showGiving={ds.individualGiving}
             canManage={can(profile, "manage_members")}
             cellNames={cells.length > 0 ? cellNames : undefined}
+            departments={departments}
+            memberDepartments={memberDepartments}
             importFields={importFields}
             importTemplate={importTemplate}
             canManageSettings={can(profile, "manage_settings")}

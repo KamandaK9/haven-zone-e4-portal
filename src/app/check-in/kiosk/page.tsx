@@ -13,7 +13,7 @@ export const metadata = { title: `Self check-in · ${tenant.portalName}` };
 // The self check-in kiosk: signed in once by a volunteer, then used by
 // everyone arriving. Same permission and offline behaviour as /check-in.
 export default async function KioskPage() {
-  requireModule("attendance");
+  await requireModule("attendance");
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
   if (!profile.setupComplete) redirect("/setup");

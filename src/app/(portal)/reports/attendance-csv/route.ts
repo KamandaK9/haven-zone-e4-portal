@@ -5,6 +5,7 @@ import { summarise } from "@/lib/attendance/summary";
 import { logAudit } from "@/lib/actions/audit";
 import { labels } from "@/lib/labels";
 import { tenant } from "@/tenant";
+import { getModules } from "@/lib/modules-server";
 
 // Everyone's attendance standing as a spreadsheet. Needs export_data;
 // contact numbers only for those who may see contact details. Every export
@@ -16,7 +17,7 @@ const csv = (v: unknown) => {
 
 export async function GET() {
   const profile = await getCurrentProfile();
-  if (!profile || !can(profile, "export_data") || !tenant.modules.attendance) return new Response("Not permitted", { status: 403 });
+  if (!profile || !can(profile, "export_data") || !(await getModules()).attendance) return new Response("Not permitted", { status: 403 });
 
   const [ds, cells, data] = await Promise.all([getZoneDataset(profile.zoneId), getZoneCells(profile.zoneId), getAttendanceData()]);
   const cellName = new Map(cells.map((c) => [c.id, c.name]));

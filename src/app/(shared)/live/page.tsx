@@ -51,7 +51,7 @@ function StreamRow({ s }: { s: LiveStream }) {
 }
 
 export default async function LivePage() {
-  requireModule("livestreams");
+  await requireModule("livestreams");
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
   const canManage = can(profile, "manage_livestreams");

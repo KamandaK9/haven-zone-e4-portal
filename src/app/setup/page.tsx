@@ -29,6 +29,7 @@ import { SETUP_IMPORT_MODES, STEP_LABELS, type WizardState, type WizardCountry }
 import { MemberListImportPanel } from "@/components/setup/member-list-import";
 import { BeforeYouStart } from "@/components/setup/before-you-start";
 import { cellMapFor, loadMemberSheet, memberCount, resolveMemberList } from "@/components/setup/member-list";
+import { mappingProblem } from "@/lib/import/column-mapping";
 import { completeZoneSetup, type CompleteZoneSetupResult } from "@/lib/actions/setup";
 import { createClient } from "@/lib/supabase/client";
 import { parseStructureSheet } from "@/lib/import/parse-structure";
@@ -60,6 +61,7 @@ const EMPTY_WIZARD: WizardState = {
   importedMembers: [],
   churchMeta: {},
   memberList: null,
+  memberFields: [],
 };
 
 type AssistantCredential = Extract<CompleteZoneSetupResult, { ok: true }>["assistantCredentials"];
@@ -134,6 +136,10 @@ function SetupWizard({ setupKey }: { setupKey: string }) {
       assistants: wizard.assistants.filter((a) => a.name.trim() && a.email.trim()),
       ...resolveMemberList(wizard),
       churchMeta: wizard.churchMeta,
+      // Fields made while matching columns, and the matching itself — saved
+      // as the organisation's import template for next time.
+      memberFields: wizard.memberList ? wizard.memberFields : [],
+      importTemplate: wizard.memberList?.mapping,
     });
 
     if (!result.ok) {
@@ -225,7 +231,11 @@ function SetupWizard({ setupKey }: { setupKey: string }) {
                   Skip
                 </Button>
               )}
-              <Button onClick={next} disabled={step === 1 && !step1Valid} className="gap-2">
+              <Button
+                onClick={next}
+                disabled={(step === 1 && !step1Valid) || (step === IMPORT_STEP && !!wizard.memberList && !!mappingProblem(wizard.memberList.mapping))}
+                className="gap-2"
+              >
                 Next
                 <ArrowRight className="h-4 w-4" />
               </Button>
@@ -1086,6 +1096,11 @@ function StepReview({ wizard }: { wizard: WizardState }) {
             {cellsToCreate.length > 0 &&
               ` · ${cellsToCreate.length} ${tenant.labels.cellPlural.toLowerCase()} (${cellsToCreate.join(", ")})`}
           </p>
+          {wizard.memberList && wizard.memberFields.length > 0 && (
+            <p className="text-sm text-muted-foreground">
+              Your own member fields: {wizard.memberFields.map((f) => f.label).join(", ")}
+            </p>
+          )}
         </div>
       )}
     </div>

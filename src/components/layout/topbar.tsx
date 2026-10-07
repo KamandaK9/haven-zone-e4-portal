@@ -1,6 +1,7 @@
 "use client";
 
 import { getVisibleNavItems, type StaffRole } from "@/lib/nav-items";
+import type { Modules } from "@/lib/modules";
 import { PortalTopbar } from "./portal-shell";
 
 export function Topbar({
@@ -10,6 +11,7 @@ export function Topbar({
   role,
   caps,
   hiddenNavItems,
+  modules,
 }: {
   zoneName: string;
   fullName: string;
@@ -18,8 +20,9 @@ export function Topbar({
   role: StaffRole;
   caps: string[];
   hiddenNavItems: string[];
+  modules: Modules;
 }) {
-  const visibleItems = getVisibleNavItems(role, caps, hiddenNavItems);
+  const visibleItems = getVisibleNavItems(role, caps, hiddenNavItems, modules);
   const navItems = visibleItems.filter((item) => item.key !== "settings");
   const settingsItem = visibleItems.find((item) => item.key === "settings");
 

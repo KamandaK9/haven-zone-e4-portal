@@ -14,7 +14,7 @@ export default async function EventDetailPage({
   params: Promise<{ eventId: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  requireModule("events");
+  await requireModule("events");
   const { eventId } = await params;
   const edit = (await searchParams).edit === "1";
   const profile = await getCurrentProfile();

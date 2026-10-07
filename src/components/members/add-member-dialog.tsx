@@ -24,8 +24,9 @@ import {
 } from "@/components/ui/select";
 import { createMember } from "@/lib/actions/members";
 import type { MemberRole } from "@/lib/data/types";
+import { MEMBER_STATUSES } from "@/lib/statuses";
 
-const ROLES: MemberRole[] = ["Member", "Worker", "Cell Leader", "Pastor"];
+const ROLES = MEMBER_STATUSES;
 
 export function AddMemberDialog({ churchId, countryId }: { churchId: string; countryId: string }) {
   const router = useRouter();
@@ -106,7 +107,7 @@ export function AddMemberDialog({ churchId, countryId }: { churchId: string; cou
               <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="optional" />
             </div>
             <div className="space-y-1.5">
-              <Label>Role</Label>
+              <Label>Status</Label>
               <Select value={role} onValueChange={(v) => setRole(v as MemberRole)}>
                 <SelectTrigger className="w-full">
                   <SelectValue />

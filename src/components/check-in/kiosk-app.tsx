@@ -9,6 +9,8 @@ import { BrandMark } from "@/components/brand-mark";
 import { tenant } from "@/tenant";
 import type { RosterMember, ServiceKey, ServiceKind } from "@/lib/check-in/types";
 import type { CheckInScreen } from "@/lib/check-in/screen";
+import { backdropStyle, lookColours } from "./look";
+import { useQrLink } from "./use-qr-link";
 import { getSavedBackground, saveBackground } from "@/lib/check-in/store";
 import { SERVICE_KINDS, remember, todayIn, useCheckIn } from "./use-check-in";
 
@@ -104,6 +106,14 @@ export function KioskApp({
               ? "Saving the member list…"
               : "No member list on this tablet yet — connect once to save it."}
         </p>
+        <a
+          href={`/check-in/qr?${new URLSearchParams({ church: churchId, date: service.date, kind: service.kind, name: service.name })}`}
+          target="_blank"
+          rel="noreferrer"
+          className="block text-center text-sm text-primary hover:underline"
+        >
+          Print a QR poster — people can check in on their own phone
+        </a>
         <Button
           size="lg"
           className="w-full"
@@ -123,6 +133,7 @@ export function KioskApp({
     <Kiosk
       title={SERVICE_KINDS.find((k) => k.value === service.kind)?.label ?? "Service"}
       screen={screen}
+      serviceKey={key}
       ci={ci}
       onExit={() => {
         setRunning(false);
@@ -130,13 +141,6 @@ export function KioskApp({
       }}
     />
   );
-}
-
-// Black or white text on the accent colour, whichever reads better.
-function onAccent(hex: string): string {
-  const n = parseInt(hex.replace("#", "").padEnd(6, "0").slice(0, 6), 16);
-  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-  return 0.299 * r + 0.587 * g + 0.114 * b > 150 ? "#111111" : "#ffffff";
 }
 
 const GREETINGS = ["We're so glad you're here.", "Have a blessed service.", "Great to see you today.", "You're right on time."];
@@ -177,11 +181,13 @@ function useBackground(url?: string): string | undefined {
 function Kiosk({
   title,
   screen: look,
+  serviceKey,
   ci,
   onExit,
 }: {
   title: string;
   screen: CheckInScreen;
+  serviceKey: ServiceKey;
   ci: ReturnType<typeof useCheckIn>;
   onExit: () => void;
 }) {
@@ -191,14 +197,9 @@ function Kiosk({
   const [greeting, setGreeting] = useState(GREETINGS[0]);
   const idle = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const background = useBackground(look.backgroundUrl);
+  const qr = useQrLink(serviceKey, true);
 
-  const accent = look.accent;
-  const accentText = onAccent(accent);
-  const dark = look.dark || !!background;
-  const fg = dark ? "#ffffff" : "#111111";
-  const muted = dark ? "rgba(255,255,255,0.7)" : "rgba(17,17,17,0.6)";
-  const glass = dark ? "rgba(255,255,255,0.08)" : "rgba(17,17,17,0.04)";
-  const line = dark ? "rgba(255,255,255,0.18)" : "rgba(17,17,17,0.12)";
+  const { accent, accentText, fg, muted, glass, line } = lookColours(look, !!background);
   const accentButton = { backgroundColor: accent, color: accentText };
   const field = { backgroundColor: glass, borderColor: line, color: fg, "--tw-ring-color": accent } as React.CSSProperties;
 
@@ -242,15 +243,7 @@ function Kiosk({
     welcome(visitor.firstName.trim(), false);
   }
 
-  const backdrop: React.CSSProperties = background
-    ? {
-        backgroundImage: `linear-gradient(180deg, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.55) 40%, rgba(0,0,0,0.85) 100%), url(${background})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      }
-    : dark
-      ? { background: `radial-gradient(ellipse at 50% -10%, ${accent}40 0%, transparent 55%), radial-gradient(ellipse at 50% 120%, ${accent}26 0%, transparent 50%), #0a0a0a` }
-      : { background: `radial-gradient(ellipse at 50% -10%, ${accent}26 0%, transparent 55%), #fafafa` };
+  const backdrop = backdropStyle(look, background);
 
   return (
     <div className="flex min-h-dvh flex-col" style={{ ...backdrop, color: fg }} onPointerDown={touch} onKeyDown={touch}>
@@ -422,6 +415,13 @@ function Kiosk({
           </div>
         )}
       </main>
+
+      {qr.svg && screen.kind === "search" && (
+        <div className="fixed bottom-14 right-6 hidden w-40 flex-col items-center gap-2 rounded-2xl bg-white p-3 text-center shadow-2xl sm:flex animate-in fade-in duration-500">
+          <div className="w-full [&_svg]:h-auto [&_svg]:w-full" dangerouslySetInnerHTML={{ __html: qr.svg }} />
+          <p className="text-[11px] leading-tight text-neutral-700">Rather use your phone? Scan to check in.</p>
+        </div>
+      )}
 
       <footer className="flex items-center justify-between px-6 py-3 text-xs" style={{ color: muted }}>
         <span className="flex items-center gap-1.5">

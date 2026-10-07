@@ -326,5 +326,92 @@ expect("leaders who import can read the template", r.ok && r.rows.length === 1, 
 r = await as(G, "authenticated", `update import_templates set mapping = '{}'`);
 expect("leaders without manage_settings can't change the template", r.ok && r.affected === 0, r);
 
+// ── QR check-in ───────────────────────────────────────────────────────
+await db.exec(`
+  update members set phone = '+27 82 111 2222' where id = '${MM}';
+  update members set phone = '0821112222' where id = '${MD}';
+  update members set phone = '0829998888' where id = '${MM2}';
+  insert into check_in_links (token, zone_id, church_id, service_date, kind, expires_at) values
+    ('good-token', '${Z}', '${C1}', current_date, 'sunday', now() + interval '1 day'),
+    ('old-token', '${Z}', '${C1}', current_date - 7, 'sunday', now() - interval '1 day');
+`);
+r = await as(null, "anon", `select qr_check_in('good-token', '0821112222')`);
+expect("the public can't call QR check-in directly (only the server can)", denied(r), r);
+r = await as(V, "authenticated", `select qr_check_in('good-token', '0821112222')`);
+expect("signed-in browsers can't call it directly either", denied(r), r);
+r = await as(null, "service_role", `select qr_check_in('old-token', '0829998888') as res`);
+expect("an expired QR code checks nobody in", r.ok && r.rows[0].res.status === "expired", r);
+r = await as(null, "service_role", `select qr_check_in('good-token', '082 999 8888') as res`);
+expect("someone from another chapter isn't found by their number", r.ok && r.rows[0].res.status === "not_found", r);
+r = await as(null, "service_role", `select qr_check_in('good-token', '+27821112222') as res`);
+expect(
+  "a shared number offers first names only",
+  r.ok && r.rows[0].res.status === "choose" && r.rows[0].res.choices.length === 2 && !("last_name" in r.rows[0].res.choices[0]),
+  r
+);
+r = await as(null, "service_role", `select qr_check_in('good-token', '0821112222', '${MM}') as res`);
+expect("picking yourself from a shared number checks you in", r.ok && r.rows[0].res.status === "checked_in", r);
+r = await as(null, "service_role", `select qr_check_in('good-token', '0821112222', '${MM}') as res`);
+expect("scanning twice doesn't check you in twice", r.ok && r.rows[0].res.status === "already", r);
+r = await as(null, "service_role", `select qr_check_in('good-token', '0821112222', '${MM2}') as res`);
+expect("you can't pick someone who doesn't share your number", r.ok && r.rows[0].res.status === "not_found", r);
+r = await as(null, "service_role", `select qr_add_visitor('good-token', 'New', 'Person', '0821112222') as res`);
+expect("a 'first-timer' with a member's number is sent back to check in", r.ok && r.rows[0].res.status === "known_number", r);
+r = await as(null, "service_role", `select qr_add_visitor('good-token', 'New', 'Person', '0710000000') as res`);
+expect("a real first-timer is added and checked in", r.ok && r.rows[0].res.status === "checked_in", r);
+
+// ── Features ──────────────────────────────────────────────────────────
+r = await as(G, "authenticated", `update zones set disabled_modules = '{attendance}' where id = '${Z}'`);
+expect("a leader without manage_access can't switch features off", r.ok && r.affected === 0, r);
+r = await as(M, "authenticated", `update zones set disabled_modules = '{attendance}' where id = '${Z}'`);
+expect("a member can't switch features off", r.ok && r.affected === 0, r);
+r = await as(D, "authenticated", `update zones set disabled_modules = '{}' where id = '${Z}'`);
+expect("an admin can switch features on and off", changed(r), r);
+
+// ── Cell roles ────────────────────────────────────────────────────────
+{
+  const SC = id(60), CC = id(61), OC = id(62);
+  const SL = id(63), AL = id(64);
+  const MSL = id(65), MAL = id(66), M_SC = id(67), M_CC = id(68), M_OC = id(69);
+  await db.exec(`
+    insert into auth.users (id) values ('${SL}'), ('${AL}');
+    insert into profiles (id, zone_id, role, full_name, email, position, scope, church_id, caps) values
+      ('${SL}', '${Z}', 'admin', 'Senior Leader', 'sl@x', 'member', 'cell', '${C1}', '{view_members,view_attendance}'),
+      ('${AL}', '${Z}', 'admin', 'Assistant', 'al@x', 'member', 'cell', '${C1}', '{view_members,view_attendance}');
+    insert into members (id, zone_id, church_id, country_id, first_name, last_name, profile_id) values
+      ('${MSL}', '${Z}', '${C1}', '${CO}', 'Senior', 'Leader', '${SL}'),
+      ('${MAL}', '${Z}', '${C1}', '${CO}', 'Assist', 'Ant', '${AL}'),
+      ('${M_SC}', '${Z}', '${C1}', '${CO}', 'In', 'Senior', null),
+      ('${M_CC}', '${Z}', '${C1}', '${CO}', 'In', 'Child', null),
+      ('${M_OC}', '${Z}', '${C1}', '${CO}', 'In', 'Other', null);
+    insert into cells (id, zone_id, church_id, name, leader_member_id) values ('${SC}', '${Z}', '${C1}', 'Senior', '${MSL}');
+    insert into cells (id, zone_id, church_id, name, parent_id) values ('${CC}', '${Z}', '${C1}', 'Child', '${SC}'), ('${OC}', '${Z}', '${C1}', 'Other', null);
+    update members set cell_id = '${SC}' where id in ('${M_SC}', '${MSL}');
+    update members set cell_id = '${CC}' where id in ('${M_CC}', '${MAL}');
+    update members set cell_id = '${OC}' where id = '${M_OC}';
+  `);
+  r = await as(SL, "authenticated", `select id from members where id in ('${M_SC}', '${M_CC}', '${M_OC}') order by last_name`);
+  expect("a senior cell leader sees their senior cell and the cells inside it", r.ok && r.rows.length === 2 && !r.rows.some((x) => x.id === M_OC), r);
+  r = await as(AL, "authenticated", `select id from members where id in ('${M_SC}', '${M_CC}', '${M_OC}')`);
+  expect("an assistant sees only the cell they belong to", r.ok && r.rows.length === 1 && r.rows[0].id === M_CC, r);
+  r = await as(G, "authenticated", `select id from members where id in ('${M_SC}', '${M_CC}', '${M_OC}')`);
+  expect("a chapter-scoped leader still sees every cell in their chapter", r.ok && r.rows.length === 3, r);
+}
+
+// ── Departments ───────────────────────────────────────────────────────
+{
+  const DEP = id(70);
+  r = await as(G, "authenticated", `insert into departments (id, zone_id, name) values ('${DEP}', '${Z}', 'Choir')`);
+  expect("only whoever manages settings defines departments", denied(r), r);
+  r = await as(D, "authenticated", `insert into departments (id, zone_id, name) values ('${DEP}', '${Z}', 'Choir')`);
+  expect("an admin can add a department", r.ok, r);
+  r = await as(G, "authenticated", `insert into member_departments (member_id, department_id, zone_id) values ('${MM}', '${DEP}', '${Z}')`);
+  expect("a leader who manages a member can put them in a department", r.ok, r);
+  r = await as(G, "authenticated", `insert into member_departments (member_id, department_id, zone_id) values ('${MM2}', '${DEP}', '${Z}')`);
+  expect("…but not someone outside their area", denied(r), r);
+  r = await as(M2, "authenticated", `select member_id from member_departments`);
+  expect("members don't see who else is in a department", r.ok && r.rows.length === 0, r);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

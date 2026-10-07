@@ -17,7 +17,7 @@ export const ALL_CAPABILITIES: readonly Capability[] = [
   "check_in", "view_attendance", "record_follow_up", "view_pastoral_notes", "manage_services",
   "manage_courses", "teach_courses",
   "send_messages", "approve_messages",
-  "export_data", "manage_settings",
+  "export_data", "manage_settings", "assign_roles",
 ];
 
 const LEADER_BASE: Capability[] = ["view_members", "view_contact_details", "view_giving_totals"];
@@ -46,8 +46,8 @@ const CHURCH_NETWORK: PositionDef[] = [
     baseCaps: [...LEADER_BASE, "manage_events", "manage_records"], portfolioCaps: SECRETARY_PORTFOLIO_CAPS,
   },
   { key: "deputy_zonal_secretary", label: "Deputy Zonal Secretary", rank: 3, scope: "zone", loginRole: "admin", baseCaps: LEADER_BASE, portfolioCaps: SECRETARY_PORTFOLIO_CAPS },
-  { key: "sub_zone_governor", label: "Sub Zone Governor", rank: 4, scope: "sub_zone", loginRole: "admin", baseCaps: [...LEADER_BASE, "manage_records", "manage_members"] },
-  { key: "governor", label: "Governor", rank: 5, scope: "chapter", loginRole: "admin", baseCaps: [...LEADER_BASE, "manage_records", "manage_members"] },
+  { key: "sub_zone_governor", label: "Sub Zone Governor", rank: 4, scope: "sub_zone", loginRole: "admin", baseCaps: [...LEADER_BASE, "manage_records", "manage_members", "assign_roles"] },
+  { key: "governor", label: "Governor", rank: 5, scope: "chapter", loginRole: "admin", baseCaps: [...LEADER_BASE, "manage_records", "manage_members", "assign_roles"] },
   {
     key: "deputy_governor", label: "Deputy Governor", rank: 6, scope: "chapter", loginRole: "admin", baseCaps: LEADER_BASE,
     portfolioCaps: {
@@ -72,7 +72,7 @@ const SINGLE_CHURCH: PositionDef[] = [
     key: "finance_officer", label: "Finance Officer", rank: 2, scope: "zone", loginRole: "admin",
     baseCaps: [...LEADER_BASE, "view_giving_individual", "import_giving", "manage_ledger", "view_reports"],
   },
-  { key: "branch_leader", label: "Branch Leader", rank: 3, scope: "chapter", loginRole: "admin", baseCaps: [...LEADER_BASE, "manage_members", "manage_records"] },
+  { key: "branch_leader", label: "Branch Leader", rank: 3, scope: "chapter", loginRole: "admin", baseCaps: [...LEADER_BASE, "manage_members", "manage_records", "assign_roles"] },
   { key: "cell_leader", label: "Cell Leader", rank: 4, scope: "cell", loginRole: "admin", baseCaps: ["view_members", "view_contact_details"] },
   { key: "member", label: "Member", rank: 5, scope: "self", loginRole: "member", baseCaps: [] },
 ];

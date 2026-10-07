@@ -3,7 +3,7 @@ import { ContributionsCard } from "@/components/members/contributions-card";
 import { summariseContributions } from "@/lib/giving-summary";
 import { memberStanding } from "@/lib/handbook/member-standing";
 import { getHandbookRules } from "@/lib/handbook/rules-server";
-import { isLeader, positionLabel } from "@/lib/access";
+import { canActOn, isLeader, positionLabel } from "@/lib/access";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Mail, Phone, Calendar, HandCoins, Clock, CheckCircle2, Video } from "lucide-react";
@@ -42,10 +42,15 @@ import { ATTENDANCE_RULES, attendanceStatus, consecutiveMissedSundays, sundaySer
 import { FollowUpDialog, OUTCOMES } from "@/components/attendance/follow-up-dialog";
 import { ConfirmVisitorButton } from "@/components/attendance/confirm-visitor-button";
 import { MemberDataActions } from "@/components/members/member-data-actions";
+import { RoleCard } from "@/components/members/role-card";
+import { DepartmentsField } from "@/components/members/departments-field";
+import { getDepartmentMemberships, getDepartments } from "@/lib/data/departments";
+import { assignableRoles, roleOption } from "@/lib/roles";
 import { formatBirthday } from "@/lib/birthday";
 import { MemberFieldsCard } from "@/components/members/member-fields-card";
 import { getMemberFields, getMemberFieldValues } from "@/lib/data/member-fields";
 import { leaderFieldAccess } from "@/lib/custom-fields";
+import { getModules } from "@/lib/modules-server";
 
 const STATUS_META: Record<LessonStatus, { label: string; className: string }> = {
   completed: { label: "Completed", className: "text-emerald-600" },
@@ -60,6 +65,7 @@ export default async function MemberPage({
 }) {
   const { memberId } = await params;
   const profile = await getCurrentProfile();
+  const modules = await getModules();
   if (!profile) redirect("/");
   const ds = await getZoneDataset(profile.zoneId);
   const { currency, rates } = await getDisplayCurrency(profile.zoneCurrency);
@@ -91,20 +97,22 @@ export default async function MemberPage({
   const totalGiving = memberTotalGiving(member);
   // Individual giving is visible to leaders who may see it (and RLS returns
   // nothing otherwise); the card colour only where the Handbook is on.
-  const showContributions = ds.individualGiving && tenant.modules.giving;
-  const handbookRules = showContributions && tenant.modules.handbook ? await getHandbookRules(profile.zoneId) : null;
+  const showContributions = ds.individualGiving && modules.giving;
+  const handbookRules = showContributions && modules.handbook ? await getHandbookRules(profile.zoneId) : null;
   const tenure = memberTenureYears(member);
   const completed = member.trainings.filter((t) => t.status === "completed").length;
   const trainingPoints = memberTrainingPoints(member);
   const level = getTrainingLevel(trainingPoints);
   const single = ds.countries.length === 1;
-  const showAttendance = tenant.modules.attendance && can(profile, "view_attendance");
+  const [departments, memberships] = await Promise.all([getDepartments(), getDepartmentMemberships()]);
+  const memberDepartments = memberships[member.id] ?? [];
+  const showAttendance = modules.attendance && can(profile, "view_attendance");
   const att = showAttendance ? await getMemberAttendance(member.id, member.churchId) : undefined;
   const today = churchToday();
   const sundays = att ? sundayServicesFor(att.services, member.churchId, today) : [];
   const standing = att ? attendanceStatus(sundays, att.attended, today) : undefined;
   const missed = att && sundays.length ? consecutiveMissedSundays(sundays, att.attended) : 0;
-  const course = tenant.modules.courses ? await getCourse(profile.zoneId) : undefined;
+  const course = modules.courses ? await getCourse(profile.zoneId) : undefined;
   const memberCourse = course ? await getMemberCourse(member.id) : undefined;
   const courseDone = course && memberCourse
     ? courseProgress(memberCourse.attended.map((a) => a.classId), course.classes.map((c) => c.id), course.requiredClasses)
@@ -186,6 +194,18 @@ export default async function MemberPage({
               )}
             </div>
           )}
+          {departments.length > 0 || can(profile, "manage_settings") ? (
+            <div className="mt-2">
+              <DepartmentsField
+                memberId={member.id}
+                firstName={member.firstName}
+                departments={departments}
+                selected={memberDepartments}
+                canEdit={can(profile, "manage_members")}
+                canDefine={can(profile, "manage_settings")}
+              />
+            </div>
+          ) : null}
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {member.isVisitor && can(profile, "manage_members") && <ConfirmVisitorButton memberId={member.id} />}
             <InviteMemberButton
@@ -202,7 +222,7 @@ export default async function MemberPage({
           <StatCard label="Total giving" value={formatMoney(totalGiving, currency, rates)} icon={HandCoins} />
         )}
         <StatCard label={`Time in ${tenant.name}`} value={formatTenure(tenure)} icon={Clock} />
-        {tenant.modules.training && (
+        {modules.training && (
           <StatCard label="Trainings complete" value={`${completed}/${member.trainings.length}`} icon={CheckCircle2} />
         )}
         {standing && (
@@ -255,7 +275,7 @@ export default async function MemberPage({
           </Card>
         )}
 
-        {tenant.modules.training && (
+        {modules.training && (
         <Card>
           <CardHeader className="flex flex-row items-start justify-between space-y-0">
             <div>
@@ -303,7 +323,7 @@ export default async function MemberPage({
         </Card>
         )}
         {course && courseDone && memberCourse && (
-          <Card className={!ds.individualGiving && !tenant.modules.training ? "lg:col-span-3" : undefined}>
+          <Card className={!ds.individualGiving && !modules.training ? "lg:col-span-3" : undefined}>
             <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0">
               <div>
                 <CardTitle>{course.name}</CardTitle>
@@ -337,7 +357,7 @@ export default async function MemberPage({
           </Card>
         )}
         {att && (
-          <Card className={!ds.individualGiving && !tenant.modules.training ? "lg:col-span-3" : undefined}>
+          <Card className={!ds.individualGiving && !modules.training ? "lg:col-span-3" : undefined}>
             <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0">
               <div>
                 <CardTitle>Recent Sundays</CardTitle>
@@ -379,6 +399,22 @@ export default async function MemberPage({
           </Card>
         )}
       </div>
+
+      {(can(profile, "assign_roles") || can(profile, "manage_access") || isLeader(member.position)) && (
+        <RoleCard
+          memberId={member.id}
+          firstName={member.firstName}
+          current={roleOption(member.position, modules)}
+          options={assignableRoles(profile.position, modules)}
+          canChange={
+            (can(profile, "assign_roles") || can(profile, "manage_access")) &&
+            member.profileId !== profile.userId &&
+            canActOn(profile.position, member.position)
+          }
+          hasLogin={member.hasPortalAccess}
+          cellsHref={`/churches/${member.churchId}#cells`}
+        />
+      )}
 
       {can(profile, "manage_members") && (
         <div className="flex justify-end">

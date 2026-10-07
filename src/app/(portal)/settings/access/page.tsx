@@ -11,6 +11,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getChurch, memberFullName } from "@/lib/data/analytics";
 import { isCapability, isLeader, portfolioLabel, positionLabel, positionRank, type Capability } from "@/lib/access";
 import { labels } from "@/lib/labels";
+import { roleOption } from "@/lib/roles";
+import { getModules } from "@/lib/modules-server";
+import { tenant } from "@/tenant";
 
 const PAGE_SIZE = 20;
 
@@ -24,6 +27,7 @@ export default async function TeamAccessPage({
   if (!can(profile, "manage_access")) redirect("/dashboard");
 
   const ds = await getZoneDataset(profile.zoneId);
+  const modules = await getModules();
 
   // Per-person overrides live on the login row, not on the member.
   const supabase = await createClient();
@@ -53,8 +57,7 @@ export default async function TeamAccessPage({
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Team &amp; access</h1>
             <p className="text-sm text-muted-foreground">
-              Everyone holding a leadership position, and what each can see. Position sets the defaults; edit a person to
-              change them.
+              Everyone with a role, and what each can see. The role sets the defaults; edit a person to fine-tune them.
             </p>
           </div>
           <RefreshPermissionsButton />
@@ -116,7 +119,7 @@ export default async function TeamAccessPage({
                 {leaders.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-10">
-                      No leadership positions recorded yet — import the roster from Zone Setup.
+                      Nobody has a role yet — give someone one from their member page (Change role).
                     </TableCell>
                   </TableRow>
                 )}
@@ -129,6 +132,32 @@ export default async function TeamAccessPage({
             total={leaders.length}
             hrefFor={(p) => (p === 1 ? "/settings/access" : `/settings/access?page=${p}`)}
           />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Roles explained</CardTitle>
+          <CardDescription>
+            Every role, most senior first. People can give roles below their own; each role sees only its part of the church.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="divide-y">
+          {[...tenant.access.positions]
+            .sort((a, b) => a.rank - b.rank)
+            .map((p) => {
+              const r = roleOption(p.key, modules);
+              return (
+                <div key={p.key} className="py-3">
+                  <p className="text-sm font-medium">{r.label}</p>
+                  {r.description && <p className="text-sm text-muted-foreground">{r.description}</p>}
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Sees {r.sees}
+                    {r.can.length > 0 && <> · {r.can.join(" · ")}</>}
+                  </p>
+                </div>
+              );
+            })}
         </CardContent>
       </Card>
     </div>

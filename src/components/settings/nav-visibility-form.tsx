@@ -6,15 +6,16 @@ import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { updateHiddenNavItems } from "@/lib/actions/settings";
-import { NAV_ITEMS } from "@/lib/nav-items";
+import { NAV_ITEMS, isNavItemAvailable } from "@/lib/nav-items";
+import type { Modules } from "@/lib/modules";
 
-export function NavVisibilityForm({ initialHidden }: { initialHidden: string[] }) {
+export function NavVisibilityForm({ initialHidden, modules }: { initialHidden: string[]; modules: Modules }) {
   const router = useRouter();
   const [hidden, setHidden] = useState<Set<string>>(new Set(initialHidden));
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  const hideableItems = NAV_ITEMS.filter((item) => item.hideable);
+  const hideableItems = NAV_ITEMS.filter((item) => item.hideable && isNavItemAvailable(item, modules));
 
   function toggle(key: string) {
     setHidden((prev) => {

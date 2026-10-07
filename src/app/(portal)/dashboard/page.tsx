@@ -40,26 +40,28 @@ import { gettingStartedSteps, type Step } from "@/lib/onboarding/steps";
 import { createClient } from "@/lib/supabase/server";
 import { getZoneCells } from "@/lib/data/cells";
 import { labels, lower } from "@/lib/labels";
+import { getModules } from "@/lib/modules-server";
 
 export default async function DashboardPage({
   searchParams,
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  if (!tenant.modules.giving) {
+  const modules = await getModules();
+  if (!modules.giving) {
     const profile = await getCurrentProfile();
     if (!profile) redirect("/");
     // A teacher or check-in volunteer can't see members — their screen is
     // their dashboard.
     if (!can(profile, "view_members")) {
-      if (tenant.modules.courses && can(profile, "teach_courses")) redirect("/courses");
-      if (tenant.modules.attendance && can(profile, "check_in")) redirect("/check-in");
+      if (modules.courses && can(profile, "teach_courses")) redirect("/courses");
+      if (modules.attendance && can(profile, "check_in")) redirect("/check-in");
     }
     const ds = await getZoneDataset(profile.zoneId);
     let attendance: AttendanceTiles | undefined;
-    if (tenant.modules.attendance && can(profile, "view_attendance")) {
+    if (modules.attendance && can(profile, "view_attendance")) {
       const data = await getAttendanceData();
-      const members = ds.members.filter((m) => !m.isVisitor && (profile.scope !== "cell" || m.cellId === profile.cellId));
+      const members = ds.members.filter((m) => !m.isVisitor);
       const standing = [...summarise(members, data.services, data.attendance, churchToday()).values()];
       const lastSunday = data.services.find((s) => s.kind === "sunday");
       const lastSundayCount = lastSunday
@@ -79,9 +81,9 @@ export default async function DashboardPage({
       const [{ data: zone }, logins, logos, cohorts, services] = await Promise.all([
         supabase.from("zones").select("getting_started").eq("id", profile.zoneId).single(),
         supabase.from("profiles").select("id", { count: "exact", head: true }),
-        tenant.modules.resources ? supabase.from("resources").select("id", { count: "exact", head: true }).eq("kind", "logo") : { count: 0 },
-        tenant.modules.courses ? supabase.from("cohorts").select("id", { count: "exact", head: true }) : { count: 0 },
-        tenant.modules.attendance ? supabase.from("services").select("id", { count: "exact", head: true }) : { count: 0 },
+        modules.resources ? supabase.from("resources").select("id", { count: "exact", head: true }).eq("kind", "logo") : { count: 0 },
+        modules.courses ? supabase.from("cohorts").select("id", { count: "exact", head: true }) : { count: 0 },
+        modules.attendance ? supabase.from("services").select("id", { count: "exact", head: true }) : { count: 0 },
       ]);
       const state = (zone?.getting_started ?? {}) as { dismissed?: boolean; done?: string[] };
       const steps = gettingStartedSteps(
@@ -94,7 +96,8 @@ export default async function DashboardPage({
           cohorts: cohorts.count ?? 0,
           services: services.count ?? 0,
         },
-        state.done ?? []
+        state.done ?? [],
+        modules
       );
       if (!state.dismissed && steps.some((s) => !s.done)) gettingStarted = steps;
     }

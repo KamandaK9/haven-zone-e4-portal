@@ -1,11 +1,13 @@
 "use server";
 
+import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { can, getCurrentProfile } from "@/lib/data/get-dataset";
 import { logAudit } from "./audit";
 import { serviceKeyString, type QueuedCheckIn, type Roster, type ServiceKey, type SyncResult } from "@/lib/check-in/types";
 import { tenant } from "@/tenant";
+import { getSiteUrl } from "@/lib/site-url";
 
 // Check-in's server side. Everything here is safe to call again with the same
 // input: services are unique on location/date/kind/name, a first-timer's
@@ -156,4 +158,36 @@ export async function undoCheckIn(key: ServiceKey, memberId: string): Promise<{ 
   if (!service) return { ok: true };
   const { error } = await supabase.from("attendance").delete().match({ service_id: service.id, member_id: memberId });
   return error ? { ok: false, error: error.message } : { ok: true };
+}
+
+// The QR code for a service: a link anyone can open on their phone to check
+// themselves in (src/app/c/[token]). One per service, made on first ask, and
+// it stops working the day after the service.
+export async function getCheckInLink(key: ServiceKey): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+  const auth = await checkInProfile();
+  if (!auth.ok) return { ok: false, error: auth.error };
+  const supabase = await createClient();
+  const match = { church_id: key.churchId, service_date: key.date, kind: key.kind, name: key.name };
+  let { data: link } = await supabase.from("check_in_links").select("token").match(match).maybeSingle();
+  if (!link) {
+    const token = randomBytes(18).toString("base64url");
+    const expires = new Date(new Date(`${key.date}T00:00:00Z`).getTime() + 36 * 3_600_000); // through the next morning
+    const { error } = await supabase
+      .from("check_in_links")
+      .insert({ ...match, token, zone_id: auth.profile.zoneId, created_by: auth.profile.userId, expires_at: expires.toISOString() });
+    if (error) {
+      // Made at the same moment by another device — use theirs.
+      ({ data: link } = await supabase.from("check_in_links").select("token").match(match).maybeSingle());
+      if (!link) return { ok: false, error: error.message };
+    } else link = { token };
+  }
+  return { ok: true, url: `${await getSiteUrl()}/c/${link.token}` };
+}
+
+// Called every few minutes while a check-in screen is open, so the tablet at
+// the door isn't signed out for inactivity during the sermon (the proxy's
+// idle sign-out counts requests). Only check-in screens call it.
+export async function checkInStillOpen(): Promise<boolean> {
+  const profile = await getCurrentProfile();
+  return !!profile && can(profile, "check_in");
 }

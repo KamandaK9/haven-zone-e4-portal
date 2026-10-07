@@ -7,13 +7,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils";
 import { tenant } from "@/tenant";
 import { downloadMemberTemplate } from "@/lib/import/member-template";
-import { churchOptions, loadMemberSheet, memberCount, type CellChoice } from "./member-list";
+import { ColumnMapper } from "@/components/members/column-mapper";
+import { mappingProblem } from "@/lib/import/column-mapping";
+import type { ColumnMapping } from "@/lib/import/parse-members";
+import { churchOptions, draftMemberField, loadMemberSheet, memberCount, memberListFrom, type CellChoice } from "./member-list";
 import type { WizardState } from "./types";
 
 // Setup's member-list import. Takes the organisation's sheet as it is (see
-// member-list.ts); for a list with no Country/Church columns, shows which
-// church its members go into and the cells found in it — spelling variants
-// grouped — for the admin to confirm before setup creates them. A sheet
+// member-list.ts); for a list with no Country/Church columns, the admin
+// matches each column (to a member detail, a field of their own, or nothing),
+// then sees which church its members go into and the cells found in it —
+// spelling variants grouped — to confirm before setup creates them. A sheet
 // already loaded on the Countries & churches step shows up here as-is.
 export function MemberListImportPanel({
   wizard,
@@ -47,10 +51,18 @@ export function MemberListImportPanel({
   }
 
   function clear() {
-    setWizard((w) => ({ ...w, importFileName: null, importedMembers: [], churchMeta: {}, memberList: null }));
+    setWizard((w) => ({ ...w, importFileName: null, importedMembers: [], churchMeta: {}, memberList: null, memberFields: [] }));
     setZonedSummary(null);
     setError(null);
     setStage("idle");
+  }
+
+  function setMapping(mapping: ColumnMapping) {
+    setWizard((w) =>
+      w.memberList
+        ? { ...w, memberList: memberListFrom(w.memberList.fileName, w.memberList.sheets, w.memberList.columns, mapping, w.memberList) }
+        : w
+    );
   }
 
   function setChoice(clusterName: string, patch: Partial<CellChoice>) {
@@ -78,7 +90,7 @@ export function MemberListImportPanel({
         </p>
         <button
           type="button"
-          onClick={() => downloadMemberTemplate()}
+          onClick={() => downloadMemberTemplate(wizard.memberFields)}
           className="flex items-center gap-1 text-xs text-primary hover:underline"
         >
           <Download className="h-3 w-3" /> Starting from scratch? Download a template
@@ -165,6 +177,34 @@ export function MemberListImportPanel({
               </>
             )}
           </div>
+        </div>
+      )}
+
+      {list && (
+        <div className="space-y-2">
+          <div>
+            <p className="text-sm font-medium">What&apos;s in each column?</p>
+            <p className="text-xs text-muted-foreground">
+              We&apos;ve matched what we recognise — check it. A column you want to keep that isn&apos;t a standard
+              detail (a baptism date, a department) can become a field of your own: choose &ldquo;New field from this
+              column&rdquo;. These choices are saved, so your next import of this sheet matches itself.
+            </p>
+          </div>
+          <ColumnMapper
+            columns={list.columns}
+            mapping={list.mapping}
+            onChange={setMapping}
+            fields={wizard.memberFields}
+            onFieldCreated={(field) => setWizard((w) => ({ ...w, memberFields: [...w.memberFields, field] }))}
+            canCreateFields
+            createField={async (input) => draftMemberField(input, wizard.memberFields)}
+          />
+          {mappingProblem(list.mapping) && (
+            <p className="flex items-center gap-1.5 text-xs text-destructive">
+              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+              {mappingProblem(list.mapping)}
+            </p>
+          )}
         </div>
       )}
 

@@ -12,7 +12,7 @@ import { requireModule } from "@/lib/require-module";
 import { labels, lower } from "@/lib/labels";
 
 export default async function ServicePage({ params }: { params: Promise<{ serviceId: string }> }) {
-  requireModule("attendance");
+  await requireModule("attendance");
   const { serviceId } = await params;
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");

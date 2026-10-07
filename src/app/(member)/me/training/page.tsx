@@ -11,7 +11,7 @@ import { getMemberAchievementStats } from "@/lib/data/achievements";
 import { getEarnedBadges } from "@/lib/badges";
 
 export default async function MemberTrainingPage() {
-  requireModule("training");
+  await requireModule("training");
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
   if (!profile.linkedMemberId) {

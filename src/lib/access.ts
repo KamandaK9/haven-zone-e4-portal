@@ -58,6 +58,9 @@ export const CAPABILITIES = [
   // Cross-cutting.
   "export_data",
   "manage_settings",
+  // Give members roles ranked below your own, within what you can see —
+  // without manage_access's per-person capability tweaks.
+  "assign_roles",
 ] as const;
 export type Capability = (typeof CAPABILITIES)[number];
 
@@ -88,6 +91,7 @@ export const CAPABILITY_LABELS: Record<Capability, string> = {
   approve_messages: "Approve campaigns before they send",
   export_data: "Export data (CSV/Excel)",
   manage_settings: "Manage organisation settings",
+  assign_roles: "Give people roles below their own",
 };
 
 export function isPosition(value: unknown): value is Position {
@@ -105,7 +109,7 @@ export function isLeader(position: Position): boolean {
   return position !== tenant.access.memberPositionKey;
 }
 
-function positionDef(position: Position): PositionDef | undefined {
+export function positionDef(position: Position): PositionDef | undefined {
   return tenant.access.positions.find((p) => p.key === position);
 }
 

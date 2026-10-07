@@ -28,11 +28,15 @@ import type { ColumnMapping } from "@/lib/import/parse-members";
 import { formatTenure, memberFullName, memberTenureYears, memberTotalGiving } from "@/lib/data/analytics";
 import { isLeader, positionLabel } from "@/lib/access";
 import type { Member, MemberRole } from "@/lib/data/types";
+import { MEMBER_STATUSES } from "@/lib/statuses";
 import { tenant } from "@/tenant";
 
-const ROLES: (MemberRole | "All roles")[] = ["All roles", "Member", "Worker", "Cell Leader", "Pastor"];
+const ROLES: (MemberRole | "All roles")[] = ["All roles", ...MEMBER_STATUSES];
 const AGE_GROUPS = tenant.ageGroups ?? [];
 const ageGroupLabel = (key?: string) => AGE_GROUPS.find((g) => g.key === key)?.label;
+
+const NO_DEPARTMENTS: { id: string; name: string }[] = [];
+const NO_MEMBERSHIPS: Record<string, string[]> = {};
 
 export function MemberTable({
   members,
@@ -45,9 +49,15 @@ export function MemberTable({
   importFields,
   importTemplate,
   canManageSettings,
+  departments = NO_DEPARTMENTS,
+  memberDepartments = NO_MEMBERSHIPS,
 }: {
   // Cell id → name; the Cell column only shows when the chapter has cells.
   cellNames?: Record<string, string>;
+  // The organisation's departments and who is in which; the column and
+  // filter only show when there are departments.
+  departments?: { id: string; name: string }[];
+  memberDepartments?: Record<string, string[]>;
   showGiving?: boolean;
   canManage?: boolean;
   members: Member[];
@@ -61,6 +71,8 @@ export function MemberTable({
   const [query, setQuery] = useState("");
   const [role, setRole] = useState<(typeof ROLES)[number]>("All roles");
   const [ageGroup, setAgeGroup] = useState("all");
+  const [department, setDepartment] = useState("all");
+  const departmentName = new Map(departments.map((d) => [d.id, d.name]));
 
   const filtered = useMemo(() => {
     return members.filter((m) => {
@@ -70,9 +82,11 @@ export function MemberTable({
         m.email.toLowerCase().includes(query.toLowerCase());
       const matchesRole = role === "All roles" || m.role === role;
       const matchesAgeGroup = ageGroup === "all" || (ageGroup === "none" ? !ageGroupLabel(m.ageGroup) : m.ageGroup === ageGroup);
-      return matchesQuery && matchesRole && matchesAgeGroup;
+      const inDepartments = memberDepartments[m.id] ?? [];
+      const matchesDepartment = department === "all" || (department === "none" ? inDepartments.length === 0 : inDepartments.includes(department));
+      return matchesQuery && matchesRole && matchesAgeGroup && matchesDepartment;
     });
-  }, [members, query, role, ageGroup]);
+  }, [members, query, role, ageGroup, department, memberDepartments]);
 
   return (
     <div className="space-y-4">
@@ -99,6 +113,22 @@ export function MemberTable({
               ))}
             </SelectContent>
           </Select>
+          {departments.length > 0 && (
+            <Select value={department} onValueChange={setDepartment}>
+              <SelectTrigger className="w-[150px] shrink-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All departments</SelectItem>
+                {departments.map((d) => (
+                  <SelectItem key={d.id} value={d.id}>
+                    {d.name}
+                  </SelectItem>
+                ))}
+                <SelectItem value="none">No department</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
           {AGE_GROUPS.length > 0 && (
             <Select value={ageGroup} onValueChange={setAgeGroup}>
               <SelectTrigger className="w-[140px] shrink-0">
@@ -138,6 +168,7 @@ export function MemberTable({
               <TableHead>Member</TableHead>
               <TableHead>Role</TableHead>
               {AGE_GROUPS.length > 0 && <TableHead>Age group</TableHead>}
+              {departments.length > 0 && <TableHead>Departments</TableHead>}
               {cellNames && <TableHead>Cell</TableHead>}
               <TableHead>Tenure</TableHead>
               <TableHead>Training</TableHead>
@@ -174,6 +205,11 @@ export function MemberTable({
                   {AGE_GROUPS.length > 0 && (
                     <TableCell className="text-sm text-muted-foreground">{ageGroupLabel(member.ageGroup) ?? "—"}</TableCell>
                   )}
+                  {departments.length > 0 && (
+                    <TableCell className="text-sm text-muted-foreground">
+                      {(memberDepartments[member.id] ?? []).map((id) => departmentName.get(id)).filter(Boolean).join(", ") || "—"}
+                    </TableCell>
+                  )}
                   {cellNames && (
                     <TableCell className="text-sm text-muted-foreground">
                       {(member.cellId && cellNames[member.cellId]) || "—"}
@@ -197,7 +233,7 @@ export function MemberTable({
             })}
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={(showGiving ? 5 : 4) + (cellNames ? 1 : 0) + (AGE_GROUPS.length > 0 ? 1 : 0)} className="text-center text-sm text-muted-foreground py-10">
+                <TableCell colSpan={(showGiving ? 5 : 4) + (cellNames ? 1 : 0) + (AGE_GROUPS.length > 0 ? 1 : 0) + (departments.length > 0 ? 1 : 0)} className="text-center text-sm text-muted-foreground py-10">
                   No members match your search.
                 </TableCell>
               </TableRow>

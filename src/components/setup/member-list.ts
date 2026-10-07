@@ -1,6 +1,8 @@
 import { tenant } from "@/tenant";
 import { parseZoneMemberSheet } from "@/lib/import/parse-zone-members";
-import { parseMemberSheet } from "@/lib/import/parse-members";
+import { memberSheets, parseMemberSheets, type ColumnMapping } from "@/lib/import/parse-members";
+import { importColumns, mappingProblem, suggestMapping, type ImportColumn } from "@/lib/import/column-mapping";
+import { fieldKeyFrom, memberFieldProblem, type MemberField, type MemberFieldInput } from "@/lib/custom-fields";
 import { clusterCellNames, type CellCluster } from "@/lib/import/cluster-cells";
 import type { ParsedMemberRow } from "@/lib/actions/members";
 import type { WizardState } from "./types";
@@ -16,6 +18,11 @@ export type CellChoice = { action: "create" | "none" | "merge"; name: string; in
 // the church name afterwards can't strand them.
 export type MemberList = {
   fileName: string;
+  // The sheet as read, and what each column becomes — changed on the Import
+  // members step, which re-reads the members from it.
+  sheets: Awaited<ReturnType<typeof memberSheets>>;
+  columns: ImportColumn[];
+  mapping: ColumnMapping;
   members: ParsedMemberRow[];
   skipped: number;
   ignored: string[];
@@ -44,34 +51,92 @@ export async function loadMemberSheet(file: File): Promise<LoadResult> {
       };
     }
 
-    const parsed = await parseMemberSheet(file);
-    if (parsed.rows.length === 0) {
-      return { ok: false, error: "No members found in that file — it needs at least a column of names." };
+    const sheets = await memberSheets(file);
+    const columns = importColumns(sheets.sheets);
+    if (columns.length === 0 || sheets.sheets.every((s) => s.rows.length === 0)) {
+      return { ok: false, error: "No rows found in that file." };
     }
-    const clusters = clusterCellNames(parsed.rows.map((r) => r.cellName));
-    const ageGroups: Record<string, number> = {};
-    for (const r of parsed.rows) {
-      const label = tenant.ageGroups?.find((g) => g.key === r.ageGroup)?.label;
-      if (label) ageGroups[label] = (ageGroups[label] ?? 0) + 1;
-    }
-    const list: MemberList = {
-      fileName: file.name,
-      members: parsed.rows,
-      skipped: parsed.skipped.length,
-      ignored: parsed.ignoredHeaders,
-      ageGroups,
-      clusters,
-      choices: Object.fromEntries(clusters.map((c) => [c.name, { action: c.likelyCell ? "create" : "none", name: c.name }])),
-    };
+    const preview = memberListFrom(file.name, sheets, columns, suggestMapping(columns, { fields: [] }));
     return {
       ok: true,
       kind: "list",
-      summary: `${parsed.rows.length.toLocaleString()} members found${list.skipped > 0 ? ` (${list.skipped} row(s) skipped — no name)` : ""}.`,
-      apply: (w) => ensureAChurch({ ...w, importFileName: file.name, importedMembers: [], memberList: list }),
+      summary:
+        preview.members.length > 0
+          ? `${preview.members.length.toLocaleString()} members found${preview.skipped > 0 ? ` (${preview.skipped} row(s) skipped — no name)` : ""}.`
+          : "Read the file — choose which column holds names on the Import members step.",
+      // Matched against any fields already made in this setup.
+      apply: (w) =>
+        ensureAChurch({
+          ...w,
+          importFileName: file.name,
+          importedMembers: [],
+          memberList: memberListFrom(file.name, sheets, columns, suggestMapping(columns, { fields: w.memberFields })),
+        }),
     };
   } catch {
     return { ok: false, error: "Couldn't read that file. Make sure it's a valid .xlsx, .xls, or .csv." };
   }
+}
+
+// Reads the members out of the sheet with this column mapping. Given the
+// list it replaces, keeps the chosen church and any cell decisions that still
+// apply.
+export function memberListFrom(
+  fileName: string,
+  sheets: MemberList["sheets"],
+  columns: ImportColumn[],
+  mapping: ColumnMapping,
+  previous?: MemberList | null
+): MemberList {
+  // No name column chosen yet: nobody to import until there is.
+  const parsed = mappingProblem(mapping) ? null : parseMemberSheets(sheets, mapping);
+  const rows = parsed?.rows ?? [];
+  const clusters = clusterCellNames(rows.map((r) => r.cellName));
+  const ageGroups: Record<string, number> = {};
+  for (const r of rows) {
+    const label = tenant.ageGroups?.find((g) => g.key === r.ageGroup)?.label;
+    if (label) ageGroups[label] = (ageGroups[label] ?? 0) + 1;
+  }
+  return {
+    fileName,
+    sheets,
+    columns,
+    mapping,
+    members: rows,
+    skipped: parsed?.skipped.length ?? 0,
+    ignored: columns.filter((c) => (mapping[c.key] ?? "skip") === "skip").map((c) => c.header),
+    ageGroups,
+    clusters,
+    choices: Object.fromEntries(
+      clusters.map((c) => [c.name, previous?.choices[c.name] ?? { action: c.likelyCell ? "create" : "none", name: c.name }])
+    ),
+    target: previous?.target,
+  };
+}
+
+// A field made while matching columns in setup: kept in the wizard, and
+// created when setup is submitted.
+export function draftMemberField(input: MemberFieldInput, existing: MemberField[]): { ok: true; field: MemberField } | { ok: false; error: string } {
+  const problem = memberFieldProblem(input);
+  if (problem) return { ok: false, error: problem };
+  if (existing.some((f) => f.label.trim().toLowerCase() === input.label.trim().toLowerCase())) {
+    return { ok: false, error: `There's already a field called "${input.label.trim()}".` };
+  }
+  const key = fieldKeyFrom(input.label, existing.map((f) => f.key));
+  return {
+    ok: true,
+    field: {
+      id: `draft:${key}`,
+      key,
+      label: input.label.trim(),
+      type: input.type,
+      options: input.type === "select" ? input.options.map((o) => o.trim()).filter(Boolean) : [],
+      visibility: input.visibility,
+      memberAccess: input.memberAccess,
+      sortOrder: existing.length + 1,
+      archived: false,
+    },
+  };
 }
 
 export function churchOptions(w: WizardState): { key: string; country: string; church: string }[] {
