@@ -55,11 +55,19 @@ export const NAV_ITEMS: NavItemDef[] = [
   { key: "settings", href: "/settings", label: "Settings", icon: Settings, cap: "manage_access", hideable: false },
 ];
 
+// Whether this deployment has the section at all (its module is on). The
+// sidebar and Settings → Sidebar sections both use this, so a section that
+// can't appear is never offered as a choice either.
+export function isNavItemAvailable(item: NavItemDef): boolean {
+  if (item.module && !tenant.modules[item.module]) return false;
+  // Reports are giving or attendance reports — nothing to show with neither.
+  if (item.key === "reports" && !tenant.modules.giving && !tenant.modules.attendance) return false;
+  return true;
+}
+
 export function getVisibleNavItems(role: StaffRole, caps: string[], hiddenNavItems: string[]): NavItemDef[] {
   return NAV_ITEMS.filter((item) => {
-    if (item.module && !tenant.modules[item.module]) return false;
-    // Reports are giving or attendance reports — nothing to show with neither.
-    if (item.key === "reports" && !tenant.modules.giving && !tenant.modules.attendance) return false;
+    if (!isNavItemAvailable(item)) return false;
     if (item.cap && ![item.cap].flat().some((c) => caps.includes(c))) return false;
     // Only a Director's own hidden-items preference ever applies — other
     // leaders get a nav fixed by their capabilities.
