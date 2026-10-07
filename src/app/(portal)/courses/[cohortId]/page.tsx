@@ -6,7 +6,7 @@ import { Register } from "@/components/courses/register";
 import { EnrolDialog } from "@/components/courses/enrol-dialog";
 import { CohortSettings } from "@/components/courses/cohort-settings";
 import { can, getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
-import { getCohortDetail, getCourse, getTeachers, getVisibleClassAttendance } from "@/lib/data/courses";
+import { getClassMaterials, getCohortDetail, getCourse, getTeachers, getVisibleClassAttendance } from "@/lib/data/courses";
 import { getZoneCells } from "@/lib/data/cells";
 import { courseProgress } from "@/lib/courses/progress";
 import { memberFullName } from "@/lib/data/analytics";
@@ -22,7 +22,7 @@ export default async function CohortPage({ params }: { params: Promise<{ cohortI
   const manages = can(profile, "manage_courses");
   if (!manages && !can(profile, "teach_courses")) redirect("/dashboard");
 
-  const [course, detail] = await Promise.all([getCourse(profile.zoneId), getCohortDetail(cohortId)]);
+  const [course, detail, materials] = await Promise.all([getCourse(profile.zoneId), getCohortDetail(cohortId), getClassMaterials()]);
   const courseName = course?.name ?? tenant.course?.name ?? "Course";
   if (!course || !detail) {
     return (
@@ -99,6 +99,31 @@ export default async function CohortPage({ params }: { params: Promise<{ cohortI
           />
         </CardContent>
       </Card>
+
+      {materials.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Class materials</CardTitle>
+            <CardDescription>What each class is taught from</CardDescription>
+          </CardHeader>
+          <CardContent className="divide-y">
+            {course.classes
+              .filter((c) => materials.some((m) => m.classId === c.id))
+              .map((c) => (
+                <div key={c.id} className="space-y-1 py-2.5 first:pt-0">
+                  <p className="text-sm font-medium">{c.title ? `${c.number}. ${c.title}` : `Class ${c.number}`}</p>
+                  {materials
+                    .filter((m) => m.classId === c.id)
+                    .map((m) => (
+                      <a key={m.id} href={m.href} target="_blank" rel="noreferrer" className="block text-sm text-primary hover:underline">
+                        {m.title}
+                      </a>
+                    ))}
+                </div>
+              ))}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

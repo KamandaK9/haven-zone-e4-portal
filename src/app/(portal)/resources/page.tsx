@@ -1,6 +1,6 @@
 /* eslint-disable @next/next/no-img-element -- signed, short-lived storage URLs */
 import { redirect } from "next/navigation";
-import { Download, FileText, ImageIcon, Newspaper } from "lucide-react";
+import { Download, FileText, ImageIcon, Newspaper, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +15,9 @@ import { bestLogo, isLowRes, isVector } from "@/lib/resources/best-logo";
 import { DEFAULT_LOGO_GUIDELINES } from "@/lib/resources/guidelines";
 import { requireModule } from "@/lib/require-module";
 import { tenant } from "@/tenant";
+import { roleOption } from "@/lib/roles";
+import { getModules } from "@/lib/modules-server";
+import { getDepartments } from "@/lib/data/departments";
 
 export const metadata = { title: "Resources" };
 
@@ -26,6 +29,7 @@ export default async function ResourcesPage() {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
   const isAdmin = can(profile, "manage_access");
+  const [modules, departments] = await Promise.all([getModules(), getDepartments()]);
 
   const supabase = await createClient();
   const [{ data: rows }, { data: settings }] = await Promise.all([
@@ -137,6 +141,52 @@ export default async function ResourcesPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-4 w-4" /> Roles &amp; responsibilities
+          </CardTitle>
+          <CardDescription>
+            Who does what at {tenant.name}, most senior first. Each role sees only its part of the church; people can give
+            roles below their own.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="divide-y rounded-xl border">
+            {[...tenant.access.positions]
+              .sort((a, b) => a.rank - b.rank)
+              .map((p) => {
+                const r = roleOption(p.key, modules);
+                return (
+                  <div key={p.key} className="grid gap-1 p-3 sm:grid-cols-[220px_1fr]">
+                    <p className="text-sm font-medium">{r.label}</p>
+                    <div className="space-y-1">
+                      {r.description && <p className="text-sm">{r.description}</p>}
+                      <p className="text-xs text-muted-foreground">
+                        Sees {r.sees}
+                        {r.can.length > 0 && <> · {r.can.join(" · ")}</>}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+          {departments.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Departments</p>
+              <p className="text-xs text-muted-foreground">Where people serve. Belonging to one doesn&apos;t change what anyone can see.</p>
+              <div className="flex flex-wrap gap-1.5">
+                {departments.map((d) => (
+                  <Badge key={d.id} variant="secondary">
+                    {d.name}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <FileList
         title="Brand assets"

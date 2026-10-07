@@ -1186,6 +1186,18 @@ export type Database = {
         Update: Partial<{ department_id: string }>;
         Relationships: [];
       };
+      class_materials: {
+        Row: {
+          id: string; zone_id: string; class_id: string; title: string; file_path: string | null; file_name: string | null;
+          mime: string | null; bytes: number | null; url: string | null; sort_order: number; created_by: string | null; created_at: string;
+        };
+        Insert: {
+          id?: string; zone_id: string; class_id: string; title: string; file_path?: string | null; file_name?: string | null;
+          mime?: string | null; bytes?: number | null; url?: string | null; sort_order?: number; created_by?: string | null; created_at?: string;
+        };
+        Update: Partial<{ title: string; sort_order: number }>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
