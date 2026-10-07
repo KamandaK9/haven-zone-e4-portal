@@ -8,6 +8,7 @@ import { requireAal2IfEnrolled } from "@/lib/mfa";
 import { requireModule } from "@/lib/require-module";
 import { createClient } from "@/lib/supabase/server";
 import { tenant } from "@/tenant";
+import { labels } from "@/lib/labels";
 
 export const metadata = { title: `Check-in · ${tenant.portalName}` };
 
@@ -35,7 +36,7 @@ export default async function CheckInPage() {
         <p className="font-semibold">Check-in</p>
       </header>
       {locations.length === 0 ? (
-        <p className="p-6 text-sm text-muted-foreground">You don&apos;t have a location to check people in to yet.</p>
+        <p className="p-6 text-sm text-muted-foreground">You don&apos;t have a {labels.location.toLowerCase()} to check people in to yet.</p>
       ) : (
         <CheckInLoader churches={locations} timeZone={tenant.timezone} />
       )}

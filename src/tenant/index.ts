@@ -37,7 +37,7 @@ const positions: readonly PositionDef[] = [
     ],
   },
   {
-    key: "location_pastor", label: "Location Pastor", rank: 2, scope: "chapter", loginRole: "admin",
+    key: "location_pastor", label: "Sub-group Pastor", rank: 2, scope: "chapter", loginRole: "admin",
     baseCaps: [
       "view_members", "view_contact_details", "manage_members", "view_reports", "export_data",
       "view_attendance", "record_follow_up", "view_pastoral_notes", "manage_services",
@@ -83,12 +83,12 @@ export const tenant: TenantConfig = {
   churchNameExample: "e.g. CE Sandton",
   defaultCurrency: "ZAR",
   timezone: "Africa/Johannesburg",
-  // CE Sandton is the group (the zone); locations under it; cells under
-  // each location. sub_zones aren't used, so `group` never shows.
+  // CE Sandton is the group (the zone); sub-groups under it (churches
+  // rows); cells under each sub-group. sub_zones aren't used, so `group` never shows.
   labels: {
     zone: "Group", zonePlural: "Groups",
-    group: "Sub-group", groupPlural: "Sub-groups",
-    location: "Location", locationPlural: "Locations",
+    group: "Region", groupPlural: "Regions", // sub_zones — unused
+    location: "Sub-group", locationPlural: "Sub-groups",
     cell: "Cell", cellPlural: "Cells",
     country: "Country", countryPlural: "Countries",
   },
@@ -132,7 +132,7 @@ export const tenant: TenantConfig = {
     { key: "adults", label: "Adults", minAge: 36 },
   ],
   login: {
-    headline: "One view of every location, every cell, every member.",
+    headline: "One view of every sub-group, every cell, every member.",
     blurb: "Membership, service attendance, Foundation School progress and follow-up — from a single dashboard built for leadership.",
   },
   affiliation: "An arm of Christ Embassy",
@@ -171,6 +171,6 @@ export const tenant: TenantConfig = {
     // "Group" is the whole of CE Sandton (labels.zone), so the upper cell
     // level is a senior cell, as Christ Embassy calls it.
     cellLevels: { upper: "Senior cell", upperPlural: "Senior cells", lower: "Cell", lowerPlural: "Cells" },
-    meetingTypes: ["Cell leaders' meeting", "Location meeting"],
+    meetingTypes: ["Cell leaders' meeting", "Sub-group meeting"],
   },
 };

@@ -41,7 +41,7 @@ export async function renameChapter(churchId: string, name: string): Promise<Act
 export async function addLocation(countryId: string, name: string): Promise<ActionResult> {
   const profile = await getCurrentProfile();
   if (!profile) return { ok: false, error: "Not signed in." };
-  if (profile.role !== "super_admin") return { ok: false, error: "Only the main admin can add a location." };
+  if (profile.role !== "super_admin") return { ok: false, error: `Only the main admin can add a ${lower(labels.location)}.` };
 
   const trimmed = name.trim();
   if (!trimmed) return { ok: false, error: "A name is required." };
