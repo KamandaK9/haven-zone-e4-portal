@@ -5,7 +5,12 @@ import { readFileSync } from "node:fs";
 
 // The tenant's own names, which core code must never hard-code.
 const { bannedCopy } = JSON.parse(readFileSync(new URL("./src/tenant/lint.json", import.meta.url), "utf8"));
-const banned = new RegExp(bannedCopy.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|"), "i");
+// Whole words only, and not "…n't" contractions, so a name like "Haven"
+// doesn't flag "haven't" (but still catches "Haven's").
+const banned = new RegExp(
+  `\\b(?:${bannedCopy.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})\\b(?!['’]t\\b)`,
+  "i"
+);
 
 const eslintConfig = defineConfig([
   ...nextVitals,
