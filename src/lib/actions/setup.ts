@@ -12,6 +12,9 @@ import { getAutoAssignedProgramIds } from "@/lib/data/programs-server";
 import { ensureEventSeries } from "@/lib/data/events";
 import { CAPABILITIES, effectiveCapabilities, type Portfolio, type Position } from "@/lib/access";
 import { labels } from "@/lib/labels";
+import { fieldKeyFrom, memberFieldProblem, normaliseFieldValue, type MemberFieldInput } from "@/lib/custom-fields";
+import { cleanColumnMapping } from "@/lib/import/column-mapping";
+import type { ColumnMapping } from "@/lib/import/parse-members";
 
 function chunk<T>(items: T[], size: number): T[][] {
   const out: T[][] = [];
@@ -34,6 +37,11 @@ type SetupPayload = {
   // Simple member-list import: each cell name as spelled in the sheet → the
   // cell to create for it in that member's church, or null for "not a cell".
   cellMap?: Record<string, string | null>;
+  // The organisation's own member fields, made while matching the member
+  // list's columns (members' values arrive in member.custom by field key),
+  // and that matching, saved as the import template.
+  memberFields?: (MemberFieldInput & { key: string })[];
+  importTemplate?: ColumnMapping;
 };
 
 type AssistantCredential = { name: string; email: string; tempPassword: string };
@@ -213,6 +221,42 @@ export async function completeZoneSetup(payload: SetupPayload): Promise<Complete
 
   const assistantCredentials: AssistantCredential[] = [];
 
+  // 4a. The organisation's own member fields. Keys are kept as the wizard
+  // made them (members' values refer to them) unless one is malformed.
+  const fieldByKey = new Map<string, { id: string; label: string; type: MemberFieldInput["type"]; options: string[] }>();
+  const fieldDrafts = (payload.memberFields ?? []).slice(0, 100);
+  if (fieldDrafts.length > 0) {
+    const seenKeys: string[] = [];
+    const seenLabels = new Set<string>();
+    const rows = [];
+    for (const [i, f] of fieldDrafts.entries()) {
+      const problem = memberFieldProblem(f);
+      if (problem) return fail(`Member field "${f.label}": ${problem}`);
+      const label = f.label.trim();
+      if (seenLabels.has(label.toLowerCase())) return fail(`There are two member fields called "${label}".`);
+      seenLabels.add(label.toLowerCase());
+      const key = /^[a-z][a-z0-9_]{0,49}$/.test(f.key) && !seenKeys.includes(f.key) ? f.key : fieldKeyFrom(label, seenKeys);
+      seenKeys.push(key);
+      rows.push({
+        zone_id: zoneId,
+        key,
+        label,
+        type: f.type,
+        options: f.type === "select" ? f.options.map((o) => o.trim()).filter(Boolean) : [],
+        visibility: f.visibility,
+        member_access: f.memberAccess,
+        sort_order: i + 1,
+      });
+    }
+    const { data: created, error: fieldsError } = await admin.from("member_fields").insert(rows).select("id, key, label, type, options");
+    if (fieldsError || !created) return fail(fieldsError?.message ?? "Could not create the member fields.");
+    for (const f of created) fieldByKey.set(f.key, { id: f.id, label: f.label, type: f.type, options: f.options ?? [] });
+  }
+  const template = cleanColumnMapping(payload.importTemplate);
+  if (Object.keys(template).length > 0) {
+    await admin.from("import_templates").insert({ zone_id: zoneId, kind: "members", mapping: template, updated_by: authUser.user.id });
+  }
+
   // 4b. Imported members, if the wizard's import step supplied any —
   // resolved against the countries/churches just created above.
   let importedCount = 0;
@@ -241,6 +285,7 @@ export async function completeZoneSetup(payload: SetupPayload): Promise<Complete
     const toInsert: MemberInsert[] = [];
     const givingByRow: (number | undefined)[] = [];
     const givingMonthByRow: (string | undefined)[] = [];
+    const customByRow: (Record<string, string> | undefined)[] = [];
 
     for (const row of payload.importedMembers) {
       const countryId = countryIdByName.get(row.countryName);
@@ -269,6 +314,7 @@ export async function completeZoneSetup(payload: SetupPayload): Promise<Complete
       });
       givingByRow.push(row.member.givingTotal && row.member.givingTotal > 0 ? row.member.givingTotal : undefined);
       givingMonthByRow.push((row.member.givingDate ?? new Date().toISOString().slice(0, 10)).slice(0, 7));
+      customByRow.push(row.member.custom);
     }
 
     const defaultProgramIds = await getAutoAssignedProgramIds(zoneId);
@@ -298,6 +344,21 @@ export async function completeZoneSetup(payload: SetupPayload): Promise<Complete
       }
       if (givingRows.length > 0) {
         await admin.from("giving_entries").insert(givingRows);
+      }
+
+      // Their values for the organisation's own fields. One that doesn't
+      // fit the field (a word in a date column) is left out, not fatal.
+      const valueRows = inserted.flatMap((m, i) =>
+        Object.entries(customByRow[offset + i] ?? {}).flatMap(([key, raw]) => {
+          const field = fieldByKey.get(key);
+          const value = field ? normaliseFieldValue(field, raw) : null;
+          return field && value?.ok && value.value !== null
+            ? [{ member_id: m.id, field_id: field.id, zone_id: zoneId, value: value.value }]
+            : [];
+        })
+      );
+      for (const vBatch of chunk(valueRows, 500)) {
+        await admin.from("member_field_values").insert(vBatch);
       }
 
       // Positions are recorded on the member rows, but no logins are created

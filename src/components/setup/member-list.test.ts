@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { cellMapFor, resolveMemberList, type MemberList } from "./member-list";
+import { cellMapFor, draftMemberField, memberListFrom, resolveMemberList, type MemberList } from "./member-list";
+import { importColumns } from "@/lib/import/column-mapping";
 import type { WizardState } from "./types";
 
 const list: MemberList = {
   fileName: "members.xlsx",
+  sheets: { sheets: [], ageGroupTabs: false },
+  columns: [],
+  mapping: {},
   members: [
     { firstName: "A", lastName: "One", cellName: "Kings&Pearls" },
     { firstName: "B", lastName: "Two", cellName: "KINGS PREAL" },
@@ -48,5 +52,47 @@ describe("member list in setup", () => {
   it("doesn't loop on a merge cycle", () => {
     const cyclic = { ...list, choices: { ...list.choices, "Kings & Pearls": { action: "merge" as const, name: "x", into: "KINGS PREAL" } } };
     expect(cellMapFor(cyclic)["Kings&Pearls"]).toBeNull();
+  });
+});
+
+describe("matching a member list's columns in setup", () => {
+  const sheets = {
+    ageGroupTabs: false,
+    sheets: [
+      {
+        sheetName: "Sheet1",
+        headers: ["Naam", "Van", "Department", "Notes"],
+        rows: [
+          ["Jane", "Doe", "Choir", "x"],
+          ["John", "Roe", "Ushers", "y"],
+        ],
+      },
+    ],
+  };
+
+  it("re-reads the members with the chosen columns, keeping cell decisions and church", () => {
+    const columns = importColumns(sheets.sheets);
+    const key = (h: string) => columns.find((c) => c.header === h)!.key;
+    const none = memberListFrom("m.xlsx", sheets, columns, {});
+    expect(none.members).toEqual([]); // no name column chosen yet
+
+    const field = draftMemberField({ label: "Department", type: "select", options: ["Choir", "Ushers"], visibility: "leaders", memberAccess: "hidden" }, []);
+    expect(field.ok).toBe(true);
+    const mapping = { [key("Naam")]: "builtin:firstName", [key("Van")]: "builtin:lastName", [key("Department")]: "custom:department" };
+    const matched = memberListFrom("m.xlsx", sheets, columns, mapping, { ...none, target: "SA::Main" });
+    expect(matched.members.map((m) => [m.firstName, m.lastName, m.custom?.department])).toEqual([
+      ["Jane", "Doe", "Choir"],
+      ["John", "Roe", "Ushers"],
+    ]);
+    expect(matched.ignored).toEqual(["Notes"]);
+    expect(matched.target).toBe("SA::Main");
+  });
+
+  it("checks draft fields like saved ones", () => {
+    const first = draftMemberField({ label: "Department", type: "text", options: [], visibility: "leaders", memberAccess: "hidden" }, []);
+    if (!first.ok) throw new Error(first.error);
+    expect(first.field).toMatchObject({ id: "draft:department", key: "department" });
+    expect(draftMemberField({ label: "department", type: "text", options: [], visibility: "leaders", memberAccess: "hidden" }, [first.field]).ok).toBe(false);
+    expect(draftMemberField({ label: "Size", type: "select", options: ["M"], visibility: "leaders", memberAccess: "hidden" }, []).ok).toBe(false);
   });
 });

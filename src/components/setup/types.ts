@@ -2,6 +2,7 @@ import type { Portfolio, Position } from "@/lib/access";
 import { tenant } from "@/tenant";
 import { labels, singleCountry } from "@/lib/labels";
 import type { MemberList } from "./member-list";
+import type { MemberField } from "@/lib/custom-fields";
 
 export type WizardCountry = {
   name: string;
@@ -36,6 +37,7 @@ export type ImportedMemberRow = {
     // Simple member-list import only.
     ageGroup?: string;
     cellName?: string; // as spelled in the sheet — see WizardState.cellMap
+    custom?: Record<string, string>; // field key → value, for memberFields
   };
 };
 
@@ -56,6 +58,9 @@ export type WizardState = {
   // A member list with no Country/Church columns (see member-list.ts); its
   // members are placed in a church when setup is submitted.
   memberList: MemberList | null;
+  // The organisation's own member fields, made while matching columns —
+  // drafts (ids "draft:<key>") until setup creates them.
+  memberFields: MemberField[];
 };
 
 const IMPORT_STEP_LABEL = "Import members";
