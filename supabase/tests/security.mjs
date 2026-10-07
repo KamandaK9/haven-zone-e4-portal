@@ -1,13 +1,14 @@
 import { PGlite } from "@electric-sql/pglite";
 import { pgcrypto } from "@electric-sql/pglite/contrib/pgcrypto";
 import { readFileSync, readdirSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 // Applies every migration in supabase/migrations to an in-process Postgres
 // (PGlite) with stand-ins for Supabase's auth/storage/realtime schemas, then
 // checks the row-level security and guard triggers hold: each case below is
 // something a signed-in browser could otherwise do with the public anon key.
 // Run: npm run test:db
-const MIG = process.argv[2] ?? new URL("../migrations", import.meta.url).pathname;
+const MIG = process.argv[2] ?? fileURLToPath(new URL("../migrations", import.meta.url)); // decodes spaces in the path
 const db = new PGlite({ extensions: { pgcrypto } });
 
 // ── Supabase stand-ins ────────────────────────────────────────────────
