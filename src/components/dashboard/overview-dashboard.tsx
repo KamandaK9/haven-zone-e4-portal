@@ -9,6 +9,8 @@ import type { Cell } from "@/lib/data/types";
 import { labels, lower } from "@/lib/labels";
 import { pluralize } from "@/lib/utils";
 import { tenant } from "@/tenant";
+import { GettingStarted } from "@/components/dashboard/getting-started";
+import type { Step } from "@/lib/onboarding/steps";
 
 // The dashboard for a deployment that doesn't track giving: membership,
 // structure and age groups — the figures it does have. (Attendance figures
@@ -20,11 +22,13 @@ export function OverviewDashboard({
   cells,
   scopeName,
   attendance,
+  gettingStarted,
 }: {
   ds: Dataset;
   cells: Cell[];
   scopeName: string;
   attendance?: AttendanceTiles;
+  gettingStarted?: Step[];
 }) {
   const stats = getZoneStats(ds);
   const activity = getRecentActivity(ds, 7);
@@ -48,6 +52,8 @@ export function OverviewDashboard({
         <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
         <p className="text-sm text-muted-foreground">Membership across {scopeName}.</p>
       </div>
+
+      {gettingStarted && <GettingStarted steps={gettingStarted} />}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard label="Members" value={stats.totalMembers.toLocaleString()} icon={Users} />

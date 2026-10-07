@@ -33,6 +33,7 @@ export type Database = {
           id: string;
           name: string;
           setup_complete: boolean;
+          getting_started: Json;
           display_currency: string;
           default_programs_seeded: boolean;
           handbook_rules: Json | null;
@@ -42,6 +43,7 @@ export type Database = {
           id?: string;
           name: string;
           setup_complete?: boolean;
+          getting_started?: Json;
           display_currency?: string;
           default_programs_seeded?: boolean;
           created_at?: string;
@@ -52,6 +54,7 @@ export type Database = {
           display_currency: string;
           default_programs_seeded: boolean;
           handbook_rules: Json | null;
+          getting_started: Json;
         }>;
         Relationships: [];
       };

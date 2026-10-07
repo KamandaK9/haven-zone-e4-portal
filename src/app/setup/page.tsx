@@ -27,6 +27,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { StepProgress } from "@/components/setup/step-progress";
 import { SETUP_IMPORT_MODES, STEP_LABELS, type WizardState, type WizardCountry } from "@/components/setup/types";
 import { MemberListImportPanel } from "@/components/setup/member-list-import";
+import { BeforeYouStart } from "@/components/setup/before-you-start";
 import { cellMapFor, loadMemberSheet, memberCount, resolveMemberList } from "@/components/setup/member-list";
 import { completeZoneSetup, type CompleteZoneSetupResult } from "@/lib/actions/setup";
 import { createClient } from "@/lib/supabase/client";
@@ -319,6 +320,7 @@ function StepZoneBasics({
 }) {
   return (
     <div className="space-y-6">
+      <BeforeYouStart />
       <div>
         <h2 className="text-lg font-semibold">{labels.zone} basics</h2>
         <p className="text-sm text-muted-foreground mt-0.5">

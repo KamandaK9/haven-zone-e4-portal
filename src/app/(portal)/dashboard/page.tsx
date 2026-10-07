@@ -36,6 +36,8 @@ import { OverviewDashboard, type AttendanceTiles } from "@/components/dashboard/
 import { churchToday, getAttendanceData } from "@/lib/data/attendance";
 import { summarise } from "@/lib/attendance/summary";
 import { ATTENDANCE_RULES } from "@/lib/attendance/rules";
+import { gettingStartedSteps, type Step } from "@/lib/onboarding/steps";
+import { createClient } from "@/lib/supabase/server";
 import { getZoneCells } from "@/lib/data/cells";
 import { labels, lower } from "@/lib/labels";
 
@@ -69,12 +71,40 @@ export default async function DashboardPage({
         needFollowUp: standing.filter((s) => s.missedInARow >= ATTENDANCE_RULES.absenceAlertAfter).length,
       };
     }
+    const cells = await getZoneCells(profile.zoneId);
+    // The setup checklist, for admins, until it's done or dismissed.
+    let gettingStarted: Step[] | undefined;
+    if (can(profile, "manage_access")) {
+      const supabase = await createClient();
+      const [{ data: zone }, logins, logos, cohorts, services] = await Promise.all([
+        supabase.from("zones").select("getting_started").eq("id", profile.zoneId).single(),
+        supabase.from("profiles").select("id", { count: "exact", head: true }),
+        tenant.modules.resources ? supabase.from("resources").select("id", { count: "exact", head: true }).eq("kind", "logo") : { count: 0 },
+        tenant.modules.courses ? supabase.from("cohorts").select("id", { count: "exact", head: true }) : { count: 0 },
+        tenant.modules.attendance ? supabase.from("services").select("id", { count: "exact", head: true }) : { count: 0 },
+      ]);
+      const state = (zone?.getting_started ?? {}) as { dismissed?: boolean; done?: string[] };
+      const steps = gettingStartedSteps(
+        {
+          locations: ds.churches.filter((c) => !c.isOffice).length,
+          members: ds.members.length,
+          cells: cells.length,
+          logins: logins.count ?? 0,
+          logos: logos.count ?? 0,
+          cohorts: cohorts.count ?? 0,
+          services: services.count ?? 0,
+        },
+        state.done ?? []
+      );
+      if (!state.dismissed && steps.some((s) => !s.done)) gettingStarted = steps;
+    }
     return (
       <OverviewDashboard
         ds={ds}
-        cells={await getZoneCells(profile.zoneId)}
+        cells={cells}
         scopeName={describeScope(profile, ds)}
         attendance={attendance}
+        gettingStarted={gettingStarted}
       />
     );
   }
