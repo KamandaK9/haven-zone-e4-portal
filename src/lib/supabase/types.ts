@@ -1159,9 +1159,33 @@ export type Database = {
         Update: Partial<{ mapping: Json; updated_by: string | null; updated_at: string }>;
         Relationships: [];
       };
+      check_in_links: {
+        Row: {
+          token: string; zone_id: string; church_id: string; service_date: string; kind: "sunday" | "midweek" | "special";
+          name: string; created_by: string | null; created_at: string; expires_at: string;
+        };
+        Insert: {
+          token: string; zone_id: string; church_id: string; service_date: string; kind: "sunday" | "midweek" | "special";
+          name?: string; created_by?: string | null; created_at?: string; expires_at: string;
+        };
+        Update: Partial<{ expires_at: string }>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
+      qr_link_info: {
+        Args: { p_token: string };
+        Returns: { zone_id: string; church_name: string; service_date: string; kind: string; name: string }[];
+      };
+      qr_check_in: {
+        Args: { p_token: string; p_phone: string; p_member_id?: string };
+        Returns: Json;
+      };
+      qr_add_visitor: {
+        Args: { p_token: string; p_first_name: string; p_last_name: string; p_phone: string };
+        Returns: Json;
+      };
       cohort_roster: {
         Args: { p_cohort_id: string };
         Returns: { member_id: string; first_name: string; last_name: string; cell_name: string | null }[];
