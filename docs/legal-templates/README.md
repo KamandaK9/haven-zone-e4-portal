@@ -39,7 +39,7 @@ this), replace every `[placeholder]`, and keep the filled-in versions there —
    make sure each has a written agreement covering confidentiality and
    security (most providers publish a Data Processing Agreement — accept it in
    their dashboard and keep a copy).
-5. **Retention.** Agree `retention-schedule.md` and match `tenant.legal.retention`.
+5. **Retention.** Agree `retention-schedule.md` and set the same periods in Settings → Privacy.
 6. **Breaches.** Adopt `breach-response.md` and make sure leaders know whom to
    tell.
 7. **Leaders.** Brief leaders on confidentiality — they accept the terms of
