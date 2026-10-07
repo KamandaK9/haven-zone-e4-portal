@@ -72,7 +72,7 @@ const positions: readonly PositionDef[] = [
 //   - Birthday messages: each day's batch is approved by someone before it
 //     sends; under-18s go to the guardian's contact, not the minor.
 //   - Check-in: must work offline (queue on the device, sync when back).
-// Still placeholder: logo and brand colours in theme.css, pending supply.
+// Still placeholder: brand colours in theme.css (logo is an interim 500px cut).
 export const tenant: TenantConfig = {
   name: "CE Sandton",
   portalName: "CE Sandton Portal",
@@ -128,8 +128,9 @@ export const tenant: TenantConfig = {
   },
   affiliation: "An arm of Christ Embassy",
   emailPlaceholder: "you@cesandton.org",
-  // Placeholder mark — replace with CE Sandton's own logo once supplied.
-  logo: { src: "/brand/logo-mark.svg", alt: "CE Sandton", width: 64, height: 64 },
+  // Interim: cut from the 500px JPEG the church sent (2026-10-07), corners
+  // made transparent. Swap for a high-res/vector original once supplied.
+  logo: { src: "/brand/ce-sandton-logo.png", alt: "Christ Embassy Sandton", width: 399, height: 399 },
   chartPrimary: "#4f46e5",
   chartRamp: ["#c7d2fe", "#a5b4fc", "#818cf8", "#4f46e5"],
   avatarColors: ["#4f46e5", "#0891b2", "#7c3aed", "#0d9488", "#2563eb", "#9333ea", "#0284c7"],
