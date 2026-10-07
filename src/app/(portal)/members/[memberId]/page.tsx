@@ -37,6 +37,7 @@ import { churchToday, getMemberAttendance } from "@/lib/data/attendance";
 import { ATTENDANCE_RULES, attendanceStatus, consecutiveMissedSundays, sundayServicesFor } from "@/lib/attendance/rules";
 import { FollowUpDialog, OUTCOMES } from "@/components/attendance/follow-up-dialog";
 import { ConfirmVisitorButton } from "@/components/attendance/confirm-visitor-button";
+import { MemberDataActions } from "@/components/members/member-data-actions";
 import { formatBirthday } from "@/lib/birthday";
 
 const STATUS_META: Record<LessonStatus, { label: string; className: string }> = {
@@ -350,6 +351,12 @@ export default async function MemberPage({
           </Card>
         )}
       </div>
+
+      {can(profile, "manage_members") && (
+        <div className="flex justify-end">
+          <MemberDataActions memberId={member.id} fullName={memberFullName(member)} backHref={`/churches/${member.churchId}`} />
+        </div>
+      )}
 
       {(member.profession || member.spouseName || member.birthday || member.weddingAnniversary || member.kcHandle || ageGroupLabel) && (
         <Card>

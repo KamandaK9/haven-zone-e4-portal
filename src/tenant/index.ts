@@ -119,6 +119,10 @@ export const tenant: TenantConfig = {
     portfolios: [],
     positions,
   },
+  // POPIA: the church's Information Officer and contact details aren't
+  // confirmed yet, and the notice hasn't been reviewed by them — it shows as
+  // a draft until `reviewed: true`.
+  privacy: {},
   // From the pastor (2026-10-07): complete after 7 classes.
   course: { name: "Foundation School", classes: 7, requiredClasses: 7 },
   // From the pastor (2026-10-07): active = 2+ Sunday services a month;

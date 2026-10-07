@@ -984,7 +984,7 @@ export type Database = {
           device_id?: string | null;
           synced_at?: string;
         };
-        Update: Partial<{ checked_in_at: string }>;
+        Update: Partial<{ checked_in_at: string; member_id: string }>;
         Relationships: [];
       };
       follow_ups: {
@@ -1006,7 +1006,7 @@ export type Database = {
           outcome?: "reached" | "no_answer" | "visited" | "other";
           note?: string | null;
         };
-        Update: Partial<{ outcome: "reached" | "no_answer" | "visited" | "other"; note: string | null }>;
+        Update: Partial<{ outcome: "reached" | "no_answer" | "visited" | "other"; note: string | null; member_id: string }>;
         Relationships: [];
       };
       courses: {
@@ -1030,13 +1030,13 @@ export type Database = {
       cohort_students: {
         Row: { cohort_id: string; member_id: string; zone_id: string; enrolled_at: string };
         Insert: { cohort_id: string; member_id: string; zone_id: string; enrolled_at?: string };
-        Update: Partial<{ enrolled_at: string }>;
+        Update: Partial<{ enrolled_at: string; member_id: string }>;
         Relationships: [];
       };
       class_attendance: {
         Row: { id: string; zone_id: string; class_id: string; cohort_id: string; member_id: string; attended_on: string; marked_by: string | null };
         Insert: { id?: string; zone_id: string; class_id: string; cohort_id: string; member_id: string; attended_on?: string; marked_by?: string | null };
-        Update: Partial<{ attended_on: string }>;
+        Update: Partial<{ attended_on: string; member_id: string }>;
         Relationships: [];
       };
       resources: {

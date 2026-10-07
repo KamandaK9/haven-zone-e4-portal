@@ -78,7 +78,12 @@ function LoginForm() {
           </div>
         </div>
 
-        {tenant.affiliation && <p className="relative text-xs text-primary-foreground/60">{tenant.affiliation}</p>}
+        <p className="relative text-xs text-primary-foreground/60">
+          {tenant.affiliation && <>{tenant.affiliation} · </>}
+          <Link href="/privacy" className="underline-offset-2 hover:underline">
+            Privacy notice
+          </Link>
+        </p>
       </div>
 
       <div className="flex flex-col items-center justify-center p-6 sm:p-12">

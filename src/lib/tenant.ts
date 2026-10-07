@@ -101,6 +101,9 @@ export type TenantConfig = {
     // "chapter" if omitted.
     elevatedMemberScope?: Scope;
   };
+  // Shown on the privacy notice (/privacy). Until the organisation names its
+  // Information Officer, the notice says so ("to be confirmed").
+  privacy?: { informationOfficer?: string; contactEmail?: string; contactPhone?: string; reviewed?: boolean };
   // The cohort-based course the courses module runs (modules.courses): its
   // name, how many classes it has, and how many distinct classes complete it.
   course?: { name: string; classes: number; requiredClasses: number };
