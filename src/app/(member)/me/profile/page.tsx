@@ -11,6 +11,8 @@ import { getChurch, getCountry, getMember, memberFullName } from "@/lib/data/ana
 import { isLeader, positionLabel } from "@/lib/access";
 import { formatBirthday } from "@/lib/birthday";
 import { labels, lower } from "@/lib/labels";
+import { MemberFieldsCard } from "@/components/members/member-fields-card";
+import { getMemberFields, getMemberFieldValues } from "@/lib/data/member-fields";
 
 // Roster fields (title, KC handle, profession, ...) only exist for members
 // pulled in from a leadership-roster import — most plain members won't have
@@ -45,6 +47,12 @@ export default async function MemberProfilePage() {
     return <p className="text-sm text-muted-foreground">Couldn&apos;t find your member record.</p>;
   }
 
+  const [customFields, customValues] = await Promise.all([getMemberFields(profile.zoneId), getMemberFieldValues([member.id])]);
+  const ownValues = customValues.get(member.id) ?? {};
+  // Only fields the organisation shows to members themselves.
+  const customEntries = customFields
+    .filter((f) => !f.archived && f.memberAccess !== "hidden")
+    .map((field) => ({ field, value: ownValues[field.id], editable: field.memberAccess === "edit" }));
   const church = getChurch(ds, member.churchId);
   const country = getCountry(ds, member.countryId);
   const importantInfo = [
@@ -105,6 +113,13 @@ export default async function MemberProfilePage() {
           </CardContent>
         </Card>
       )}
+
+      <MemberFieldsCard
+        memberId={member.id}
+        entries={customEntries}
+        title="Your details"
+        description={`Kept by your ${lower(labels.location)} — change the ones you can, or ask a leader to correct the rest.`}
+      />
 
       <Card>
         <CardHeader>

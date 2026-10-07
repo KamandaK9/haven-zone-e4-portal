@@ -6,6 +6,7 @@ import { requireModule } from "@/lib/require-module";
 import { createClient } from "@/lib/supabase/server";
 import { labels } from "@/lib/labels";
 import { tenant } from "@/tenant";
+import { getCheckInScreen } from "@/lib/data/check-in-screen";
 
 export const metadata = { title: `Self check-in · ${tenant.portalName}` };
 
@@ -20,6 +21,8 @@ export default async function KioskPage() {
   await requireAal2IfEnrolled();
 
   const supabase = await createClient();
+  const { saved: _saved, ...screen } = await getCheckInScreen(profile.zoneId);
+  void _saved;
   const { data: churches } = await supabase.from("churches").select("id, name, is_office").order("name");
   const locations = (churches ?? []).filter((c) => !c.is_office).map((c) => ({ id: c.id, name: c.name }));
   if (locations.length === 0) {
@@ -27,7 +30,7 @@ export default async function KioskPage() {
   }
   return (
     <div className="min-h-dvh bg-background">
-      <KioskLoader churches={locations} timeZone={tenant.timezone} />
+      <KioskLoader churches={locations} timeZone={tenant.timezone} screen={screen} />
     </div>
   );
 }

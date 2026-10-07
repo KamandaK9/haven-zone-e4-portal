@@ -25,6 +25,9 @@ export type RecordingStatus = "none" | "processing" | "ready" | "errored";
 export type SupportCategory = "question" | "problem" | "account" | "records" | "other";
 export type DataRequestKind = "access" | "correction" | "deletion" | "objection" | "other";
 export type DataRequestStatus = "open" | "in_progress" | "completed" | "declined";
+export type MemberFieldType = "text" | "number" | "date" | "select" | "yes_no";
+export type MemberFieldVisibility = "leaders" | "contact" | "admins";
+export type MemberFieldAccess = "hidden" | "view" | "edit";
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
@@ -1100,6 +1103,60 @@ export type Database = {
         Row: { zone_id: string; logo_guidelines: string | null; updated_by: string | null; updated_at: string };
         Insert: { zone_id: string; logo_guidelines?: string | null; updated_by?: string | null; updated_at?: string };
         Update: Partial<{ logo_guidelines: string | null; updated_by: string | null; updated_at: string }>;
+        Relationships: [];
+      };
+      check_in_screen: {
+        Row: { zone_id: string; title: string | null; tagline: string | null; background_path: string | null; updated_by: string | null; updated_at: string };
+        Insert: { zone_id: string; title?: string | null; tagline?: string | null; background_path?: string | null; updated_by?: string | null; updated_at?: string };
+        Update: Partial<{ title: string | null; tagline: string | null; background_path: string | null; updated_by: string | null; updated_at: string }>;
+        Relationships: [];
+      };
+      member_fields: {
+        Row: {
+          id: string;
+          zone_id: string;
+          key: string;
+          label: string;
+          type: MemberFieldType;
+          options: string[];
+          visibility: MemberFieldVisibility;
+          member_access: MemberFieldAccess;
+          sort_order: number;
+          archived: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          zone_id: string;
+          key: string;
+          label: string;
+          type: MemberFieldType;
+          options?: string[];
+          visibility?: MemberFieldVisibility;
+          member_access?: MemberFieldAccess;
+          sort_order?: number;
+          archived?: boolean;
+        };
+        Update: Partial<{
+          label: string;
+          options: string[];
+          visibility: MemberFieldVisibility;
+          member_access: MemberFieldAccess;
+          sort_order: number;
+          archived: boolean;
+        }>;
+        Relationships: [];
+      };
+      member_field_values: {
+        Row: { member_id: string; field_id: string; zone_id: string; value: string; updated_at: string };
+        Insert: { member_id: string; field_id: string; zone_id: string; value: string; updated_at?: string };
+        Update: Partial<{ value: string; updated_at: string }>;
+        Relationships: [];
+      };
+      import_templates: {
+        Row: { id: string; zone_id: string; kind: "members"; mapping: Json; updated_by: string | null; updated_at: string };
+        Insert: { id?: string; zone_id: string; kind: "members"; mapping: Json; updated_by?: string | null; updated_at?: string };
+        Update: Partial<{ mapping: Json; updated_by: string | null; updated_at: string }>;
         Relationships: [];
       };
     };

@@ -43,6 +43,9 @@ import { FollowUpDialog, OUTCOMES } from "@/components/attendance/follow-up-dial
 import { ConfirmVisitorButton } from "@/components/attendance/confirm-visitor-button";
 import { MemberDataActions } from "@/components/members/member-data-actions";
 import { formatBirthday } from "@/lib/birthday";
+import { MemberFieldsCard } from "@/components/members/member-fields-card";
+import { getMemberFields, getMemberFieldValues } from "@/lib/data/member-fields";
+import { leaderFieldAccess } from "@/lib/custom-fields";
 
 const STATUS_META: Record<LessonStatus, { label: string; className: string }> = {
   completed: { label: "Completed", className: "text-emerald-600" },
@@ -73,6 +76,13 @@ export default async function MemberPage({
       </div>
     );
   }
+  const [customFields, customValues] = await Promise.all([getMemberFields(profile.zoneId), getMemberFieldValues([member.id])]);
+  const ownValues = customValues.get(member.id) ?? {};
+  const customEntries = customFields
+    .filter((f) => !f.archived)
+    .map((field) => ({ field, value: ownValues[field.id], ...leaderFieldAccess(field, (c) => can(profile, c)) }))
+    .filter((e) => e.see)
+    .map(({ field, value, edit }) => ({ field, value, editable: edit }));
   const ageGroupLabel = tenant.ageGroups?.find((g) => g.key === member.ageGroup)?.label;
 
   const church = getChurch(ds, member.churchId);
@@ -422,6 +432,8 @@ export default async function MemberPage({
           </CardContent>
         </Card>
       )}
+
+      <MemberFieldsCard memberId={member.id} entries={customEntries} />
     </div>
   );
 }

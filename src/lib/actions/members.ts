@@ -23,6 +23,8 @@ import type { MemberRole } from "@/lib/data/types";
 import { randomInt } from "node:crypto";
 import { TOO_MANY, withinRateLimit } from "@/lib/rate-limit";
 import { labels, lower } from "@/lib/labels";
+import { normaliseFieldValue, type MemberField } from "@/lib/custom-fields";
+import { mapMemberField } from "@/lib/data/member-fields";
 
 type CreateMemberInput = {
   churchId: string;
@@ -122,6 +124,9 @@ export type ParsedMemberRow = {
   // chapter, or created as a new top-level cell on import.
   cellName?: string;
   ageGroup?: string; // a tenant.ageGroups key
+  // The organisation's own member fields, by field key, as typed in the
+  // sheet — checked against each field's type when imported.
+  custom?: Record<string, string>;
 };
 
 export type BulkImportResult = {
@@ -158,8 +163,14 @@ export async function bulkImportMembers(input: {
     birthday: string | null;
     cell_id?: string | null;
     age_group: string | null;
+    profession: string | null;
+    spouse_name: string | null;
+    wedding_anniversary: string | null;
+    kc_handle: string | null;
   }[] = [];
   const cellNameByIndex: (string | undefined)[] = [];
+  const customByIndex: (Record<string, string> | undefined)[] = [];
+  const rowNumberByIndex: number[] = [];
   const givingByIndex: (number | undefined)[] = [];
   const givingMonthByIndex: (string | undefined)[] = [];
 
@@ -208,8 +219,14 @@ export async function bulkImportMembers(input: {
       title: row.title?.trim() || null,
       birthday: row.birthday?.trim() || null,
       age_group: row.ageGroup ?? null,
+      profession: row.profession?.trim() || null,
+      spouse_name: row.spouseName?.trim() || null,
+      wedding_anniversary: row.weddingAnniversary?.trim() || null,
+      kc_handle: row.kcHandle?.trim() || null,
     });
     cellNameByIndex.push(row.cellName?.trim() || undefined);
+    customByIndex.push(row.custom);
+    rowNumberByIndex.push(i + 1);
     givingByIndex.push(row.givingTotal && row.givingTotal > 0 ? row.givingTotal : undefined);
     givingMonthByIndex.push((row.givingDate ?? new Date().toISOString().slice(0, 10)).slice(0, 7));
   });
@@ -259,6 +276,36 @@ export async function bulkImportMembers(input: {
     .filter((g): g is { member_id: string; zone_id: string; month: string; amount: number } => g.amount !== undefined);
   if (givingRows.length > 0) {
     await supabase.from("giving_entries").insert(givingRows);
+  }
+
+  // The organisation's own fields: each value is checked against its field's
+  // type, and only fields this person may write are filled (RLS would
+  // refuse the rest); anything left out is reported, not fatal.
+  if (customByIndex.some(Boolean)) {
+    const fieldRows = (await supabase.from("member_fields").select("*").eq("zone_id", profile.zoneId).eq("archived", false)).data ?? [];
+    const fields = new Map(fieldRows.map((f) => [f.key, mapMemberField(f)]));
+    const writable = (f: MemberField) =>
+      f.visibility === "admins" ? can(profile, "manage_settings") : f.visibility === "contact" ? can(profile, "view_contact_details") : true;
+    const values: { member_id: string; field_id: string; zone_id: string; value: string }[] = [];
+    const notAllowed = new Set<string>();
+    inserted.forEach((m, i) => {
+      for (const [key, raw] of Object.entries(customByIndex[i] ?? {})) {
+        const field = fields.get(key);
+        if (!field) continue;
+        if (!writable(field)) {
+          notAllowed.add(field.label);
+          continue;
+        }
+        const v = normaliseFieldValue(field, raw);
+        if (!v.ok) errors.push({ row: rowNumberByIndex[i], reason: `${v.error} (got "${raw}") — the rest of the row was imported` });
+        else if (v.value !== null) values.push({ member_id: m.id, field_id: field.id, zone_id: profile.zoneId, value: v.value });
+      }
+    });
+    for (let i = 0; i < values.length; i += 500) {
+      const { error: valueError } = await supabase.from("member_field_values").insert(values.slice(i, i + 500));
+      if (valueError) errors.push({ row: 0, reason: `Some extra details weren't saved: ${valueError.message}` });
+    }
+    for (const label of notAllowed) errors.push({ row: 0, reason: `"${label}" wasn't imported — only admins can fill in that field` });
   }
 
   const { data: church } = await supabase.from("churches").select("name").eq("id", input.churchId).single();
