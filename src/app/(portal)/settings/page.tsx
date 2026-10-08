@@ -77,10 +77,10 @@ const ACTION_LABELS: Record<string, string> = {
 // A row that leads to a settings page of its own.
 function LinkRow({ href, title, description, note, secondary }: { href: string; title: string; description: string; note?: string; secondary?: { href: string; label: string }[] }) {
   return (
-    <Card className="transition-colors hover:bg-muted/30">
+    <Card className="relative transition-colors hover:bg-muted/30">
       <CardContent className="flex items-center gap-4 py-4">
         <div className="min-w-0 flex-1">
-          <Link href={href} className="text-sm font-semibold hover:underline after:absolute after:inset-0 relative">
+          <Link href={href} className="text-sm font-semibold hover:underline after:absolute after:inset-0 after:content-['']">
             {title}
           </Link>
           <p className="text-sm text-muted-foreground">{description}</p>
