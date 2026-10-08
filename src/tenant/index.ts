@@ -11,7 +11,7 @@ const ALL_CAPS: readonly Capability[] = [
   "check_in", "view_attendance", "record_follow_up", "view_pastoral_notes", "manage_services",
   "manage_courses", "teach_courses",
   "send_messages", "approve_messages",
-  "export_data", "manage_settings", "assign_roles", "take_cell_attendance",
+  "export_data", "manage_settings", "assign_roles", "take_cell_attendance", "manage_children",
 ];
 
 // CE Sandton's roles, as agreed with Daniel (2026-10-08). Rank orders
@@ -36,7 +36,7 @@ const positions: readonly PositionDef[] = [
       "view_members", "view_contact_details", "manage_members", "view_reports", "export_data",
       "view_attendance", "record_follow_up", "view_pastoral_notes", "manage_services",
       "manage_courses", "send_messages", "approve_messages", "assign_roles", "take_cell_attendance",
-      "manage_events",
+      "manage_events", "manage_children",
     ],
   },
   {
@@ -46,6 +46,7 @@ const positions: readonly PositionDef[] = [
       "view_members", "view_contact_details", "manage_members", "view_reports", "export_data",
       "view_attendance", "record_follow_up", "view_pastoral_notes", "manage_services",
       "manage_courses", "send_messages", "assign_roles", "take_cell_attendance",
+      "manage_children",
     ],
   },
   {
@@ -77,6 +78,11 @@ const positions: readonly PositionDef[] = [
     key: "fs_teacher", label: "Foundation School Teacher", rank: 5, scope: "self", loginRole: "admin",
     description: "Teaches their own Foundation School class groups and ticks the register — names only.",
     baseCaps: ["teach_courses"],
+  },
+  {
+    key: "children_church_head", label: "Children's Church Head", rank: 3, scope: "chapter", loginRole: "admin",
+    description: "Runs children's church in their sub-group: sees every child, uploads the teachers' lesson materials, and moves children up when they graduate.",
+    baseCaps: ["check_in", "manage_children"],
   },
   {
     key: "checkin_volunteer", label: "Check-in Volunteer", rank: 6, scope: "chapter", loginRole: "admin",

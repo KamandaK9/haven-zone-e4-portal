@@ -44,7 +44,7 @@ export const NAV_ITEMS: NavItemDef[] = [
   { key: "cell-meetings", href: "/cell-meetings", label: "Cell meetings", icon: Users2, cap: ["take_cell_attendance", "view_attendance"], module: "attendance", hideable: true },
   { key: "follow-ups", href: "/follow-ups", label: "Follow-ups", icon: ListChecks, cap: "record_follow_up", module: "attendance", hideable: true },
   { key: "first-timers", href: "/first-timers", label: "First-timers", icon: UserPlus, cap: "view_attendance", module: "attendance", hideable: true },
-  { key: "children", href: "/children", label: "Children's church", icon: Baby, cap: "check_in", module: "attendance", hideable: true },
+  { key: "children", href: "/children", label: "Children's church", icon: Baby, cap: ["check_in", "manage_children"], module: "attendance", hideable: true },
   { key: "check-in", href: "/check-in", label: "Check-in", icon: ScanLine, cap: "check_in", module: "attendance", hideable: true },
   { key: "reports", href: "/reports", label: "Reports", icon: BarChart3, cap: "view_reports", hideable: true },
   { key: "ledger", href: "/ledger", label: "Ledger", icon: BookOpenText, cap: "manage_ledger", module: "ledger", hideable: true },

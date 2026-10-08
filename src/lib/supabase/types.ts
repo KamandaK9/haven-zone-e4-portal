@@ -213,6 +213,7 @@ export type Database = {
           is_visitor: boolean;
           guardian_name: string | null;
           guardian_phone: string | null;
+          expected_graduation: string | null;
           messaging_opt_out: boolean;
           created_at: string;
         };
@@ -244,6 +245,7 @@ export type Database = {
           is_visitor?: boolean;
           guardian_name?: string | null;
           guardian_phone?: string | null;
+          expected_graduation?: string | null;
           messaging_opt_out?: boolean;
           created_at?: string;
         };
@@ -273,6 +275,7 @@ export type Database = {
           is_visitor: boolean;
           guardian_name: string | null;
           guardian_phone: string | null;
+          expected_graduation: string | null;
           messaging_opt_out: boolean;
         }>;
         Relationships: [];
@@ -1101,14 +1104,14 @@ export type Database = {
       };
       resources: {
         Row: {
-          id: string; zone_id: string; kind: "logo" | "brand" | "press"; title: string; description: string | null;
+          id: string; zone_id: string; kind: "logo" | "brand" | "press" | "children"; title: string; description: string | null;
           file_path: string; file_name: string; mime: string; bytes: number; width: number | null; height: number | null;
-          uploaded_by: string | null; created_at: string;
+          uploaded_by: string | null; created_at: string; lesson_date: string | null;
         };
         Insert: {
-          id?: string; zone_id: string; kind: "logo" | "brand" | "press"; title: string; description?: string | null;
+          id?: string; zone_id: string; kind: "logo" | "brand" | "press" | "children"; title: string; description?: string | null;
           file_path: string; file_name: string; mime: string; bytes?: number; width?: number | null; height?: number | null;
-          uploaded_by?: string | null; created_at?: string;
+          uploaded_by?: string | null; created_at?: string; lesson_date?: string | null;
         };
         Update: Partial<{ title: string; description: string | null }>;
         Relationships: [];
@@ -1310,7 +1313,15 @@ export type Database = {
     Functions: {
       children_roster: {
         Args: { p_church_id: string; p_age_groups: string[] };
-        Returns: { id: string; first_name: string; last_name: string; age_group: string | null; guardian_name: string | null; guardian_phone: string | null }[];
+        Returns: { id: string; first_name: string; last_name: string; age_group: string | null; guardian_name: string | null; guardian_phone: string | null; birthday: string | null; expected_graduation: string | null }[];
+      };
+      set_child_graduation: {
+        Args: { p_member: string; p_month: string | null };
+        Returns: boolean;
+      };
+      graduate_child: {
+        Args: { p_member: string; p_to: string };
+        Returns: boolean;
       };
       current_user_scope_cell_ids: {
         Args: Record<string, never>;

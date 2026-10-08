@@ -368,6 +368,41 @@ expect("a member can't switch features off", r.ok && r.affected === 0, r);
 r = await as(D, "authenticated", `update zones set disabled_modules = '{}' where id = '${Z}'`);
 expect("an admin can switch features on and off", changed(r), r);
 
+// ── Children's church: materials and graduation ───────────────────────
+{
+  const HD = id(110), KID2 = id(111);
+  await db.exec(`
+    insert into auth.users (id) values ('${HD}');
+    insert into profiles (id, zone_id, role, full_name, email, position, scope, church_id, caps) values
+      ('${HD}', '${Z}', 'admin', 'Head', 'hd@x', 'member', 'chapter', '${C1}', '{check_in,manage_children}');
+    insert into members (id, zone_id, church_id, country_id, first_name, last_name, age_group) values
+      ('${KID2}', '${Z}', '${C1}', '${CO}', 'Almost', 'Teen', 'children');
+  `);
+  const mat = (who) => as(who, "authenticated", `insert into resources (zone_id, kind, title, file_path, file_name, mime) values ('${Z}', 'children', 'Week 1', '${Z}/a.pdf', 'a.pdf', 'application/pdf')`);
+  r = await mat(HD);
+  expect("the head of children's church can add lesson materials", r.ok, r);
+  r = await mat(V);
+  expect("a check-in volunteer can't", denied(r), r);
+  r = await as(HD, "authenticated", `insert into resources (zone_id, kind, title, file_path, file_name, mime) values ('${Z}', 'logo', 'Logo', '${Z}/b.png', 'b.png', 'image/png')`);
+  expect("…and the head can't add anything but children's materials", denied(r), r);
+  r = await as(V, "authenticated", `select title from resources where kind = 'children'`);
+  expect("any leader can read the materials", r.ok && r.rows.length === 1, r);
+  r = await as(M, "authenticated", `select title from resources where kind = 'children'`);
+  expect("members can't", r.ok && r.rows.length === 0, r);
+  r = await as(HD, "authenticated", `select set_child_graduation('${KID2}', '2027-03-15') as ok`);
+  expect("the head can set a graduation month", r.ok && r.rows[0].ok === true, r);
+  r = await as(HD, "authenticated", `select expected_graduation from children_roster('${C1}', '{children}') where id = '${KID2}'`);
+  expect("…which is stored as the first of that month", r.ok && JSON.stringify(r.rows[0].expected_graduation).includes("2027-03-01"), r);
+  r = await as(V, "authenticated", `select set_child_graduation('${KID2}', '2027-04-01') as ok`);
+  expect("a volunteer can't change graduation", r.ok && r.rows[0].ok === false, r);
+  r = await as(V, "authenticated", `select graduate_child('${KID2}', 'teens') as ok`);
+  expect("…or move a child up", r.ok && r.rows[0].ok === false, r);
+  r = await as(HD, "authenticated", `select graduate_child('${KID2}', 'teens') as ok`);
+  expect("the head can move a child up", r.ok && r.rows[0].ok === true, r);
+  r = await as(HD, "authenticated", `select * from children_roster('${C1}', '{children}') where id = '${KID2}'`);
+  expect("a child who moved up leaves the children's list", r.ok && r.rows.length === 0, r);
+}
+
 // ── Annual events ─────────────────────────────────────────────────────
 r = await as(D, "authenticated", `insert into event_series (zone_id, slug, name) values ('${Z}', 'conf', 'Conference')`);
 expect("an admin can add an annual event", changed(r), r);

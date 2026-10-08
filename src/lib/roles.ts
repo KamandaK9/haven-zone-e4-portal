@@ -23,7 +23,7 @@ const FEATURE_CAPS: Partial<Record<string, keyof Modules>> = {
   manage_services: "attendance", manage_courses: "courses", teach_courses: "courses", send_messages: "messaging",
   approve_messages: "messaging", view_giving_totals: "giving", view_giving_individual: "giving", import_giving: "giving",
   manage_ledger: "ledger", manage_training: "training", send_newsletter: "newsletter", manage_events: "events",
-  manage_records: "records", manage_livestreams: "livestreams",
+  manage_records: "records", manage_livestreams: "livestreams", manage_children: "attendance",
 };
 
 export function roleOption(key: string, modules: Modules): RoleOption {
