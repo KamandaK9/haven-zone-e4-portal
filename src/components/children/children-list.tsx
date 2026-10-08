@@ -6,11 +6,14 @@ import { GraduationCap, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { graduateChild, setGraduation } from "@/lib/actions/children";
 import { graduationState, monthLabel } from "@/lib/children/graduation";
 
 export type ChildRow = { id: string; name: string; guardianName: string; guardianPhone: string; birthday: string; expectedGraduation: string };
+
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 const birthdayLabel = (mmdd: string) => {
   const m = /^(\d{2})-(\d{2})$/.exec(mmdd);
@@ -39,10 +42,28 @@ export function ChildrenList({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [birthMonth, setBirthMonth] = useState("all");
+  const [grad, setGrad] = useState("all");
+  const [guardian, setGuardian] = useState("all");
+  const [sort, setSort] = useState("name");
+
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return kids.filter((k) => !q || k.name.toLowerCase().includes(q) || k.guardianName.toLowerCase().includes(q));
-  }, [kids, query]);
+    const list = kids.filter((k) => {
+      if (q && !k.name.toLowerCase().includes(q) && !k.guardianName.toLowerCase().includes(q)) return false;
+      if (birthMonth !== "all" && k.birthday.slice(0, 2) !== birthMonth) return false;
+      const state = graduationState(k.expectedGraduation, today);
+      if (grad === "due" && state !== "soon" && state !== "overdue") return false;
+      if (grad === "later" && state !== "later") return false;
+      if (grad === "none" && state !== "none") return false;
+      if (guardian === "missing" && k.guardianPhone) return false;
+      if (guardian === "has" && !k.guardianPhone) return false;
+      return true;
+    });
+    const key = (k: ChildRow) => (sort === "graduation" ? k.expectedGraduation || "9999" : sort === "birthday" ? k.birthday || "99-99" : "");
+    return [...list].sort((a, b) => (sort === "name" ? 0 : key(a).localeCompare(key(b))) || a.name.localeCompare(b.name));
+  }, [kids, query, birthMonth, grad, guardian, sort, today]);
+  const filtering = query !== "" || birthMonth !== "all" || grad !== "all" || guardian !== "all";
   const due = kids
     .filter((k) => ["overdue", "soon"].includes(graduationState(k.expectedGraduation, today)))
     .sort((a, b) => a.expectedGraduation.localeCompare(b.expectedGraduation));
@@ -92,9 +113,50 @@ export function ChildrenList({
         </div>
       )}
 
-      <div className="relative max-w-sm">
-        <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input className="pl-8" placeholder="Search by child or guardian" value={query} onChange={(e) => setQuery(e.target.value)} />
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative w-full sm:w-64">
+          <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input className="pl-8" placeholder="Search by child or guardian" value={query} onChange={(e) => setQuery(e.target.value)} />
+        </div>
+        <Select value={birthMonth} onValueChange={setBirthMonth}>
+          <SelectTrigger className="w-40" aria-label="Birthday month"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Any birthday month</SelectItem>
+            {MONTHS.map((m, i) => (
+              <SelectItem key={m} value={String(i + 1).padStart(2, "0")}>{m}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={grad} onValueChange={setGrad}>
+          <SelectTrigger className="w-44" aria-label="Moving up"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Any graduation</SelectItem>
+            <SelectItem value="due">Due or past due</SelectItem>
+            <SelectItem value="later">Moving up later</SelectItem>
+            <SelectItem value="none">No month set</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={guardian} onValueChange={setGuardian}>
+          <SelectTrigger className="w-44" aria-label="Guardian"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Any guardian</SelectItem>
+            <SelectItem value="has">Has a guardian number</SelectItem>
+            <SelectItem value="missing">No guardian number</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={sort} onValueChange={setSort}>
+          <SelectTrigger className="w-44" aria-label="Sort by"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="name">Sort: name</SelectItem>
+            <SelectItem value="graduation">Sort: moving up soonest</SelectItem>
+            <SelectItem value="birthday">Sort: birthday</SelectItem>
+          </SelectContent>
+        </Select>
+        {filtering && (
+          <Button variant="ghost" size="sm" onClick={() => { setQuery(""); setBirthMonth("all"); setGrad("all"); setGuardian("all"); }}>
+            Clear filters
+          </Button>
+        )}
       </div>
 
       {shown.length === 0 ? (
@@ -137,7 +199,7 @@ export function ChildrenList({
           })}
         </div>
       )}
-      <p className="text-xs text-muted-foreground">{kids.length} {kids.length === 1 ? "child" : "children"}.</p>
+      <p className="text-xs text-muted-foreground">{filtering ? `${shown.length} of ${kids.length}` : kids.length} {kids.length === 1 ? "child" : "children"}.</p>
 
       <Dialog open={!!editing} onOpenChange={(v) => !v && setEditing(null)}>
         <DialogContent className="sm:max-w-sm">
