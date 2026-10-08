@@ -11,7 +11,7 @@ const ALL_CAPS: readonly Capability[] = [
   "check_in", "view_attendance", "record_follow_up", "view_pastoral_notes", "manage_services",
   "manage_courses", "teach_courses",
   "send_messages", "approve_messages",
-  "export_data", "manage_settings", "assign_roles",
+  "export_data", "manage_settings", "assign_roles", "take_cell_attendance",
 ];
 
 // CE Sandton's roles, as agreed with Daniel (2026-10-08). Rank orders
@@ -35,7 +35,7 @@ const positions: readonly PositionDef[] = [
     baseCaps: [
       "view_members", "view_contact_details", "manage_members", "view_reports", "export_data",
       "view_attendance", "record_follow_up", "view_pastoral_notes", "manage_services",
-      "manage_courses", "send_messages", "approve_messages", "assign_roles",
+      "manage_courses", "send_messages", "approve_messages", "assign_roles", "take_cell_attendance",
     ],
   },
   {
@@ -44,7 +44,7 @@ const positions: readonly PositionDef[] = [
     baseCaps: [
       "view_members", "view_contact_details", "manage_members", "view_reports", "export_data",
       "view_attendance", "record_follow_up", "view_pastoral_notes", "manage_services",
-      "manage_courses", "send_messages", "assign_roles",
+      "manage_courses", "send_messages", "assign_roles", "take_cell_attendance",
     ],
   },
   {
@@ -59,18 +59,18 @@ const positions: readonly PositionDef[] = [
   },
   {
     key: "senior_cell_leader", label: "Senior Cell Leader", rank: 3, scope: "cell", loginRole: "admin",
-    description: "Leads a senior cell and the cells inside it: their members, attendance and follow-ups.",
-    baseCaps: ["view_members", "view_contact_details", "view_attendance", "record_follow_up"],
+    description: "Leads a senior cell and the cells inside it: their members, registers and follow-ups.",
+    baseCaps: ["view_members", "view_contact_details", "view_attendance", "record_follow_up", "take_cell_attendance"],
   },
   {
     key: "cell_leader", label: "Cell Leader", rank: 4, scope: "cell", loginRole: "admin",
-    description: "Leads a cell: its members, their attendance, and following up when someone's been away.",
-    baseCaps: ["view_members", "view_contact_details", "view_attendance", "record_follow_up"],
+    description: "Leads a cell: its members, taking the cell register, and following up when someone's been away.",
+    baseCaps: ["view_members", "view_contact_details", "view_attendance", "record_follow_up", "take_cell_attendance"],
   },
   {
     key: "assistant_cell_leader", label: "Assistant Cell Leader", rank: 5, scope: "cell", loginRole: "admin",
-    description: "Helps lead the cell they belong to: its members, attendance and follow-ups.",
-    baseCaps: ["view_members", "view_contact_details", "view_attendance", "record_follow_up"],
+    description: "Helps lead the cell they belong to: its members, the cell register and follow-ups.",
+    baseCaps: ["view_members", "view_contact_details", "view_attendance", "record_follow_up", "take_cell_attendance"],
   },
   {
     key: "fs_teacher", label: "Foundation School Teacher", rank: 5, scope: "self", loginRole: "admin",
@@ -166,6 +166,11 @@ export const tenant: TenantConfig = {
     // Stratum's defaults — the church to confirm.
     retention: { membersAfterLeaving: 2, financial: 5, auditLog: 5, supportAndRequests: 2 },
   },
+  // The portal is for pastors, sub-group leaders and staff: members don't
+  // get logins (they check in on the tablet or by QR, and receive messages).
+  memberLogins: false,
+  // Children's church is for the Children age group.
+  childrenCheckIn: { ageGroups: ["children"] },
   // Messages to children and teens go to a guardian (the pastor's rule:
   // under-18s are reached through their guardian, never directly).
   messaging: { countryCode: "27", minorAgeGroups: ["children", "teens"] },

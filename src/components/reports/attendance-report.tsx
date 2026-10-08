@@ -8,6 +8,8 @@ import type { Cell } from "@/lib/data/types";
 import type { ServiceRow } from "@/lib/data/attendance";
 import type { AttendanceRow, MemberAttendance } from "@/lib/attendance/summary";
 import { firstTimerReturns, sundayTrend } from "@/lib/attendance/report";
+import { ATTENDANCE_RULES } from "@/lib/attendance/rules";
+import type { SubGroupRow } from "@/lib/attendance/compare";
 import { labels, lower } from "@/lib/labels";
 
 const short = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString("en-ZA", { day: "numeric", month: "short" });
@@ -21,6 +23,7 @@ export function AttendanceReport({
   attendance,
   standing,
   course,
+  comparison,
   canExport,
 }: {
   ds: Dataset;
@@ -29,6 +32,8 @@ export function AttendanceReport({
   attendance: AttendanceRow[];
   standing: Map<string, MemberAttendance>;
   course?: { name: string; completed: number; inProgress: number };
+  // Sub-groups side by side — only for someone who sees more than one.
+  comparison?: SubGroupRow[];
   canExport: boolean;
 }) {
   const trend = sundayTrend(services);
@@ -41,6 +46,7 @@ export function AttendanceReport({
   );
   const active = [...standing.values()].filter((s) => s.status === "active").length;
   const locations = ds.churches.filter((c) => !c.isOffice);
+  const churchName = new Map(ds.churches.map((c) => [c.id, c.name]));
 
   const cellRows = cells
     .map((c) => {
@@ -101,6 +107,43 @@ export function AttendanceReport({
           )}
         </CardContent>
       </Card>
+
+      {comparison && comparison.length > 1 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{labels.locations} side by side</CardTitle>
+            <CardDescription>Active means {ATTENDANCE_RULES.activeMinSundays}+ Sundays in the last 30 days</CardDescription>
+          </CardHeader>
+          <CardContent className="overflow-x-auto p-0">
+            <table className="w-full min-w-[560px] border-t text-sm">
+              <thead>
+                <tr className="text-left text-xs text-muted-foreground">
+                  <th className="px-4 py-2 font-medium">{labels.location}</th>
+                  <th className="px-2 py-2 text-right font-medium">Members</th>
+                  <th className="px-2 py-2 text-right font-medium">Active</th>
+                  <th className="px-2 py-2 text-right font-medium">Avg Sunday</th>
+                  <th className="px-2 py-2 text-right font-medium">New (30 days)</th>
+                  <th className="px-2 py-2 text-right font-medium">Need follow-up</th>
+                  {course && <th className="px-4 py-2 text-right font-medium">{course.name}</th>}
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {comparison.map((r) => (
+                  <tr key={r.churchId}>
+                    <td className="px-4 py-2.5 font-medium">{churchName.get(r.churchId)}</td>
+                    <td className="px-2 py-2.5 text-right tabular-nums">{r.members}</td>
+                    <td className="px-2 py-2.5 text-right tabular-nums">{r.activePct}%</td>
+                    <td className="px-2 py-2.5 text-right tabular-nums">{r.averageSunday}</td>
+                    <td className="px-2 py-2.5 text-right tabular-nums">{r.firstTimers}</td>
+                    <td className={`px-2 py-2.5 text-right tabular-nums ${r.needFollowUp > 0 ? "text-amber-700" : ""}`}>{r.needFollowUp}</td>
+                    {course && <td className="px-4 py-2.5 text-right tabular-nums">{r.courseCompleted}</td>}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid lg:grid-cols-2 gap-4">
         {locations.length > 1 && trend.length > 0 && (

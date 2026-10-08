@@ -370,6 +370,9 @@ export async function inviteMemberToPortal(memberId: string): Promise<InviteMemb
 
   const position = isPosition(member.position) ? member.position : tenant.access.memberPositionKey;
   const portfolio = isPortfolio(member.portfolio) ? member.portfolio : null;
+  if (tenant.memberLogins === false && !isLeader(position)) {
+    return { ok: false, error: "Members don't get logins here — give them a role first (Change role), then invite them." };
+  }
   if (isLeader(position) && !canActOn(profile.position, position)) {
     return { ok: false, error: "You can only give portal access to people below your own position." };
   }

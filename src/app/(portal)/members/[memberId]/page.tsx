@@ -223,11 +223,11 @@ export default async function MemberPage({
           ) : null}
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {member.isVisitor && can(profile, "manage_members") && <ConfirmVisitorButton memberId={member.id} />}
-            <InviteMemberButton
+            {(tenant.memberLogins !== false || isLeader(member.position) || member.hasPortalAccess) && <InviteMemberButton
               memberId={member.id}
               hasPortalAccess={member.hasPortalAccess}
               hasEmail={!!member.email}
-            />
+            />}
           </div>
         </div>
       </div>

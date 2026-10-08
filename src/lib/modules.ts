@@ -8,7 +8,7 @@ import type { ModuleKey } from "@/lib/tenant";
 export type Modules = Record<ModuleKey, boolean>;
 
 export const FEATURE_CATALOGUE: readonly { key: ModuleKey; name: string; description: string; comingSoon?: boolean }[] = [
-  { key: "attendance", name: "Attendance & check-in", description: "Services, check-in at the door (volunteer, self check-in tablet or QR code), absence alerts and follow-ups." },
+  { key: "attendance", name: "Attendance & check-in", description: "Services and check-in at the door (volunteer, self check-in tablet or QR code), children's church with pick-up codes, cell meeting registers, first-timer journey, absence alerts and assigned follow-ups." },
   { key: "courses", name: tenant.course?.name ?? "Courses", description: "Class groups with a teacher and a register; completion after a set number of classes." },
   { key: "resources", name: "Resources", description: "Logos, brand assets and press releases for leaders to download, with logo guidelines." },
   { key: "messaging", name: "Messaging", description: "Text and email members, cells and groups; approved birthday messages, first-timer welcomes and 'we missed you' notes; with a monthly cap and usage meter." },

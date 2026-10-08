@@ -104,6 +104,13 @@ export type TenantConfig = {
     // "chapter" if omitted.
     elevatedMemberScope?: Scope;
   };
+  // Children's church check-in with pick-up codes: which age groups are
+  // checked in there (default just "children").
+  childrenCheckIn?: { ageGroups: readonly string[] };
+  // Whether ordinary members can be given a login. Default true; false when
+  // the portal is for leaders and staff only — then only people holding a
+  // role (not the plain "member" position) can be invited.
+  memberLogins?: boolean;
   // Messaging (SMS and email): the phone country code numbers are assumed to
   // be in when typed without one, and which age groups are minors — their
   // messages go to a guardian. Both optional (27, and none).
