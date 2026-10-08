@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { tenant } from "@/tenant";
+import { getThemeCss } from "@/lib/theme/server";
 
 const geistSans = Geist({
   variable: "--font-sans",
@@ -24,11 +25,17 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   // (set in proxy.ts); a page built ahead of time would have its scripts
   // blocked by the policy.
   await connection();
+  const themeCss = await getThemeCss();
   return (
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      {themeCss && (
+        <head>
+          <style dangerouslySetInnerHTML={{ __html: themeCss }} />
+        </head>
+      )}
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );

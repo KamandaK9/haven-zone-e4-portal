@@ -177,6 +177,7 @@ export const tenant: TenantConfig = {
   // From the pastor (2026-10-07): complete after 7 classes.
   course: { name: "Foundation School", classes: 7, requiredClasses: 7 },
   // The self check-in tablet at the door: the church's own gold and black.
+  theme: { default: "gold", offered: ["gold", "blue"] },
   checkInScreen: { title: "Christ Embassy Sandton", tagline: "The Wealthy Church", accent: "#d4af37", dark: true },
   // From the pastor (2026-10-07): active = 2+ Sunday services a month;
   // follow up after 2 missed Sundays in a row.

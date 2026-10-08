@@ -368,6 +368,14 @@ expect("a member can't switch features off", r.ok && r.affected === 0, r);
 r = await as(D, "authenticated", `update zones set disabled_modules = '{}' where id = '${Z}'`);
 expect("an admin can switch features on and off", changed(r), r);
 
+// ── Colours ───────────────────────────────────────────────────────────
+r = await as(G, "authenticated", `update zones set theme = '{"primary":"#112233","sidebar":"#000000"}' where id = '${Z}'`);
+expect("a leader without manage_access can't change the colours", r.ok && r.affected === 0, r);
+r = await as(D, "authenticated", `update zones set theme = '{"primary":"#112233","sidebar":"#000000"}' where id = '${Z}'`);
+expect("an admin can change the colours", changed(r), r);
+r = await as(D, "authenticated", `update zones set theme = null where id = '${Z}'`);
+expect("an admin can reset the colours", changed(r), r);
+
 // ── Cell roles ────────────────────────────────────────────────────────
 {
   const SC = id(60), CC = id(61), OC = id(62);
