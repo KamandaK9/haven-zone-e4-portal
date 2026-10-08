@@ -24,6 +24,7 @@ import {
 } from "@/lib/data/analytics";
 import { givingFilterLabel, parseGivingFilter } from "@/lib/giving";
 import { tenant } from "@/tenant";
+import { assignableRoles } from "@/lib/roles";
 import { labels, lower } from "@/lib/labels";
 import { Network } from "lucide-react";
 import { getModules } from "@/lib/modules-server";
@@ -142,6 +143,8 @@ export default async function ChurchPage({
             importFields={importFields}
             importTemplate={importTemplate}
             canManageSettings={can(profile, "manage_settings")}
+            roleOptions={can(profile, "assign_roles") || can(profile, "manage_access") ? assignableRoles(profile.position, modules) : undefined}
+            actor={{ position: profile.position, userId: profile.userId }}
           />
         </CardContent>
       </Card>
