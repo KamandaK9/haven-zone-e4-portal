@@ -13,7 +13,7 @@ const ALL_CAPS: readonly Capability[] = [
   "check_in", "view_attendance", "record_follow_up", "view_pastoral_notes", "manage_services",
   "manage_courses", "teach_courses",
   "send_messages", "approve_messages",
-  "export_data", "manage_settings",
+  "export_data", "manage_settings", "assign_roles", "take_cell_attendance", "manage_children",
 ];
 
 // This zone's leadership tiers. Rank orders seniority (lower = more senior);
