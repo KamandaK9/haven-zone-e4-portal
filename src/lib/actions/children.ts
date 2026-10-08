@@ -72,16 +72,26 @@ export async function saveMaterial(input: {
   title: string;
   description?: string;
   lessonDate?: string;
-  path: string;
-  fileName: string;
-  mime: string;
-  bytes: number;
+  // Either an uploaded file or a link (a video, Google Slides…).
+  file?: { path: string; fileName: string; mime: string; bytes: number };
+  link?: string;
 }): Promise<ActionResult> {
   const auth = await head();
   if (!auth.ok) return auth;
   const { profile } = auth;
-  if (!pathIsUnder(input.path, profile.zoneId)) return { ok: false, error: "That upload isn't yours." };
   if (!input.title.trim()) return { ok: false, error: "Give it a title." };
+  let link: string | null = null;
+  if (input.link?.trim()) {
+    try {
+      const u = new URL(input.link.trim());
+      if (u.protocol !== "https:" && u.protocol !== "http:") throw new Error("scheme");
+      link = u.toString();
+    } catch {
+      return { ok: false, error: "That link doesn't look right — it should start with https://" };
+    }
+  }
+  if (!input.file && !link) return { ok: false, error: "Add a file or a link." };
+  if (input.file && !pathIsUnder(input.file.path, profile.zoneId)) return { ok: false, error: "That upload isn't yours." };
   const supabase = await createClient();
   const { error } = await supabase.from("resources").insert({
     zone_id: profile.zoneId,
@@ -89,14 +99,15 @@ export async function saveMaterial(input: {
     title: input.title.trim(),
     description: input.description?.trim() || null,
     lesson_date: input.lessonDate && /^\d{4}-\d{2}-\d{2}$/.test(input.lessonDate) ? input.lessonDate : null,
-    file_path: input.path,
-    file_name: input.fileName,
-    mime: input.mime,
-    bytes: input.bytes,
+    file_path: input.file?.path ?? null,
+    file_name: input.file?.fileName ?? null,
+    mime: input.file?.mime ?? null,
+    bytes: input.file?.bytes ?? 0,
+    link_url: link,
     uploaded_by: profile.userId,
   });
   if (error) {
-    await removeFiles(RESOURCES_BUCKET, [input.path]);
+    if (input.file) await removeFiles(RESOURCES_BUCKET, [input.file.path]);
     return { ok: false, error: error.message };
   }
   await logAudit(profile, "children.material_add", `Added "${input.title.trim()}" to children's church materials`);
@@ -111,7 +122,7 @@ export async function deleteMaterial(id: string): Promise<ActionResult> {
   const { data, error } = await supabase.from("resources").delete().eq("id", id).eq("kind", "children").select("file_path, title");
   if (error) return { ok: false, error: error.message };
   if (data?.[0]) {
-    await removeFiles(RESOURCES_BUCKET, [data[0].file_path]);
+    if (data[0].file_path) await removeFiles(RESOURCES_BUCKET, [data[0].file_path]);
     await logAudit(auth.profile, "children.material_remove", `Removed "${data[0].title}" from children's church materials`);
   }
   revalidatePath("/children");

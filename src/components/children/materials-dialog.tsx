@@ -20,30 +20,36 @@ export function UploadMaterialDialog() {
   const [description, setDescription] = useState("");
   const [lessonDate, setLessonDate] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [mode, setMode] = useState<"file" | "link">("file");
+  const [link, setLink] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
 
   async function save() {
-    if (!file) return;
     setBusy(true);
     setError(null);
-    const mime = file.type || "application/octet-stream";
-    const token = await createMaterialUpload({ name: file.name, size: file.size });
-    if (!token.ok) {
-      setBusy(false);
-      return setError(token.error);
+    let uploaded: { path: string; fileName: string; mime: string; bytes: number } | undefined;
+    if (mode === "file" && file) {
+      const mime = file.type || "application/octet-stream";
+      const token = await createMaterialUpload({ name: file.name, size: file.size });
+      if (!token.ok) {
+        setBusy(false);
+        return setError(token.error);
+      }
+      const { error: upErr } = await createClient().storage.from(RESOURCES_BUCKET).uploadToSignedUrl(token.path, token.token, file, { contentType: mime });
+      if (upErr) {
+        setBusy(false);
+        return setError(upErr.message);
+      }
+      uploaded = { path: token.path, fileName: file.name, mime, bytes: file.size };
     }
-    const { error: upErr } = await createClient().storage.from(RESOURCES_BUCKET).uploadToSignedUrl(token.path, token.token, file, { contentType: mime });
-    if (upErr) {
-      setBusy(false);
-      return setError(upErr.message);
-    }
-    const res = await saveMaterial({ title, description, lessonDate, path: token.path, fileName: file.name, mime, bytes: file.size });
+    const res = await saveMaterial({ title, description, lessonDate, file: uploaded, link: mode === "link" ? link : undefined });
     setBusy(false);
     if (!res.ok) return setError(res.error);
     setOpen(false);
     setFile(null);
+    setLink("");
     setTitle("");
     setDescription("");
     setLessonDate("");
@@ -64,9 +70,23 @@ export function UploadMaterialDialog() {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Add a lesson or resource</DialogTitle>
-          <DialogDescription>For the children&apos;s church teachers — slides, lesson plans, worksheets, pictures, audio or video (up to 50 MB).</DialogDescription>
+          <DialogDescription>For the children&apos;s church teachers — PDFs, slides, worksheets, pictures, audio and video. Files can be up to 50 MB; for longer videos, link to them instead.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-2">
+          <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1 text-sm" role="tablist">
+            {(["file", "link"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                role="tab"
+                aria-selected={mode === m}
+                onClick={() => setMode(m)}
+                className={`rounded-md px-3 py-1.5 font-medium ${mode === m ? "bg-background shadow-sm" : "text-muted-foreground"}`}
+              >
+                {m === "file" ? "Upload a file" : "Link a video or slides"}
+              </button>
+            ))}
+          </div>
           <input
             ref={input}
             type="file"
@@ -77,9 +97,16 @@ export function UploadMaterialDialog() {
               if (f && !title) setTitle(f.name.replace(/\.[^.]+$/, ""));
             }}
           />
-          <Button type="button" variant="outline" className="w-full" onClick={() => input.current?.click()}>
-            {file ? file.name : "Choose a file"}
-          </Button>
+          {mode === "file" ? (
+            <Button type="button" variant="outline" className="w-full" onClick={() => input.current?.click()}>
+              {file ? file.name : "Choose a file"}
+            </Button>
+          ) : (
+            <div className="space-y-1">
+              <Input value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://youtube.com/…" aria-label="Link" />
+              <p className="text-xs text-muted-foreground">YouTube, Vimeo, Google Slides or Drive — best for long videos.</p>
+            </div>
+          )}
           <div className="space-y-1">
             <Label htmlFor="mat-title">Title</Label>
             <Input id="mat-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Week 3 — David and Goliath" />
@@ -103,7 +130,7 @@ export function UploadMaterialDialog() {
           <Button variant="outline" onClick={() => setOpen(false)}>
             Cancel
           </Button>
-          <Button onClick={save} disabled={busy || !file || !title.trim()}>
+          <Button onClick={save} disabled={busy || !title.trim() || (mode === "file" ? !file : !link.trim())}>
             {busy ? "Uploading…" : "Upload"}
           </Button>
         </DialogFooter>

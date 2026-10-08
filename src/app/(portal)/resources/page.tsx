@@ -36,7 +36,10 @@ export default async function ResourcesPage() {
     supabase.from("resources").select("*").order("created_at", { ascending: false }),
     supabase.from("resource_settings").select("logo_guidelines").maybeSingle(),
   ]);
-  const all = rows ?? [];
+  // Children's lessons live on that page; everything here is a file.
+  const all = (rows ?? [])
+    .filter((r) => r.kind !== "children" && r.file_path)
+    .map((r) => ({ ...r, file_path: r.file_path!, file_name: r.file_name ?? "", mime: r.mime ?? "" }));
   const logos = all.filter((r) => r.kind === "logo");
   const best = bestLogo(logos.map((r) => ({ ...r, fileName: r.file_name, createdAt: r.created_at })));
   const others = logos.filter((r) => r.id !== best?.id);
