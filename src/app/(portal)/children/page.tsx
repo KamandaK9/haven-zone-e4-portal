@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Download } from "lucide-react";
+import { Download, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ChildrenDesk } from "@/components/children/children-desk";
@@ -56,7 +56,7 @@ export default async function ChildrenPage({ searchParams }: { searchParams: Pro
     : { data: [] };
 
   const materials = tab === "lessons" ? ((await supabase.from("resources").select("*").eq("kind", "children").order("lesson_date", { ascending: false, nullsFirst: false }).order("created_at", { ascending: false })).data ?? []) : [];
-  const downloads = await signedReadUrls(RESOURCES_BUCKET, materials.map((m) => m.file_path), true);
+  const downloads = await signedReadUrls(RESOURCES_BUCKET, materials.map((m) => m.file_path).filter((x): x is string => !!x), true);
   const fromGroup = tenant.childrenCheckIn?.ageGroups[0] ?? "children";
   const nextGroup = nextAgeGroup(tenant.ageGroups ?? [], fromGroup)?.label;
 
@@ -142,19 +142,28 @@ export default async function ChildrenPage({ searchParams }: { searchParams: Pro
                 <div key={m.id} className="flex items-center justify-between gap-3 p-3">
                   <div className="min-w-0">
                     <p className="flex items-center gap-2 text-sm font-medium">
-                      {m.title} <Badge variant="secondary">{m.file_name.split(".").pop()?.toUpperCase()}</Badge>
+                      {m.title} <Badge variant="secondary">{m.file_name ? m.file_name.split(".").pop()?.toUpperCase() : "LINK"}</Badge>
                     </p>
                     <p className="truncate text-xs text-muted-foreground">
                       {[m.lesson_date && `For ${formatDate(m.lesson_date)}`, m.description, `Added ${new Date(m.created_at).toLocaleDateString("en-ZA")}`].filter(Boolean).join(" · ")}
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-3">
-                    {downloads.get(m.file_path) && (
+                    {m.link_url ? (
                       <Button asChild variant="outline" size="sm" className="gap-1.5">
-                        <a href={downloads.get(m.file_path)}>
-                          <Download className="h-3.5 w-3.5" /> Download
+                        <a href={m.link_url} target="_blank" rel="noopener noreferrer">
+                          <ExternalLink className="h-3.5 w-3.5" /> Open
                         </a>
                       </Button>
+                    ) : (
+                      m.file_path &&
+                      downloads.get(m.file_path) && (
+                        <Button asChild variant="outline" size="sm" className="gap-1.5">
+                          <a href={downloads.get(m.file_path)}>
+                            <Download className="h-3.5 w-3.5" /> Download
+                          </a>
+                        </Button>
+                      )
                     )}
                     {canManage && <DeleteMaterialButton id={m.id} title={m.title} />}
                   </div>

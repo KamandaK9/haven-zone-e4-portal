@@ -1105,13 +1105,13 @@ export type Database = {
       resources: {
         Row: {
           id: string; zone_id: string; kind: "logo" | "brand" | "press" | "children"; title: string; description: string | null;
-          file_path: string; file_name: string; mime: string; bytes: number; width: number | null; height: number | null;
-          uploaded_by: string | null; created_at: string; lesson_date: string | null;
+          file_path: string | null; file_name: string | null; mime: string | null; bytes: number; width: number | null; height: number | null;
+          uploaded_by: string | null; created_at: string; lesson_date: string | null; link_url: string | null;
         };
         Insert: {
           id?: string; zone_id: string; kind: "logo" | "brand" | "press" | "children"; title: string; description?: string | null;
-          file_path: string; file_name: string; mime: string; bytes?: number; width?: number | null; height?: number | null;
-          uploaded_by?: string | null; created_at?: string; lesson_date?: string | null;
+          file_path?: string | null; file_name?: string | null; mime?: string | null; bytes?: number; width?: number | null; height?: number | null;
+          uploaded_by?: string | null; created_at?: string; lesson_date?: string | null; link_url?: string | null;
         };
         Update: Partial<{ title: string; description: string | null }>;
         Relationships: [];
