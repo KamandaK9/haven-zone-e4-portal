@@ -44,6 +44,7 @@ export type Database = {
           default_programs_seeded: boolean;
           handbook_rules: Json | null;
           legal_settings: Json | null;
+          theme: Json | null;
           created_at: string;
         };
         Insert: {
@@ -65,6 +66,7 @@ export type Database = {
           default_programs_seeded: boolean;
           handbook_rules: Json | null;
           legal_settings: Json | null;
+          theme: Json | null;
         }>;
         Relationships: [];
       };

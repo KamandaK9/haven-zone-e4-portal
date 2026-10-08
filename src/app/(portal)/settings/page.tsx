@@ -68,6 +68,7 @@ const ACTION_LABELS: Record<string, string> = {
   "newsletter.send": "Sent a newsletter",
   "member_field.create": "Added a member field",
   "member_field.update": "Changed a member field",
+  "settings.theme": "Colours changed",
   "import_template.update": "Member import columns",
   "member.update_fields": "Edited a member's extra details",
 };
@@ -153,6 +154,20 @@ export default async function SettingsPage() {
           <CardContent>
             <Button variant="outline" size="sm" asChild>
               <Link href="/settings/messaging">Messaging settings</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {can(profile, "manage_settings") && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Colours</CardTitle>
+            <CardDescription>The look of the portal — pick a ready-made scheme or your own colours, with a preview and advice on what reads well.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/settings/theme">Choose colours</Link>
             </Button>
           </CardContent>
         </Card>
