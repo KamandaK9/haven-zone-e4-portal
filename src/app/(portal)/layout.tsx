@@ -9,6 +9,7 @@ import { requirePrivacyAccepted } from "@/lib/privacy-server";
 import { IdleSignOut } from "@/components/layout/idle-sign-out";
 import { LEADER_IDLE_MINUTES } from "@/lib/idle";
 import { positionLabel } from "@/lib/access";
+import { getNotifications } from "@/lib/data/notifications";
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
   const profile = await getCurrentProfile();
@@ -20,6 +21,7 @@ export default async function PortalLayout({ children }: { children: React.React
   await requireAal2IfEnrolled();
   const modules = await getModules();
   const idleMinutes = LEADER_IDLE_MINUTES;
+  const notifications = await getNotifications(profile, modules);
 
   return (
     <PortalFrame
@@ -33,6 +35,7 @@ export default async function PortalLayout({ children }: { children: React.React
           caps={profile.caps}
           hiddenNavItems={profile.hiddenNavItems}
           modules={modules}
+          notifications={notifications}
         />
       }
     >

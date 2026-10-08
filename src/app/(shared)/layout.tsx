@@ -11,6 +11,7 @@ import { requirePrivacyAccepted } from "@/lib/privacy-server";
 import { IdleSignOut } from "@/components/layout/idle-sign-out";
 import { LEADER_IDLE_MINUTES, MEMBER_IDLE_MINUTES } from "@/lib/idle";
 import { positionLabel } from "@/lib/access";
+import { getNotifications } from "@/lib/data/notifications";
 
 // Pages everyone signed in can open — leaders and members alike. Same portal
 // frame for both; only which nav items show up differs, via PortalFrame.
@@ -36,6 +37,8 @@ export default async function SharedLayout({ children }: { children: React.React
     );
   }
 
+  const notifications = await getNotifications(profile, modules);
+
   return (
     <PortalFrame
       sidebar={<SidebarNav zoneName={profile.zoneName} role={profile.role} caps={profile.caps} hiddenNavItems={profile.hiddenNavItems} modules={modules} />}
@@ -48,6 +51,7 @@ export default async function SharedLayout({ children }: { children: React.React
           caps={profile.caps}
           hiddenNavItems={profile.hiddenNavItems}
           modules={modules}
+          notifications={notifications}
         />
       }
     >

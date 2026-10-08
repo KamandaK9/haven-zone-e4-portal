@@ -59,11 +59,11 @@ function LoginForm() {
           }}
         />
         <div className="relative flex items-center gap-3">
-          <div className="rounded-xl bg-white p-1.5">
-            <BrandMark size={32} />
+          <div className="rounded-2xl bg-white p-3 shadow-sm">
+            <BrandMark size={88} />
           </div>
           <div>
-            <p className="font-semibold leading-tight">{tenant.portalName}</p>
+            <p className="text-lg font-semibold uppercase leading-tight tracking-wider">{tenant.portalName}</p>
             <p className="text-xs text-primary-foreground/70 leading-tight">Member Management</p>
           </div>
         </div>
@@ -85,9 +85,9 @@ function LoginForm() {
       <div className="flex flex-col items-center justify-center p-6 sm:p-12">
         <div className="w-full max-w-sm space-y-8">
           <div className="flex flex-col items-center gap-3 lg:hidden">
-            <BrandMark size={44} />
+            <BrandMark size={96} />
             <div className="text-center">
-              <p className="font-semibold">{tenant.portalName}</p>
+              <p className="font-semibold uppercase tracking-wider">{tenant.portalName}</p>
               <p className="text-xs text-muted-foreground">Member Management</p>
             </div>
           </div>
