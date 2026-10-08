@@ -4,7 +4,7 @@ import { effectiveModules } from "@/lib/modules";
 
 const modules = effectiveModules([]);
 
-const none = { locations: 1, members: 0, cells: 0, logins: 1, logos: 0, cohorts: 0, services: 0 };
+const none = { locations: 1, members: 0, cells: 0, logins: 1, logos: 0, cohorts: 0, services: 0, messagingConnected: false };
 
 it("ticks steps off from what exists, and manual ones when marked", () => {
   const fresh = gettingStartedSteps(none, [], modules);

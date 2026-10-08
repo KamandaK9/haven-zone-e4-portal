@@ -41,6 +41,8 @@ export const HEADER_ALIASES: Partial<Record<Field, string[]>> = {
   spouseName: ["spouse", "spouse name", "name of spouse", "husband", "wife"],
   weddingAnniversary: ["wedding anniversary", "anniversary"],
   kcHandle: ["kc handle", "kingschat", "kingschat handle"],
+  guardianName: ["guardian", "guardian name", "parent", "parent name", "parent/guardian"],
+  guardianPhone: ["guardian phone", "guardian number", "guardian cell", "parent phone", "parent number", "parent cell", "guardian contact"],
 };
 
 // The column → field positions for one sheet: from the organisation's
@@ -191,6 +193,8 @@ export function parseMemberTable({ headers, rows: dataRows }: TableFile, mapping
       spouseName: get("spouseName"),
       weddingAnniversary: parseBirthday(get("weddingAnniversary")),
       kcHandle: get("kcHandle"),
+      guardianName: get("guardianName"),
+      guardianPhone: parsePhone(get("guardianPhone")),
       ...(Object.keys(custom).length ? { custom } : {}),
     });
   });

@@ -428,5 +428,116 @@ expect("a link must be a web address", denied(r), r);
 r = await as(D, "authenticated", `insert into class_materials (zone_id, class_id, title, file_path, file_name) values ('${Z}', '${CL1}', 'Elsewhere', '${id(99)}/x.pdf', 'x.pdf')`);
 expect("an uploaded file must be in the zone's own folder", denied(r), r);
 
+// ── Messaging ─────────────────────────────────────────────────────────
+{
+  const MSG = id(80), MSG2 = id(81);
+  await db.exec(`
+    update profiles set caps = array_cat(caps, '{send_messages,approve_messages}') where id = '${D}' and not 'send_messages' = any(caps);
+    update profiles set caps = array_append(caps, 'send_messages') where id = '${G}' and not 'send_messages' = any(caps);
+    insert into messages (id, zone_id, channel, body, status, created_by) values
+      ('${MSG}', '${Z}', 'sms', 'Hello', 'pending', '${G}'),
+      ('${MSG2}', '${Z}', 'sms', 'Other', 'pending', '${D}');
+    insert into message_recipients (message_id, zone_id, channel, name, to_address, body) values
+      ('${MSG}', '${Z}', 'sms', 'Mem Ber', '+27821112222', 'Hello'),
+      ('${MSG2}', '${Z}', 'sms', 'Oth Er', '+27829998888', 'Other');
+  `);
+  r = await as(G, "authenticated", `select id from messages`);
+  expect("a sender sees only their own messages", r.ok && r.rows.length === 1 && r.rows[0].id === MSG, r);
+  r = await as(D, "authenticated", `select id from messages`);
+  expect("an approver sees every message", r.ok && r.rows.length === 2, r);
+  r = await as(G, "authenticated", `select to_address from message_recipients`);
+  expect("a sender sees recipients of their own messages only", r.ok && r.rows.length === 1, r);
+  r = await as(M, "authenticated", `select id from messages`);
+  expect("members can't see messages", r.ok && r.rows.length === 0, r);
+  r = await as(M, "authenticated", `select to_address from message_recipients`);
+  expect("members can't see who was messaged", r.ok && r.rows.length === 0, r);
+  r = await as(G, "authenticated", `update messages set status = 'approved' where id = '${MSG}'`);
+  expect("a sender can't approve their own message by editing it", r.ok && r.affected === 0, r);
+  r = await as(D, "authenticated", `insert into messages (zone_id, channel, body) values ('${Z}', 'sms', 'Sneaky')`);
+  expect("messages can only be written by the server", denied(r), r);
+  r = await as(D, "authenticated", `update messaging_settings set monthly_sms_cap = 999999 where zone_id = '${Z}'`);
+  expect("settings can only be written by the server", r.ok && r.affected === 0, r);
+  r = await as(M, "authenticated", `select * from messaging_settings`);
+  expect("members can't read the messaging settings", r.ok && r.rows.length === 0, r);
+}
+
+// ── Follow-up tasks ───────────────────────────────────────────────────
+{
+  const TASK = id(90);
+  await db.exec(`update profiles set caps = array_append(caps, 'record_follow_up') where id in ('${G}', '${D}') and not 'record_follow_up' = any(caps);`);
+  r = await as(G, "authenticated", `insert into follow_up_tasks (id, zone_id, member_id, assigned_to, assigned_by, due_date) values ('${TASK}', '${Z}', '${MM}', '${G}', '${G}', current_date + 3)`);
+  expect("a leader can assign a follow-up for a member in their area", r.ok, r);
+  r = await as(G, "authenticated", `insert into follow_up_tasks (zone_id, member_id, assigned_to, assigned_by, due_date) values ('${Z}', '${MM2}', '${G}', '${G}', current_date + 3)`);
+  expect("…but not for someone outside their area", denied(r), r);
+  r = await as(D, "authenticated", `insert into follow_up_tasks (zone_id, member_id, assigned_to, assigned_by, due_date) values ('${Z}', '${MM}', '${G}', '${G}', current_date + 3)`);
+  expect("a task can't be created in someone else's name", denied(r), r);
+  r = await as(G, "authenticated", `insert into follow_up_tasks (zone_id, member_id, assigned_to, assigned_by, due_date) values ('${Z}', '${MM}', '${M2}', '${G}', current_date + 3)`);
+  expect("a task can only go to a login that can see the member", denied(r), r);
+  r = await as(G, "authenticated", `select id from follow_up_tasks`);
+  expect("the assignee sees their task", r.ok && r.rows.length === 1, r);
+  r = await as(M, "authenticated", `select id from follow_up_tasks`);
+  expect("members can't see follow-up tasks", r.ok && r.rows.length === 0, r);
+  r = await as(G, "authenticated", `update follow_up_tasks set status = 'done', completed_at = now() where id = '${TASK}'`);
+  expect("the assignee can finish their task", changed(r), r);
+  r = await as(G, "authenticated", `select * from follow_up_assignees('${MM}')`);
+  expect("the assignee list is leaders who can see the member", r.ok && r.rows.some((x) => x.id === G), r);
+  r = await as(null, "anon", `select * from follow_up_assignees('${MM}')`);
+  expect("anonymous can't list assignees", denied(r) || r.rows.length === 0, r);
+}
+
+// ── Cell meetings ─────────────────────────────────────────────────────
+{
+  // The cell-role fixtures from above: a senior cell (id 60) led by SL, a cell
+  // inside it (61) that AL belongs to, and another cell (62).
+  const SC = id(60), CC = id(61), OC = id(62), SL = id(63), AL = id(64), M_CC = id(68), M_OC = id(69), MEET = id(98);
+  await db.exec(`update profiles set caps = array_append(caps, 'take_cell_attendance') where id in ('${SL}', '${AL}') and not 'take_cell_attendance' = any(caps);`);
+  r = await as(SL, "authenticated", `insert into cell_meetings (id, zone_id, cell_id, meeting_date, created_by) values ('${MEET}', '${Z}', '${CC}', current_date, '${SL}')`);
+  expect("a senior cell leader can take the register of a cell inside theirs", r.ok, r);
+  r = await as(SL, "authenticated", `insert into cell_meetings (zone_id, cell_id, meeting_date, created_by) values ('${Z}', '${OC}', current_date, '${SL}')`);
+  expect("…but not of a cell that isn't theirs", denied(r), r);
+  r = await as(SL, "authenticated", `insert into cell_meetings (zone_id, cell_id, meeting_date, created_by) values ('${Z}', '${CC}', current_date, '${SL}')`);
+  expect("a cell can only meet once a day", denied(r), r);
+  r = await as(SL, "authenticated", `insert into cell_meeting_attendance (meeting_id, member_id, zone_id) values ('${MEET}', '${M_CC}', '${Z}')`);
+  expect("a leader can mark members of their cells present", r.ok, r);
+  r = await as(SL, "authenticated", `insert into cell_meeting_attendance (meeting_id, member_id, zone_id) values ('${MEET}', '${M_OC}', '${Z}')`);
+  expect("…but not someone outside their cells", denied(r), r);
+  r = await as(AL, "authenticated", `select id from cell_meetings where id = '${MEET}'`);
+  expect("an assistant in that cell sees its meetings", r.ok && r.rows.length === 1, r);
+  r = await as(AL, "authenticated", `select id from cell_meetings where cell_id = '${SC}'`);
+  expect("…and not the senior cell's, which isn't theirs", r.ok && r.rows.length === 0, r);
+  r = await as(M, "authenticated", `select id from cell_meetings`);
+  expect("members can't see cell registers", r.ok && r.rows.length === 0, r);
+  r = await as(V, "authenticated", `insert into cell_meetings (zone_id, cell_id, meeting_date, created_by) values ('${Z}', '${SC}', current_date - 1, '${V}')`);
+  expect("a check-in volunteer can't take cell registers", denied(r), r);
+}
+
+// ── Children's check-in ───────────────────────────────────────────────
+{
+  const KID = id(100), KSVC = id(101), CK = id(102);
+  await db.exec(`
+    insert into members (id, zone_id, church_id, country_id, first_name, last_name, age_group, guardian_name, guardian_phone) values
+      ('${KID}', '${Z}', '${C1}', '${CO}', 'Little', 'One', 'children', 'Mum', '0821110000');
+    insert into services (id, zone_id, church_id, service_date, kind) values ('${KSVC}', '${Z}', '${C1}', '2026-02-01', 'sunday');
+  `);
+  r = await as(V, "authenticated", `select first_name, guardian_phone from children_roster('${C1}', '{children}')`);
+  expect("a check-in volunteer gets the children, with their guardian, for their location", r.ok && r.rows.some((x) => x.first_name === "Little"), r);
+  r = await as(V, "authenticated", `select * from children_roster('${C2}', '{children}')`);
+  expect("…but not for another location", r.ok && r.rows.length === 0, r);
+  r = await as(M, "authenticated", `select * from children_roster('${C1}', '{children}')`);
+  expect("members can't list children", r.ok && r.rows.length === 0, r);
+  r = await as(V, "authenticated", `insert into child_checkins (id, zone_id, service_id, child_id, guardian_name, pickup_code, checked_in_by) values ('${CK}', '${Z}', '${KSVC}', '${KID}', 'Mum', '4827', '${V}')`);
+  expect("a volunteer can check a child in", r.ok, r);
+  r = await as(V, "authenticated", `insert into child_checkins (zone_id, service_id, child_id, guardian_name, pickup_code, checked_in_by) values ('${Z}', '${KSVC}', '${KID}', 'Mum', '1111', '${V}')`);
+  expect("a child can't be checked in twice to a service", denied(r), r);
+  r = await as(V, "authenticated", `insert into child_checkins (zone_id, service_id, child_id, guardian_name, pickup_code, checked_in_by) values ('${Z}', '${KSVC}', '${MM2}', 'Mum', '1111', '${V}')`);
+  expect("…or a child from another location", denied(r), r);
+  r = await as(V, "authenticated", `insert into child_checkins (zone_id, service_id, child_id, guardian_name, pickup_code, checked_in_by) values ('${Z}', '${KSVC}', '${MM}', 'Mum', '12', '${V}')`);
+  expect("a code must be four digits", denied(r), r);
+  r = await as(M, "authenticated", `select id from child_checkins`);
+  expect("members can't see who's in children's church", r.ok && r.rows.length === 0, r);
+  r = await as(V, "authenticated", `update child_checkins set checked_out_at = now(), checked_out_by = '${V}' where id = '${CK}'`);
+  expect("a volunteer can release a child", changed(r), r);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

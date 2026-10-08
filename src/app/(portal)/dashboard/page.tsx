@@ -35,6 +35,9 @@ import { tenant } from "@/tenant";
 import { OverviewDashboard, type AttendanceTiles } from "@/components/dashboard/overview-dashboard";
 import { churchToday, getAttendanceData } from "@/lib/data/attendance";
 import { summarise } from "@/lib/attendance/summary";
+import { getNewcomers } from "@/lib/data/journey";
+import { smsIsConfigured } from "@/lib/messaging/twilio";
+import { emailIsConfigured } from "@/lib/email";
 import { ATTENDANCE_RULES } from "@/lib/attendance/rules";
 import { gettingStartedSteps, type Step } from "@/lib/onboarding/steps";
 import { createClient } from "@/lib/supabase/server";
@@ -71,6 +74,7 @@ export default async function DashboardPage({
         lastSunday: lastSunday ? { date: lastSunday.date, count: lastSundayCount } : undefined,
         active: standing.filter((s) => s.status === "active").length,
         needFollowUp: standing.filter((s) => s.missedInARow >= ATTENDANCE_RULES.absenceAlertAfter).length,
+        newcomersWaiting: (await getNewcomers(ds.members)).filter((n) => n.stage === "new").length,
       };
     }
     const cells = await getZoneCells(profile.zoneId);
@@ -95,6 +99,7 @@ export default async function DashboardPage({
           logos: logos.count ?? 0,
           cohorts: cohorts.count ?? 0,
           services: services.count ?? 0,
+          messagingConnected: smsIsConfigured() && emailIsConfigured(),
         },
         state.done ?? [],
         modules

@@ -43,6 +43,8 @@ import { FollowUpDialog, OUTCOMES } from "@/components/attendance/follow-up-dial
 import { ConfirmVisitorButton } from "@/components/attendance/confirm-visitor-button";
 import { MemberDataActions } from "@/components/members/member-data-actions";
 import { RoleCard } from "@/components/members/role-card";
+import { MessagingField } from "@/components/members/messaging-field";
+import { isMinor as isMinorGroup } from "@/lib/messaging/recipients";
 import { DepartmentsField } from "@/components/members/departments-field";
 import { getDepartmentMemberships, getDepartments } from "@/lib/data/departments";
 import { assignableRoles, roleOption } from "@/lib/roles";
@@ -194,6 +196,19 @@ export default async function MemberPage({
               )}
             </div>
           )}
+          {modules.messaging && (can(profile, "manage_members") || member.guardianPhone || member.messagingOptOut) && (
+            <div className="mt-1.5">
+              <MessagingField
+                memberId={member.id}
+                firstName={member.firstName}
+                guardianName={member.guardianName}
+                guardianPhone={member.guardianPhone}
+                optOut={member.messagingOptOut}
+                isMinor={isMinorGroup(member.ageGroup ?? null)}
+                canEdit={can(profile, "manage_members")}
+              />
+            </div>
+          )}
           {departments.length > 0 || can(profile, "manage_settings") ? (
             <div className="mt-2">
               <DepartmentsField
@@ -208,11 +223,11 @@ export default async function MemberPage({
           ) : null}
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {member.isVisitor && can(profile, "manage_members") && <ConfirmVisitorButton memberId={member.id} />}
-            <InviteMemberButton
+            {(tenant.memberLogins !== false || isLeader(member.position) || member.hasPortalAccess) && <InviteMemberButton
               memberId={member.id}
               hasPortalAccess={member.hasPortalAccess}
               hasEmail={!!member.email}
-            />
+            />}
           </div>
         </div>
       </div>

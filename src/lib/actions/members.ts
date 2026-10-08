@@ -112,6 +112,9 @@ export type ParsedMemberRow = {
   // stored as-is rather than parsed into structured dates/enums.
   title?: string;
   kcHandle?: string;
+  // A child's guardian, who their messages go to (messaging).
+  guardianName?: string;
+  guardianPhone?: string;
   profession?: string;
   spouseName?: string;
   birthday?: string;
@@ -167,6 +170,8 @@ export async function bulkImportMembers(input: {
     spouse_name: string | null;
     wedding_anniversary: string | null;
     kc_handle: string | null;
+    guardian_name: string | null;
+    guardian_phone: string | null;
   }[] = [];
   const cellNameByIndex: (string | undefined)[] = [];
   const customByIndex: (Record<string, string> | undefined)[] = [];
@@ -223,6 +228,8 @@ export async function bulkImportMembers(input: {
       spouse_name: row.spouseName?.trim() || null,
       wedding_anniversary: row.weddingAnniversary?.trim() || null,
       kc_handle: row.kcHandle?.trim() || null,
+      guardian_name: row.guardianName?.trim() || null,
+      guardian_phone: row.guardianPhone?.trim() || null,
     });
     cellNameByIndex.push(row.cellName?.trim() || undefined);
     customByIndex.push(row.custom);
@@ -363,6 +370,9 @@ export async function inviteMemberToPortal(memberId: string): Promise<InviteMemb
 
   const position = isPosition(member.position) ? member.position : tenant.access.memberPositionKey;
   const portfolio = isPortfolio(member.portfolio) ? member.portfolio : null;
+  if (tenant.memberLogins === false && !isLeader(position)) {
+    return { ok: false, error: "Members don't get logins here — give them a role first (Change role), then invite them." };
+  }
   if (isLeader(position) && !canActOn(profile.position, position)) {
     return { ok: false, error: "You can only give portal access to people below your own position." };
   }
