@@ -11,7 +11,7 @@ export const FEATURE_CATALOGUE: readonly { key: ModuleKey; name: string; descrip
   { key: "attendance", name: "Attendance & check-in", description: "Services, check-in at the door (volunteer, self check-in tablet or QR code), absence alerts and follow-ups." },
   { key: "courses", name: tenant.course?.name ?? "Courses", description: "Class groups with a teacher and a register; completion after a set number of classes." },
   { key: "resources", name: "Resources", description: "Logos, brand assets and press releases for leaders to download, with logo guidelines." },
-  { key: "messaging", name: "Messaging", description: "SMS and email to members, cells and groups, and approved birthday messages.", comingSoon: true },
+  { key: "messaging", name: "Messaging", description: "Text and email members, cells and groups; approved birthday messages, first-timer welcomes and 'we missed you' notes; with a monthly cap and usage meter." },
   { key: "giving", name: "Giving", description: "Contributions per member and location, giving trends and leaderboards." },
   { key: "ledger", name: "Ledger", description: "Income and expenses, imports and reconciliations." },
   { key: "records", name: "Records", description: "Minutes, correspondence, bank advices and cheques, with their paperwork." },

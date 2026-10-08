@@ -428,5 +428,38 @@ expect("a link must be a web address", denied(r), r);
 r = await as(D, "authenticated", `insert into class_materials (zone_id, class_id, title, file_path, file_name) values ('${Z}', '${CL1}', 'Elsewhere', '${id(99)}/x.pdf', 'x.pdf')`);
 expect("an uploaded file must be in the zone's own folder", denied(r), r);
 
+// ── Messaging ─────────────────────────────────────────────────────────
+{
+  const MSG = id(80), MSG2 = id(81);
+  await db.exec(`
+    update profiles set caps = array_cat(caps, '{send_messages,approve_messages}') where id = '${D}' and not 'send_messages' = any(caps);
+    update profiles set caps = array_append(caps, 'send_messages') where id = '${G}' and not 'send_messages' = any(caps);
+    insert into messages (id, zone_id, channel, body, status, created_by) values
+      ('${MSG}', '${Z}', 'sms', 'Hello', 'pending', '${G}'),
+      ('${MSG2}', '${Z}', 'sms', 'Other', 'pending', '${D}');
+    insert into message_recipients (message_id, zone_id, channel, name, to_address, body) values
+      ('${MSG}', '${Z}', 'sms', 'Mem Ber', '+27821112222', 'Hello'),
+      ('${MSG2}', '${Z}', 'sms', 'Oth Er', '+27829998888', 'Other');
+  `);
+  r = await as(G, "authenticated", `select id from messages`);
+  expect("a sender sees only their own messages", r.ok && r.rows.length === 1 && r.rows[0].id === MSG, r);
+  r = await as(D, "authenticated", `select id from messages`);
+  expect("an approver sees every message", r.ok && r.rows.length === 2, r);
+  r = await as(G, "authenticated", `select to_address from message_recipients`);
+  expect("a sender sees recipients of their own messages only", r.ok && r.rows.length === 1, r);
+  r = await as(M, "authenticated", `select id from messages`);
+  expect("members can't see messages", r.ok && r.rows.length === 0, r);
+  r = await as(M, "authenticated", `select to_address from message_recipients`);
+  expect("members can't see who was messaged", r.ok && r.rows.length === 0, r);
+  r = await as(G, "authenticated", `update messages set status = 'approved' where id = '${MSG}'`);
+  expect("a sender can't approve their own message by editing it", r.ok && r.affected === 0, r);
+  r = await as(D, "authenticated", `insert into messages (zone_id, channel, body) values ('${Z}', 'sms', 'Sneaky')`);
+  expect("messages can only be written by the server", denied(r), r);
+  r = await as(D, "authenticated", `update messaging_settings set monthly_sms_cap = 999999 where zone_id = '${Z}'`);
+  expect("settings can only be written by the server", r.ok && r.affected === 0, r);
+  r = await as(M, "authenticated", `select * from messaging_settings`);
+  expect("members can't read the messaging settings", r.ok && r.rows.length === 0, r);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

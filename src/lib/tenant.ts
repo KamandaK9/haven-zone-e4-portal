@@ -104,6 +104,10 @@ export type TenantConfig = {
     // "chapter" if omitted.
     elevatedMemberScope?: Scope;
   };
+  // Messaging (SMS and email): the phone country code numbers are assumed to
+  // be in when typed without one, and which age groups are minors — their
+  // messages go to a guardian. Both optional (27, and none).
+  messaging?: { countryCode?: string; minorAgeGroups?: readonly string[] };
   // The cohort-based course the courses module runs (modules.courses): its
   // name, how many classes it has, and how many distinct classes complete it.
   course?: { name: string; classes: number; requiredClasses: number };

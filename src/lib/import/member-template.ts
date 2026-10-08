@@ -55,6 +55,7 @@ export async function buildMemberTemplate(fields: MemberField[] = []): Promise<A
     "• Only First name is required — leave anything you don't know blank.",
     "• You can add your own extra columns; the import simply ignores ones it doesn't use.",
     "• Phone: any format (082 123 4567, +27 82 123 4567).",
+    "• Children: add \"Guardian name\" and \"Guardian phone\" columns — messages to under-18s go to their guardian, never to them.",
     "• Birthday: a full date, or just a day and month (12 April) if you don't know the year.",
     `• ${cell}: the name of the person's ${cell.toLowerCase()}. Small spelling differences are fine — you'll confirm the list of ${tenant.labels.cellPlural.toLowerCase()} when you import.`,
     ...(groups.length > 0

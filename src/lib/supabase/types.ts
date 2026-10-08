@@ -209,6 +209,9 @@ export type Database = {
           cell_id: string | null;
           age_group: string | null;
           is_visitor: boolean;
+          guardian_name: string | null;
+          guardian_phone: string | null;
+          messaging_opt_out: boolean;
           created_at: string;
         };
         Insert: {
@@ -237,6 +240,9 @@ export type Database = {
           cell_id?: string | null;
           age_group?: string | null;
           is_visitor?: boolean;
+          guardian_name?: string | null;
+          guardian_phone?: string | null;
+          messaging_opt_out?: boolean;
           created_at?: string;
         };
         Update: Partial<{
@@ -263,6 +269,9 @@ export type Database = {
           cell_id: string | null;
           age_group: string | null;
           is_visitor: boolean;
+          guardian_name: string | null;
+          guardian_phone: string | null;
+          messaging_opt_out: boolean;
         }>;
         Relationships: [];
       };
@@ -1196,6 +1205,62 @@ export type Database = {
           mime?: string | null; bytes?: number | null; url?: string | null; sort_order?: number; created_by?: string | null; created_at?: string;
         };
         Update: Partial<{ title: string; sort_order: number }>;
+        Relationships: [];
+      };
+      messaging_settings: {
+        Row: {
+          zone_id: string; monthly_sms_cap: number; sms_cost_estimate: number; sms_footer: string;
+          birthday_enabled: boolean; welcome_enabled: boolean; missed_enabled: boolean; digest_enabled: boolean;
+          birthday_template: string | null; birthday_guardian_template: string | null; welcome_template: string | null; missed_template: string | null;
+          updated_by: string | null; updated_at: string;
+        };
+        Insert: {
+          zone_id: string; monthly_sms_cap?: number; sms_cost_estimate?: number; sms_footer?: string;
+          birthday_enabled?: boolean; welcome_enabled?: boolean; missed_enabled?: boolean; digest_enabled?: boolean;
+          birthday_template?: string | null; birthday_guardian_template?: string | null; welcome_template?: string | null; missed_template?: string | null;
+          updated_by?: string | null; updated_at?: string;
+        };
+        Update: Partial<{
+          monthly_sms_cap: number; sms_cost_estimate: number; sms_footer: string;
+          birthday_enabled: boolean; welcome_enabled: boolean; missed_enabled: boolean; digest_enabled: boolean;
+          birthday_template: string | null; birthday_guardian_template: string | null; welcome_template: string | null; missed_template: string | null;
+          updated_by: string | null; updated_at: string;
+        }>;
+        Relationships: [];
+      };
+      messages: {
+        Row: {
+          id: string; zone_id: string; kind: "manual" | "birthday" | "welcome" | "missed"; channel: "sms" | "email";
+          subject: string | null; body: string; audience: Json;
+          status: "pending" | "approved" | "sending" | "sent" | "rejected" | "cancelled";
+          created_by: string | null; created_by_name: string | null; approved_by: string | null; approved_by_name: string | null;
+          note: string | null; batch_date: string | null; created_at: string; approved_at: string | null; sent_at: string | null;
+        };
+        Insert: {
+          id?: string; zone_id: string; kind?: "manual" | "birthday" | "welcome" | "missed"; channel: "sms" | "email";
+          subject?: string | null; body: string; audience?: Json;
+          status?: "pending" | "approved" | "sending" | "sent" | "rejected" | "cancelled";
+          created_by?: string | null; created_by_name?: string | null; approved_by?: string | null; approved_by_name?: string | null;
+          note?: string | null; batch_date?: string | null; created_at?: string; approved_at?: string | null; sent_at?: string | null;
+        };
+        Update: Partial<{
+          status: "pending" | "approved" | "sending" | "sent" | "rejected" | "cancelled";
+          approved_by: string | null; approved_by_name: string | null; note: string | null; approved_at: string | null; sent_at: string | null;
+        }>;
+        Relationships: [];
+      };
+      message_recipients: {
+        Row: {
+          id: string; message_id: string; zone_id: string; member_id: string | null; channel: "sms" | "email"; name: string;
+          to_address: string; via: "self" | "guardian"; body: string; segments: number;
+          status: "queued" | "sent" | "failed" | "skipped"; error: string | null; provider_id: string | null; sent_at: string | null;
+        };
+        Insert: {
+          id?: string; message_id: string; zone_id: string; member_id?: string | null; channel: "sms" | "email"; name: string;
+          to_address: string; via?: "self" | "guardian"; body: string; segments?: number;
+          status?: "queued" | "sent" | "failed" | "skipped"; error?: string | null; provider_id?: string | null; sent_at?: string | null;
+        };
+        Update: Partial<{ status: "queued" | "sent" | "failed" | "skipped"; error: string | null; provider_id: string | null; sent_at: string | null }>;
         Relationships: [];
       };
     };

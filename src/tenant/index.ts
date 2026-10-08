@@ -166,6 +166,9 @@ export const tenant: TenantConfig = {
     // Stratum's defaults — the church to confirm.
     retention: { membersAfterLeaving: 2, financial: 5, auditLog: 5, supportAndRequests: 2 },
   },
+  // Messages to children and teens go to a guardian (the pastor's rule:
+  // under-18s are reached through their guardian, never directly).
+  messaging: { countryCode: "27", minorAgeGroups: ["children", "teens"] },
   // From the pastor (2026-10-07): complete after 7 classes.
   course: { name: "Foundation School", classes: 7, requiredClasses: 7 },
   // The self check-in tablet at the door: the church's own gold and black.

@@ -43,6 +43,8 @@ import { FollowUpDialog, OUTCOMES } from "@/components/attendance/follow-up-dial
 import { ConfirmVisitorButton } from "@/components/attendance/confirm-visitor-button";
 import { MemberDataActions } from "@/components/members/member-data-actions";
 import { RoleCard } from "@/components/members/role-card";
+import { MessagingField } from "@/components/members/messaging-field";
+import { isMinor as isMinorGroup } from "@/lib/messaging/recipients";
 import { DepartmentsField } from "@/components/members/departments-field";
 import { getDepartmentMemberships, getDepartments } from "@/lib/data/departments";
 import { assignableRoles, roleOption } from "@/lib/roles";
@@ -192,6 +194,19 @@ export default async function MemberPage({
                   <Phone className="h-3.5 w-3.5" /> {member.phone}
                 </span>
               )}
+            </div>
+          )}
+          {modules.messaging && (can(profile, "manage_members") || member.guardianPhone || member.messagingOptOut) && (
+            <div className="mt-1.5">
+              <MessagingField
+                memberId={member.id}
+                firstName={member.firstName}
+                guardianName={member.guardianName}
+                guardianPhone={member.guardianPhone}
+                optOut={member.messagingOptOut}
+                isMinor={isMinorGroup(member.ageGroup ?? null)}
+                canEdit={can(profile, "manage_members")}
+              />
             </div>
           )}
           {departments.length > 0 || can(profile, "manage_settings") ? (

@@ -99,6 +99,9 @@ export type Member = {
   cellId?: string;
   ageGroup?: string; // a tenant.ageGroups key
   isVisitor: boolean; // a first-timer added at check-in, not yet confirmed
+  guardianName?: string;
+  guardianPhone?: string;
+  messagingOptOut: boolean;
 };
 
 // A group below a chapter; parentId unset = the upper level (e.g. a senior

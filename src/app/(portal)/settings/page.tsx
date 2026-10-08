@@ -144,6 +144,20 @@ export default async function SettingsPage() {
         </Card>
       )}
 
+      {modules.messaging && can(profile, "manage_settings") && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Messaging</CardTitle>
+            <CardDescription>The monthly text cap, what a text costs, and the automatic birthday, welcome and &ldquo;we missed you&rdquo; messages.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/settings/messaging">Messaging settings</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {can(profile, "manage_settings") && (
         <Card>
           <CardHeader>

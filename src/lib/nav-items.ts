@@ -3,7 +3,7 @@ import type { Capability } from "@/lib/access";
 import type { ModuleKey } from "@/lib/tenant";
 import type { Modules } from "@/lib/modules";
 import { EVENT_SERIES_DEFS } from "@/lib/event-series";
-import { LayoutDashboard, Globe2, Church, ClipboardCheck, ScanLine, School, FolderDown, BarChart3, BookOpenText, GraduationCap, CalendarDays, Mail, Settings, BookMarked, FolderOpen, Radio } from "lucide-react";
+import { LayoutDashboard, Globe2, Church, ClipboardCheck, ScanLine, School, FolderDown, MessageSquare, BarChart3, BookOpenText, GraduationCap, CalendarDays, Mail, Settings, BookMarked, FolderOpen, Radio } from "lucide-react";
 import { tenant } from "@/tenant";
 import { labels, singleCountry } from "@/lib/labels";
 
@@ -36,6 +36,10 @@ export const NAV_ITEMS: NavItemDef[] = [
   {
     key: "courses", href: "/courses", label: tenant.course?.name ?? "Courses", icon: School,
     cap: ["manage_courses", "teach_courses"], module: "courses", hideable: true,
+  },
+  {
+    key: "messages", href: "/messages", label: "Messages", icon: MessageSquare,
+    cap: ["send_messages", "approve_messages"], module: "messaging", hideable: true,
   },
   { key: "check-in", href: "/check-in", label: "Check-in", icon: ScanLine, cap: "check_in", module: "attendance", hideable: true },
   { key: "reports", href: "/reports", label: "Reports", icon: BarChart3, cap: "view_reports", hideable: true },
