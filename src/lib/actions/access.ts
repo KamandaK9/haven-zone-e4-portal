@@ -124,6 +124,49 @@ export async function updateMemberAccess(input: UpdateAccessInput): Promise<Acti
   return { ok: true };
 }
 
+// Giving the same role to many people at once. Each person goes through the
+// same checks as one at a time (below your own rank, in your area, not
+// yourself); anyone who can't be changed is reported, the rest are done.
+// Their individual permission tweaks are kept.
+export async function assignRoleToMany(input: {
+  memberIds: string[];
+  position: Position;
+}): Promise<{ ok: true; done: number; failed: { name: string; error: string }[] } | { ok: false; error: string }> {
+  const profile = await getCurrentProfile();
+  if (!profile) return { ok: false, error: "Not signed in." };
+  if (!can(profile, "manage_access") && !can(profile, "assign_roles")) return { ok: false, error: "Not permitted." };
+  const ids = [...new Set(input.memberIds)].slice(0, 200);
+  if (ids.length === 0) return { ok: false, error: "Pick at least one person." };
+
+  const admin = createAdminClient();
+  const { data: members } = await admin
+    .from("members")
+    .select("id, first_name, last_name, profile_id")
+    .eq("zone_id", profile.zoneId)
+    .in("id", ids);
+  const profileIds = (members ?? []).map((m) => m.profile_id).filter((x): x is string => !!x);
+  const { data: logins } = profileIds.length
+    ? await admin.from("profiles").select("id, granted_caps, revoked_caps").in("id", profileIds)
+    : { data: [] };
+  const overrides = new Map((logins ?? []).map((l) => [l.id, l]));
+
+  let done = 0;
+  const failed: { name: string; error: string }[] = [];
+  for (const m of members ?? []) {
+    const o = m.profile_id ? overrides.get(m.profile_id) : undefined;
+    const res = await updateMemberAccess({
+      memberId: m.id,
+      position: input.position,
+      portfolio: null,
+      granted: (o?.granted_caps ?? []).filter(isCapability),
+      revoked: (o?.revoked_caps ?? []).filter(isCapability),
+    });
+    if (res.ok) done++;
+    else failed.push({ name: `${m.first_name} ${m.last_name}`.trim(), error: res.error });
+  }
+  return { ok: true, done, failed };
+}
+
 // Stored caps are a snapshot of position defaults + overrides. After the
 // defaults in src/lib/access.ts change, this refreshes every login in the zone.
 export async function recomputeZoneCapabilities(): Promise<ActionResult> {

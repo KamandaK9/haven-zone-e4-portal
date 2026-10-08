@@ -132,24 +132,7 @@ export default async function MemberPage({
         ]}
       />
 
-      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-        {can(profile, "manage_members") ? (
-          <MemberPhotoUpload
-            memberId={member.id}
-            firstName={member.firstName}
-            lastName={member.lastName}
-            avatarColor={member.avatarColor}
-            photoUrl={member.photoUrl}
-          />
-        ) : (
-          <MemberAvatar
-            firstName={member.firstName}
-            lastName={member.lastName}
-            avatarColor={member.avatarColor}
-            photoUrl={member.photoUrl}
-            className="h-16 w-16 text-lg"
-          />
-        )}
+      <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-semibold tracking-tight">{memberFullName(member)}</h1>
@@ -230,6 +213,23 @@ export default async function MemberPage({
             />}
           </div>
         </div>
+        {can(profile, "manage_members") ? (
+          <MemberPhotoUpload
+            memberId={member.id}
+            firstName={member.firstName}
+            lastName={member.lastName}
+            avatarColor={member.avatarColor}
+            photoUrl={member.photoUrl}
+          />
+        ) : (
+          <MemberAvatar
+            firstName={member.firstName}
+            lastName={member.lastName}
+            avatarColor={member.avatarColor}
+            photoUrl={member.photoUrl}
+            className="h-16 w-16 text-lg"
+          />
+        )}
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
