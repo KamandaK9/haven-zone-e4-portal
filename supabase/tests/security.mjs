@@ -368,6 +368,14 @@ expect("a member can't switch features off", r.ok && r.affected === 0, r);
 r = await as(D, "authenticated", `update zones set disabled_modules = '{}' where id = '${Z}'`);
 expect("an admin can switch features on and off", changed(r), r);
 
+// ── Annual events ─────────────────────────────────────────────────────
+r = await as(D, "authenticated", `insert into event_series (zone_id, slug, name) values ('${Z}', 'conf', 'Conference')`);
+expect("an admin can add an annual event", changed(r), r);
+r = await as(M, "authenticated", `delete from event_series where slug = 'conf'`);
+expect("a member can't remove an annual event", r.ok && r.affected === 0, r);
+r = await as(D, "authenticated", `delete from event_series where slug = 'conf'`);
+expect("an admin can remove an annual event", changed(r), r);
+
 // ── Colours ───────────────────────────────────────────────────────────
 r = await as(G, "authenticated", `update zones set theme = '{"primary":"#112233","sidebar":"#000000"}' where id = '${Z}'`);
 expect("a leader without manage_access can't change the colours", r.ok && r.affected === 0, r);

@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { AlertCircle, FileText, ImagePlus, Link2, Loader2, Pencil, Trash2, Upload, X } from "lucide-react";
+import { AlertCircle, FileText, ImagePlus, Link2, Loader2, Pencil, Plus, Trash2, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,7 +19,9 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import {
   addEventMedia,
+  createSeries,
   createSeriesEdition,
+  deleteSeries,
   createUploadToken,
   deleteEventPage,
   removeEventCover,
@@ -488,5 +490,90 @@ export function SeriesEditorButton({ series }: { series: EventSeries }) {
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+// Adding an annual event of the organisation's own.
+export function NewSeriesButton() {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function save() {
+    setBusy(true);
+    setError(null);
+    const result = await createSeries({ name, description });
+    setBusy(false);
+    if (!result.ok) return setError(result.error);
+    setOpen(false);
+    setName("");
+    setDescription("");
+    router.push(`/events/${result.slug}`);
+  }
+
+  return (
+    <>
+      <Button size="sm" className="gap-1.5" onClick={() => setOpen(true)}>
+        <Plus className="h-3.5 w-3.5" /> New annual event
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>New annual event</DialogTitle>
+            <DialogDescription>A gathering that comes round every year. Add each year&apos;s edition on its page.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="nsName">Name</Label>
+              <Input id="nsName" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Annual Conference" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="nsDescription">Description</Label>
+              <Textarea id="nsDescription" value={description} onChange={(e) => setDescription(e.target.value)} className="min-h-[100px]" placeholder="What it is and who it's for" />
+            </div>
+            {error && <ErrorNote message={error} />}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={save} disabled={busy || !name.trim()}>
+              {busy ? "Adding…" : "Add event"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+export function DeleteSeriesButton({ series }: { series: EventSeries }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <Button
+        size="sm"
+        variant="ghost"
+        className="gap-1.5 text-muted-foreground"
+        disabled={busy}
+        onClick={async () => {
+          if (!window.confirm(`Remove "${series.name}"?`)) return;
+          setBusy(true);
+          setError(null);
+          const result = await deleteSeries(series.id);
+          setBusy(false);
+          if (!result.ok) return setError(result.error);
+          router.push("/events");
+        }}
+      >
+        <Trash2 className="h-3.5 w-3.5" /> Remove event
+      </Button>
+      {error && <p className="text-xs text-red-600">{error}</p>}
+    </div>
   );
 }

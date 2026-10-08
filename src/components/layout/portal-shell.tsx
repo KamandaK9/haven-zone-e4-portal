@@ -68,12 +68,16 @@ function NavList({ navItems, settingsItem }: { navItems: PortalNavItem[]; settin
         <NavLink key={item.href} item={item} active={isActive(pathname, item)} />
       ))}
 
-      <p className="px-3 pt-5 pb-1 text-[11px] font-semibold uppercase tracking-wide text-sidebar-foreground/50">
-        Annual events
-      </p>
-      {EVENT_NAV_ITEMS.map((item) => (
-        <NavLink key={item.href} item={item} active={isActive(pathname, item)} />
-      ))}
+      {EVENT_NAV_ITEMS.length > 0 && (
+        <>
+          <p className="px-3 pt-5 pb-1 text-[11px] font-semibold uppercase tracking-wide text-sidebar-foreground/50">
+            Annual events
+          </p>
+          {EVENT_NAV_ITEMS.map((item) => (
+            <NavLink key={item.href} item={item} active={isActive(pathname, item)} />
+          ))}
+        </>
+      )}
 
       {settingsItem && (
         <div className="pt-3 mt-3 border-t border-sidebar-border">

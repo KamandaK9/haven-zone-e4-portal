@@ -3,7 +3,7 @@ import type { Capability } from "@/lib/access";
 import type { ModuleKey } from "@/lib/tenant";
 import type { Modules } from "@/lib/modules";
 import { EVENT_SERIES_DEFS } from "@/lib/event-series";
-import { LayoutDashboard, Globe2, Church, ClipboardCheck, ScanLine, School, FolderDown, MessageSquare, UserPlus, ListChecks, Users2, Baby, BarChart3, BookOpenText, GraduationCap, CalendarDays, Mail, Settings, BookMarked, FolderOpen, Radio } from "lucide-react";
+import { LayoutDashboard, Globe2, Church, ClipboardCheck, ScanLine, School, FolderDown, MessageSquare, UserPlus, ListChecks, Users2, Baby, BarChart3, BookOpenText, GraduationCap, CalendarDays, PartyPopper, Mail, Settings, BookMarked, FolderOpen, Radio } from "lucide-react";
 import { tenant } from "@/tenant";
 import { labels, singleCountry } from "@/lib/labels";
 
@@ -54,6 +54,12 @@ export const NAV_ITEMS: NavItemDef[] = [
   },
   { key: "training", href: "/training", label: "Training", icon: GraduationCap, module: "training", hideable: true },
   { key: "calendar", href: "/calendar", label: "Calendar", icon: CalendarDays, hideable: false },
+  // A tenant with its own fixed flagship events lists them under their own
+  // heading (EVENT_NAV_ITEMS); otherwise the annual events are one section,
+  // and the organisation adds its own.
+  ...(EVENT_SERIES_DEFS.length === 0
+    ? [{ key: "events", href: "/events", label: "Annual events", icon: PartyPopper, module: "events" as const, hideable: true }]
+    : []),
   { key: "live", href: "/live", label: "Live", icon: Radio, module: "livestreams", hideable: true },
   // Only when the tenant ships a handbook.
   ...(tenant.handbook
