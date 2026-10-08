@@ -63,6 +63,8 @@ export const CAPABILITIES = [
   "assign_roles",
   // Take the weekly register at a cell meeting.
   "take_cell_attendance",
+  // Run children's church: lesson materials, graduation.
+  "manage_children",
 ] as const;
 export type Capability = (typeof CAPABILITIES)[number];
 
@@ -95,6 +97,7 @@ export const CAPABILITY_LABELS: Record<Capability, string> = {
   manage_settings: "Manage organisation settings",
   assign_roles: "Give people roles below their own",
   take_cell_attendance: "Take cell meeting registers",
+  manage_children: "Run children's church (lesson materials, graduation)",
 };
 
 export function isPosition(value: unknown): value is Position {

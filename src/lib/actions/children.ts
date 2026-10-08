@@ -9,6 +9,9 @@ import { dispatchMessage } from "@/lib/messaging/dispatch";
 import { smsIsConfigured } from "@/lib/messaging/twilio";
 import { smsSegments, toE164 } from "@/lib/messaging/text";
 import { tenant } from "@/tenant";
+import { nextAgeGroup } from "@/lib/children/graduation";
+import { createPrivateUpload, pathIsUnder, removeFiles } from "@/lib/storage/private-files";
+import { RESOURCES_BUCKET } from "@/lib/resources/bucket";
 import { logAudit } from "./audit";
 import type { ActionResult } from "./members";
 import type { ServiceKey } from "@/lib/check-in/types";
@@ -28,12 +31,122 @@ async function staff() {
 }
 
 export async function getChildren(churchId: string) {
-  const auth = await staff();
-  if (!auth.ok) return [];
-  const { data } = await auth.supabase.rpc("children_roster", { p_church_id: churchId, p_age_groups: AGE_GROUPS });
+  const profile = await getCurrentProfile();
+  if (!profile || !(can(profile, "check_in") || can(profile, "manage_children"))) return [];
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("children_roster", { p_church_id: churchId, p_age_groups: AGE_GROUPS });
   return (data ?? [])
-    .map((c) => ({ id: c.id, name: `${c.first_name} ${c.last_name}`.trim(), guardianName: c.guardian_name ?? "", guardianPhone: c.guardian_phone ?? "" }))
+    .map((c) => ({
+      id: c.id,
+      name: `${c.first_name} ${c.last_name}`.trim(),
+      guardianName: c.guardian_name ?? "",
+      guardianPhone: c.guardian_phone ?? "",
+      birthday: c.birthday ?? "",
+      expectedGraduation: c.expected_graduation ?? "",
+    }))
     .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// ── Lesson materials ──────────────────────────────────────────────────
+// Files for the teachers, kept as resources of kind "children". Whoever runs
+// children's church (manage_children) adds and removes them; any leader
+// reads them.
+
+async function head() {
+  const profile = await getCurrentProfile();
+  if (!profile) return { ok: false as const, error: "Not signed in." };
+  if (!can(profile, "manage_children")) return { ok: false as const, error: "Only the head of children's church can change the materials." };
+  return { ok: true as const, profile };
+}
+
+const MAX_MATERIAL_BYTES = 50 * 1024 * 1024;
+
+export async function createMaterialUpload(file: { name: string; size: number }) {
+  const auth = await head();
+  if (!auth.ok) return auth;
+  if (file.size > MAX_MATERIAL_BYTES) return { ok: false as const, error: "That file is over 50 MB." };
+  return createPrivateUpload(RESOURCES_BUCKET, auth.profile.zoneId, file.name);
+}
+
+export async function saveMaterial(input: {
+  title: string;
+  description?: string;
+  lessonDate?: string;
+  path: string;
+  fileName: string;
+  mime: string;
+  bytes: number;
+}): Promise<ActionResult> {
+  const auth = await head();
+  if (!auth.ok) return auth;
+  const { profile } = auth;
+  if (!pathIsUnder(input.path, profile.zoneId)) return { ok: false, error: "That upload isn't yours." };
+  if (!input.title.trim()) return { ok: false, error: "Give it a title." };
+  const supabase = await createClient();
+  const { error } = await supabase.from("resources").insert({
+    zone_id: profile.zoneId,
+    kind: "children",
+    title: input.title.trim(),
+    description: input.description?.trim() || null,
+    lesson_date: input.lessonDate && /^\d{4}-\d{2}-\d{2}$/.test(input.lessonDate) ? input.lessonDate : null,
+    file_path: input.path,
+    file_name: input.fileName,
+    mime: input.mime,
+    bytes: input.bytes,
+    uploaded_by: profile.userId,
+  });
+  if (error) {
+    await removeFiles(RESOURCES_BUCKET, [input.path]);
+    return { ok: false, error: error.message };
+  }
+  await logAudit(profile, "children.material_add", `Added "${input.title.trim()}" to children's church materials`);
+  revalidatePath("/children");
+  return { ok: true };
+}
+
+export async function deleteMaterial(id: string): Promise<ActionResult> {
+  const auth = await head();
+  if (!auth.ok) return auth;
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("resources").delete().eq("id", id).eq("kind", "children").select("file_path, title");
+  if (error) return { ok: false, error: error.message };
+  if (data?.[0]) {
+    await removeFiles(RESOURCES_BUCKET, [data[0].file_path]);
+    await logAudit(auth.profile, "children.material_remove", `Removed "${data[0].title}" from children's church materials`);
+  }
+  revalidatePath("/children");
+  return { ok: true };
+}
+
+// ── Graduation ────────────────────────────────────────────────────────
+
+export async function setGraduation(childId: string, month: string | null): Promise<ActionResult> {
+  const auth = await head();
+  if (!auth.ok) return auth;
+  if (month && !/^\d{4}-\d{2}$/.test(month)) return { ok: false, error: "Pick a month." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("set_child_graduation", { p_member: childId, p_month: month ? `${month}-01` : null });
+  if (error) return { ok: false, error: error.message };
+  if (!data) return { ok: false, error: "You can't change that child." };
+  revalidatePath("/children");
+  return { ok: true };
+}
+
+export async function graduateChild(childId: string, churchId: string): Promise<ActionResult> {
+  const auth = await head();
+  if (!auth.ok) return auth;
+  const supabase = await createClient();
+  const { data: child } = await supabase.rpc("children_roster", { p_church_id: churchId, p_age_groups: AGE_GROUPS });
+  const found = (child ?? []).find((c) => c.id === childId);
+  if (!found || !found.age_group) return { ok: false, error: "That child isn't in children's church." };
+  const next = nextAgeGroup(tenant.ageGroups ?? [], found.age_group);
+  if (!next) return { ok: false, error: "There's no age group to move them into." };
+  const { data, error } = await supabase.rpc("graduate_child", { p_member: childId, p_to: next.key });
+  if (error) return { ok: false, error: error.message };
+  if (!data) return { ok: false, error: "You can't change that child." };
+  await logAudit(auth.profile, "children.graduate", `${found.first_name} ${found.last_name} moved up to ${next.label}`);
+  revalidatePath("/children");
+  return { ok: true };
 }
 
 async function serviceFor(supabase: Awaited<ReturnType<typeof createClient>>, zoneId: string, userId: string, key: ServiceKey) {

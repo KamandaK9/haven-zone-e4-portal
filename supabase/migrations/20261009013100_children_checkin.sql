@@ -60,7 +60,8 @@ create policy "child_checkins_update" on child_checkins for update
 -- The children at a location with their guardian's details, for staff who
 -- can't read the members table (no view_members) — only the age groups asked
 -- for (the children's church ones), nothing else about them.
-create or replace function public.children_roster(p_church_id uuid, p_age_groups text[])
+drop function if exists public.children_roster(uuid, text[]);
+create function public.children_roster(p_church_id uuid, p_age_groups text[])
 returns table (id uuid, first_name text, last_name text, age_group text, guardian_name text, guardian_phone text)
 language sql security definer stable set search_path = public
 as $$
