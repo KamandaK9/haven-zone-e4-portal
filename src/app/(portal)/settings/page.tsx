@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { History } from "lucide-react";
+import { ChevronRight, History } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { NavVisibilityForm } from "@/components/settings/nav-visibility-form";
@@ -15,6 +15,7 @@ import { legalGaps } from "@/lib/privacy";
 import { labels, lower } from "@/lib/labels";
 import { getLegal } from "@/lib/legal-server";
 import { getModules } from "@/lib/modules-server";
+import { cn } from "@/lib/utils";
 
 const ACTION_LABELS: Record<string, string> = {
   "member.create": "Added member",
@@ -73,272 +74,258 @@ const ACTION_LABELS: Record<string, string> = {
   "member.update_fields": "Edited a member's extra details",
 };
 
-export default async function SettingsPage() {
+// A row that leads to a settings page of its own.
+function LinkRow({ href, title, description, note, secondary }: { href: string; title: string; description: string; note?: string; secondary?: { href: string; label: string }[] }) {
+  return (
+    <Card className="transition-colors hover:bg-muted/30">
+      <CardContent className="flex items-center gap-4 py-4">
+        <div className="min-w-0 flex-1">
+          <Link href={href} className="text-sm font-semibold hover:underline after:absolute after:inset-0 relative">
+            {title}
+          </Link>
+          <p className="text-sm text-muted-foreground">{description}</p>
+          {note && <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">{note}</p>}
+          {secondary && (
+            <div className="relative z-10 mt-1 flex flex-wrap gap-x-4 text-sm">
+              {secondary.map((l) => (
+                <Link key={l.href} href={l.href} className="text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
+                  {l.label}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+      </CardContent>
+    </Card>
+  );
+}
+
+const TAB_INTRO: Record<string, string> = {
+  general: "Features, currency and your own sidebar.",
+  people: "Who can do what, and the details kept about people.",
+  messaging: "Texts and email: the monthly cap and the automatic messages.",
+  appearance: "How the portal and the check-in screen look.",
+  privacy: "Privacy requests, legal notices and your own sign-in security.",
+  activity: "What has happened, and help requests.",
+};
+
+export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const profile = await getCurrentProfile();
   const modules = await getModules();
   if (!profile) redirect("/");
   if (!can(profile, "manage_access")) redirect("/dashboard");
+  const admin = can(profile, "manage_settings");
 
-  const [auditLog, handbookRules] = await Promise.all([getAuditLog(profile.zoneId, 30), getHandbookRules(profile.zoneId)]);
+  const tabs = [
+    { key: "general", label: "General" },
+    { key: "people", label: "People & access" },
+    ...(modules.messaging && admin ? [{ key: "messaging", label: "Messaging" }] : []),
+    ...(admin ? [{ key: "appearance", label: "Appearance" }] : []),
+    { key: "privacy", label: "Privacy & security" },
+    { key: "activity", label: "Activity & help" },
+  ];
+  const { tab: requested } = await searchParams;
+  const tab = tabs.find((t) => t.key === requested)?.key ?? "general";
+
+  const [auditLog, handbookRules] = await Promise.all([
+    tab === "activity" ? getAuditLog(profile.zoneId, 30) : Promise.resolve([]),
+    tab === "general" ? getHandbookRules(profile.zoneId) : Promise.resolve(null),
+  ]);
+  const legalNote =
+    tab === "privacy" && legalGaps(await getLegal(profile.zoneId)).length > 0
+      ? "The privacy notice still has placeholders to fill in before launch."
+      : undefined;
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-6 max-w-3xl">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-        <p className="text-sm text-muted-foreground">Personalize your own view of the portal.</p>
+        <p className="text-sm text-muted-foreground">{TAB_INTRO[tab]}</p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Team &amp; access</CardTitle>
-          <CardDescription>
-            See every leader, what they can see and do, and change it — position sets the defaults.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/settings/access">Manage team access</Link>
-          </Button>
-        </CardContent>
-      </Card>
+      <nav aria-label="Settings sections" className="-mx-1 overflow-x-auto border-b">
+        <ul className="flex min-w-max gap-1 px-1">
+          {tabs.map((t) => (
+            <li key={t.key}>
+              <Link
+                href={`/settings?tab=${t.key}`}
+                aria-current={t.key === tab ? "page" : undefined}
+                className={cn(
+                  "-mb-px inline-block border-b-2 px-3 py-2 text-sm font-medium transition-colors",
+                  t.key === tab ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {t.label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Privacy &amp; legal</CardTitle>
-          <CardDescription>
-            Requests from people to see, correct or delete their information (30-day deadline), and the privacy notice
-            and terms everyone accepts.
-            {legalGaps(await getLegal(profile.zoneId)).length > 0 && (
-              <span className="mt-1 block text-amber-700 dark:text-amber-400">
-                The privacy notice still has placeholders to fill in before launch.
-              </span>
-            )}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/settings/privacy">Privacy details &amp; requests</Link>
-          </Button>
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/privacy">Privacy notice</Link>
-          </Button>
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/terms">Terms of use</Link>
-          </Button>
-        </CardContent>
-      </Card>
+      {tab === "general" && (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle>Features</CardTitle>
+              <CardDescription>
+                Everything Stratum offers. Turn the features in your plan on or off for everyone — a feature that&apos;s off
+                disappears from every sidebar and its pages, and its information is kept for when you turn it back on.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <FeaturesForm included={tenant.modules} modules={modules} canEdit={admin} />
+            </CardContent>
+          </Card>
 
-      {can(profile, "manage_settings") && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Member fields &amp; imports</CardTitle>
-            <CardDescription>
-              Your own details about people (with who may see each one), and how your spreadsheet&apos;s columns are
-              matched when importing.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/settings/fields">Manage member fields</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+          <Card>
+            <CardHeader>
+              <CardTitle>Sidebar sections</CardTitle>
+              <CardDescription>
+                Choose which sections show in your sidebar. This only affects your own account — Assistants always see
+                their fixed set.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <NavVisibilityForm initialHidden={profile.hiddenNavItems} modules={modules} />
+            </CardContent>
+          </Card>
 
-      {modules.messaging && can(profile, "manage_settings") && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Messaging</CardTitle>
-            <CardDescription>The monthly text cap, what a text costs, and the automatic birthday, welcome and &ldquo;we missed you&rdquo; messages.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/settings/messaging">Messaging settings</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {can(profile, "manage_settings") && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Colours</CardTitle>
-            <CardDescription>The look of the portal — pick a ready-made scheme or your own colours, with a preview and advice on what reads well.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/settings/theme">Choose colours</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {can(profile, "manage_settings") && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Departments</CardTitle>
-            <CardDescription>Where people serve — choir, ushering, media… Shown on profiles and filterable on members.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/settings/departments">Manage departments</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Features</CardTitle>
-          <CardDescription>
-            Everything Stratum offers. Turn the features in your plan on or off for everyone — a feature that&apos;s off
-            disappears from every sidebar and its pages, and its information is kept for when you turn it back on.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <FeaturesForm included={tenant.modules} modules={modules} canEdit={can(profile, "manage_settings")} />
-        </CardContent>
-      </Card>
-
-      {modules.attendance && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Self check-in screen</CardTitle>
-            <CardDescription>The welcome on the tablet at the door — title, tagline and a background picture.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/settings/check-in">Customise the screen</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Support requests</CardTitle>
-          <CardDescription>What members and leaders have asked through the Help button.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/settings/support">Open support inbox</Link>
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Your security</CardTitle>
-          <CardDescription>Add an authenticator app to your own account for a second step at sign-in.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/security">Manage two-factor authentication</Link>
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Currency</CardTitle>
-          <CardDescription>
-            All giving and ledger figures are stored in USD and converted live for display — switching this never
-            changes the underlying numbers.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <CurrencySelectForm initialCurrency={profile.zoneCurrency} />
-        </CardContent>
-      </Card>
-
-      {tenant.handbook && handbookRules && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Handbook thresholds</CardTitle>
-            <CardDescription>
-              The giving and membership each category needs, in USD. They start at the {tenant.handbook.sourceShort}&apos;s values;
-              change them here when the leadership revises them. Every chapter, zone and member is re-ranked straight away.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <HandbookRulesForm
-              defaults={tenant.handbook.rules}
-              current={handbookRules.rules}
-              customised={handbookRules.customised}
-              sourceName={tenant.handbook.sourceShort}
-            />
-          </CardContent>
-        </Card>
-      )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Sidebar sections</CardTitle>
-          <CardDescription>
-            Choose which sections show in your sidebar. This only affects your own account — Assistants always see
-            their fixed set.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <NavVisibilityForm initialHidden={profile.hiddenNavItems} modules={modules} />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Audit log</CardTitle>
-          <CardDescription>Who did what — sensitive changes only (members, ledger, training, settings).</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {auditLog.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-6 text-center border rounded-lg border-dashed">
-              No activity recorded yet.
-            </p>
-          ) : (
-            <div className="space-y-2.5 max-h-80 overflow-y-auto">
-              {auditLog.map((entry) => (
-                <div key={entry.id} className="flex items-start gap-2.5 text-sm">
-                  <History className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="leading-snug">
-                      <span className="font-medium">{entry.actorName}</span>{" "}
-                      <span className="text-muted-foreground">
-                        {(ACTION_LABELS[entry.action] ?? entry.action).toLowerCase()}
-                      </span>{" "}
-                      — {entry.summary}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(entry.createdAt).toLocaleString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        hour: "numeric",
-                        minute: "2-digit",
-                      })}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
+          {(modules.giving || modules.ledger) && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Currency</CardTitle>
+                <CardDescription>
+                  All giving and ledger figures are stored in USD and converted live for display — switching this never
+                  changes the underlying numbers.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <CurrencySelectForm initialCurrency={profile.zoneCurrency} />
+              </CardContent>
+            </Card>
           )}
-        </CardContent>
-      </Card>
 
-      <Card className="border-amber-300 bg-amber-50/50">
-        <CardHeader>
-          <CardTitle>Testing</CardTitle>
-          <CardDescription>
-            Signs you out and drops you on the setup wizard so a new zone can be created from scratch. Temporary —
-            for trying out the wizard while we&apos;re still setting up real zones.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form action={restartWizardAction}>
-            <Button type="submit" variant="outline">
-              Re-run setup wizard
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+          {tenant.handbook && handbookRules && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Handbook thresholds</CardTitle>
+                <CardDescription>
+                  The giving and membership each category needs, in USD. They start at the {tenant.handbook.sourceShort}&apos;s values;
+                  change them here when the leadership revises them. Every chapter, zone and member is re-ranked straight away.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <HandbookRulesForm
+                  defaults={tenant.handbook.rules}
+                  current={handbookRules.rules}
+                  customised={handbookRules.customised}
+                  sourceName={tenant.handbook.sourceShort}
+                />
+              </CardContent>
+            </Card>
+          )}
+        </>
+      )}
+
+      {tab === "people" && (
+        <div className="space-y-3">
+          <LinkRow href="/settings/access" title="Team & access" description="See every leader, what they can see and do, and change it — position sets the defaults." />
+          {admin && <LinkRow href="/settings/departments" title="Departments" description="Where people serve — choir, ushering, media… Shown on profiles and filterable on members." />}
+          {admin && <LinkRow href="/settings/fields" title="Member fields & imports" description="Your own details about people (with who may see each one), and how your spreadsheet's columns are matched when importing." />}
+        </div>
+      )}
+
+      {tab === "messaging" && (
+        <div className="space-y-3">
+          <LinkRow href="/settings/messaging" title="Messaging settings" description="The monthly text cap, what a text costs, and the automatic birthday, welcome and “we missed you” messages." />
+        </div>
+      )}
+
+      {tab === "appearance" && (
+        <div className="space-y-3">
+          <LinkRow href="/settings/theme" title="Colours" description="Pick a ready-made scheme or your own colours, with a preview and advice on what reads well." />
+          {modules.attendance && <LinkRow href="/settings/check-in" title="Self check-in screen" description="The welcome on the tablet at the door — title, tagline and a background picture." />}
+        </div>
+      )}
+
+      {tab === "privacy" && (
+        <div className="space-y-3">
+          <LinkRow
+            href="/settings/privacy"
+            title="Privacy details & requests"
+            description="Requests from people to see, correct or delete their information (30-day deadline), and the privacy notice and terms everyone accepts."
+            note={legalNote}
+            secondary={[
+              { href: "/privacy", label: "Privacy notice" },
+              { href: "/terms", label: "Terms of use" },
+            ]}
+          />
+          <LinkRow href="/security" title="Your security" description="Add an authenticator app to your own account for a second step at sign-in." />
+        </div>
+      )}
+
+      {tab === "activity" && (
+        <>
+          <LinkRow href="/settings/support" title="Support requests" description="What members and leaders have asked through the Help button." />
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Audit log</CardTitle>
+              <CardDescription>Who did what — sensitive changes only (members, ledger, training, settings).</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {auditLog.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-6 text-center border rounded-lg border-dashed">
+                  No activity recorded yet.
+                </p>
+              ) : (
+                <div className="space-y-2.5 max-h-96 overflow-y-auto">
+                  {auditLog.map((entry) => (
+                    <div key={entry.id} className="flex items-start gap-2.5 text-sm">
+                      <History className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="leading-snug">
+                          <span className="font-medium">{entry.actorName}</span>{" "}
+                          <span className="text-muted-foreground">
+                            {(ACTION_LABELS[entry.action] ?? entry.action).toLowerCase()}
+                          </span>{" "}
+                          — {entry.summary}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(entry.createdAt).toLocaleString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            hour: "numeric",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-amber-300 bg-amber-50/50">
+            <CardHeader>
+              <CardTitle>Testing</CardTitle>
+              <CardDescription>
+                Signs you out and drops you on the setup wizard so a new zone can be created from scratch. Temporary —
+                for trying out the wizard while we&apos;re still setting up real zones.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form action={restartWizardAction}>
+                <Button type="submit" variant="outline">
+                  Re-run setup wizard
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </>
+      )}
     </div>
   );
 }
