@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
-import { Menu, Bell, LogOut } from "lucide-react";
+import { Menu, LogOut } from "lucide-react";
 import { BrandMark } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -18,7 +18,8 @@ const clearCheckInList = () => {
 };
 import { EVENT_NAV_ITEMS } from "@/lib/nav-items";
 import { cn } from "@/lib/utils";
-import { SupportButton } from "@/components/support/support-button";
+import { MoreMenu } from "@/components/layout/more-menu";
+import type { NotificationItem } from "@/lib/data/notifications";
 
 // The chrome the whole signed-in app shares — a fixed sidebar on desktop, a
 // slide-out drawer on mobile — parameterized by which nav items to show.
@@ -135,14 +136,15 @@ export function PortalTopbar({
   identityLabel,
   navItems,
   settingsItem,
-  showNotifications = false,
+  notifications,
 }: {
   zoneName: string;
   fullName: string;
   identityLabel: string; // e.g. "Zone Office" or "Member" — the line under their name
   navItems: PortalNavItem[];
   settingsItem?: PortalNavItem;
-  showNotifications?: boolean;
+  // What needs attention (staff only); omitted for members.
+  notifications?: NotificationItem[];
 }) {
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b bg-card/95 backdrop-blur px-4 md:px-6">
@@ -172,19 +174,12 @@ export function PortalTopbar({
         </SheetContent>
       </Sheet>
 
-      <div className="flex items-center gap-2 md:hidden">
-        <BrandMark size={26} />
-        <span className="font-semibold text-sm">{zoneName}</span>
-      </div>
+      <p className="pointer-events-none absolute left-1/2 max-w-[50%] -translate-x-1/2 truncate text-sm font-semibold uppercase tracking-[0.18em]">
+        {zoneName}
+      </p>
 
       <div className="ml-auto flex items-center gap-3">
-        <SupportButton />
-        {showNotifications && (
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="h-4.5 w-4.5" />
-            <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-primary" />
-          </Button>
-        )}
+        <MoreMenu notifications={notifications} />
         <div className="hidden sm:flex items-center gap-2 pl-2 border-l">
           <Avatar className="h-8 w-8">
             <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
