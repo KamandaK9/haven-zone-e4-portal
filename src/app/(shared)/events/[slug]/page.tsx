@@ -3,11 +3,11 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { CalendarDays, MapPin } from "lucide-react";
 import { EventPage } from "@/components/events/event-page";
-import { AddEditionButton, EventEditorButton, SeriesEditorButton } from "@/components/events/event-editor";
+import { AddEditionButton, DeleteSeriesButton, EventEditorButton, SeriesEditorButton } from "@/components/events/event-editor";
 import { can, getCurrentProfile } from "@/lib/data/get-dataset";
 import { getEventMedia, getEventSeriesBySlug, getSeriesEditions } from "@/lib/data/events";
 import { formatEventDates } from "@/lib/event-format";
-import { SERIES_ICON_BY_SLUG } from "@/lib/event-series";
+import { EVENT_SERIES_DEFS, SERIES_ICON_BY_SLUG } from "@/lib/event-series";
 import { requireModule } from "@/lib/require-module";
 
 export default async function EventSeriesPage({
@@ -71,6 +71,11 @@ export default async function EventSeriesPage({
           <p className="text-sm text-muted-foreground">
             {canEdit ? "Add the first edition to start this page." : "Check back once the first edition has been added."}
           </p>
+          {canEdit && !EVENT_SERIES_DEFS.some((d) => d.slug === series.slug) && (
+            <div className="flex justify-center pt-2">
+              <DeleteSeriesButton series={series} />
+            </div>
+          )}
         </div>
       )}
 

@@ -36,6 +36,7 @@ const positions: readonly PositionDef[] = [
       "view_members", "view_contact_details", "manage_members", "view_reports", "export_data",
       "view_attendance", "record_follow_up", "view_pastoral_notes", "manage_services",
       "manage_courses", "send_messages", "approve_messages", "assign_roles", "take_cell_attendance",
+      "manage_events",
     ],
   },
   {
@@ -128,7 +129,7 @@ export const tenant: TenantConfig = {
     livestreams: false,
     records: false,
     training: false,
-    events: false,
+    events: true,
     handbook: false,
     newsletter: false,
     // The spec's core features. attendance/courses/messaging aren't built

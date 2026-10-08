@@ -3,7 +3,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireModule } from "@/lib/require-module";
 import { CalendarDays } from "lucide-react";
-import { getCurrentProfile } from "@/lib/data/get-dataset";
+import { NewSeriesButton } from "@/components/events/event-editor";
+import { can, getCurrentProfile } from "@/lib/data/get-dataset";
 import { getEventSeriesList, getLatestEditionsBySeries } from "@/lib/data/events";
 import { formatEventDates } from "@/lib/event-format";
 import { SERIES_ICON_BY_SLUG } from "@/lib/event-series";
@@ -20,12 +21,26 @@ export default async function EventsIndexPage() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Annual events</h1>
-        <p className="text-sm text-muted-foreground">
-          The gatherings that come round every year — descriptions, pictures, resources and videos from each edition.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Annual events</h1>
+          <p className="text-sm text-muted-foreground">
+            The gatherings that come round every year — descriptions, pictures, resources and videos from each edition.
+          </p>
+        </div>
+        {can(profile, "manage_events") && <NewSeriesButton />}
       </div>
+
+      {seriesList.length === 0 && (
+        <div className="rounded-2xl border border-dashed p-12 text-center space-y-1">
+          <p className="font-medium">No annual events yet</p>
+          <p className="text-sm text-muted-foreground">
+            {can(profile, "manage_events")
+              ? "Add your conference, camp or convention, then add each year's edition with its dates, pictures and videos."
+              : "Nothing has been added yet."}
+          </p>
+        </div>
+      )}
 
       <div className="grid sm:grid-cols-2 gap-4">
         {seriesList.map((series) => {
