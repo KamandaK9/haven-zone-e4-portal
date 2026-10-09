@@ -71,6 +71,8 @@ const ACTION_LABELS: Record<string, string> = {
   "sub_zone.update": `Edited a ${lower(labels.subZone)}`,
   "sub_zone.leader_history": "Leadership history",
   "church.move": `Moved a ${lower(labels.location)}`,
+  "church.merge": `Merged two ${lower(labels.locations)}`,
+  "country.create": `Added a ${lower(labels.country)}`,
   "member_field.create": "Added a member field",
   "member_field.update": "Changed a member field",
   "settings.theme": "Colours changed",

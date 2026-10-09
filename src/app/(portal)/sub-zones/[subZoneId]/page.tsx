@@ -6,7 +6,7 @@ import { StatCard } from "@/components/dashboard/stat-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EditSubZoneDialog, MoveChapterSelect } from "@/components/structure/sub-zone-dialogs";
 import { LeaderHistory } from "@/components/structure/leader-history";
-import { getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
+import { can, getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
 import { getMembersByChurch } from "@/lib/data/analytics";
 import { getZoneCells } from "@/lib/data/cells";
 import { getLeadershipHistory } from "@/lib/data/structure";
@@ -46,7 +46,7 @@ export default async function SubZonePage({ params }: { params: Promise<{ subZon
   const locationLeaderKey = tenant.access.locationLeaderPositionKey;
   const leaders = holdersOf(ds.members, groupLeaderKey, churchIds);
   const history = leadershipTimeline(await getLeadershipHistory(subZoneId, groupLeaderKey));
-  const isDirector = profile.role === "super_admin";
+  const isDirector = profile.role === "super_admin" || can(profile, "manage_settings");
   const leaderTitle = groupLeaderKey ? positionLabel(groupLeaderKey) : "Leader";
 
   return (

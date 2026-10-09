@@ -1340,6 +1340,9 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      set_church_country: { Args: { p_church: string; p_country: string }; Returns: undefined };
+      set_church_sub_zone: { Args: { p_church: string; p_sub_zone: string | null }; Returns: undefined };
+      merge_churches: { Args: { p_from: string; p_into: string }; Returns: number };
       children_roster: {
         Args: { p_church_id: string; p_age_groups: string[] };
         Returns: { id: string; first_name: string; last_name: string; age_group: string | null; guardian_name: string | null; guardian_phone: string | null; birthday: string | null; expected_graduation: string | null }[];
