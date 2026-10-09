@@ -1,5 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/lib/supabase/types";
 import type { ServiceLite } from "@/lib/attendance/rules";
 import type { AttendanceRow } from "@/lib/attendance/summary";
 import { tenant } from "@/tenant";
@@ -14,8 +16,8 @@ export function churchToday(): string {
 
 // Services and check-ins of the last `weeks` weeks, as far as the viewer's
 // RLS allows (a cell leader sees only their cell's check-ins).
-export async function getAttendanceData(weeks = 12) {
-  const supabase = await createClient();
+export async function getAttendanceData(weeks = 12, client?: SupabaseClient<Database>) {
+  const supabase = client ?? (await createClient());
   const since = new Date(Date.now() - weeks * 7 * 86_400_000).toISOString().slice(0, 10);
   const { data: services, error } = await supabase
     .from("services")

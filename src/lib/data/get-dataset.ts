@@ -144,6 +144,10 @@ type MemberRow = {
   age_group?: string | null;
   // Absent until the attendance migration has been applied.
   is_visitor?: boolean;
+  // Absent until the messaging migration has been applied.
+  guardian_name?: string | null;
+  guardian_phone?: string | null;
+  messaging_opt_out?: boolean;
   giving_entries: { month: string; amount: number; category: string | null }[] | null;
   trainings:
     | {
@@ -251,7 +255,9 @@ export async function getZoneDataset(zoneId: string): Promise<Dataset & { zoneNa
     .filter((c) => viewer?.scope === "zone" || visibleCountryIds.has(c.id))
     .map((c) => ({ id: c.id, name: c.name, flag: c.flag }));
 
-  const subZones: SubZone[] = (subZonesRes.data ?? []).map((z) => ({ id: z.id, name: z.name }));
+  const subZones: SubZone[] = (subZonesRes.data ?? [])
+    .map((z) => ({ id: z.id, name: z.name, history: z.history ?? undefined, foundedYear: z.founded_year ?? undefined }))
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
 
   const members: Member[] = memberRows.map((m) => ({
     id: m.id,
@@ -303,6 +309,10 @@ export async function getZoneDataset(zoneId: string): Promise<Dataset & { zoneNa
     cellId: m.cell_id ?? undefined,
     ageGroup: m.age_group ?? undefined,
     isVisitor: m.is_visitor ?? false,
+    ...(canSeeContacts || m.profile_id === viewer?.userId
+      ? { guardianName: m.guardian_name ?? undefined, guardianPhone: m.guardian_phone ?? undefined }
+      : {}),
+    messagingOptOut: m.messaging_opt_out ?? false,
   }));
 
   const activity: ActivityItem[] = (activityRes.data ?? []).map((a) => ({

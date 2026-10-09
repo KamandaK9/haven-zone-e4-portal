@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FollowUpDialog, OUTCOMES } from "@/components/attendance/follow-up-dialog";
+import { AssignFollowUpDialog } from "@/components/attendance/assign-follow-up-dialog";
+import { getFollowUpTasks } from "@/lib/data/follow-up-tasks";
 import { can, getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
 import { getZoneCells } from "@/lib/data/cells";
 import { churchToday, getAttendanceData, serviceTitle } from "@/lib/data/attendance";
@@ -47,6 +49,7 @@ export default async function AttendancePage() {
     .sort((a, b) => b.s.missedInARow - a.s.missedInARow || memberFullName(a.m).localeCompare(memberFullName(b.m)));
 
   const visitors = ds.members.filter((m) => m.isVisitor);
+  const openTasks = new Map((await getFollowUpTasks()).filter((t) => t.status === "open").map((t) => [t.memberId, t]));
 
   return (
     <div className="space-y-6">
@@ -100,7 +103,7 @@ export default async function AttendancePage() {
                     <TableHead>Member</TableHead>
                     <TableHead>{labels.cell}</TableHead>
                     <TableHead>Missed</TableHead>
-                    <TableHead>Last followed up</TableHead>
+                    <TableHead>Follow-up</TableHead>
                     <TableHead />
                   </TableRow>
                 </TableHeader>
@@ -123,10 +126,23 @@ export default async function AttendancePage() {
                           </p>
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {f ? `${OUTCOMES.find((o) => o.value === f.outcome)?.label ?? f.outcome} · ${formatDate(f.createdAt.slice(0, 10))}` : "—"}
+                          {openTasks.get(m.id) ? (
+                            <span className="text-foreground">
+                              {openTasks.get(m.id)!.assignedToName} · due {formatDate(openTasks.get(m.id)!.dueDate)}
+                            </span>
+                          ) : f ? (
+                            `${OUTCOMES.find((o) => o.value === f.outcome)?.label ?? f.outcome} · ${formatDate(f.createdAt.slice(0, 10))}`
+                          ) : (
+                            "—"
+                          )}
                         </TableCell>
                         <TableCell className="text-right">
-                          {can(profile, "record_follow_up") && <FollowUpDialog memberId={m.id} memberName={memberFullName(m)} />}
+                          <div className="flex justify-end gap-1">
+                            {can(profile, "record_follow_up") && !openTasks.get(m.id) && (
+                              <AssignFollowUpDialog memberId={m.id} memberName={m.firstName} myId={profile.userId} />
+                            )}
+                            {can(profile, "record_follow_up") && <FollowUpDialog memberId={m.id} memberName={memberFullName(m)} />}
+                          </div>
                         </TableCell>
                       </TableRow>
                     );

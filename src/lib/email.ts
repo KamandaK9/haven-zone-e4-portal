@@ -1,20 +1,32 @@
 import "server-only";
 
-// A thin wrapper over Resend's REST API — no SDK dependency, matching how
-// this app already calls out to other third-party APIs (see
-// currency-server.ts). Used for actual content emails (the newsletter);
-// auth emails (invites, password resets) go through Supabase's own SMTP
-// instead, configured separately in the Supabase dashboard.
+// Content emails (newsletter, messages, support, digests) over a provider's
+// REST API — SendGrid or Resend, no SDK, matching how this app calls other
+// third-party APIs (see currency-server.ts). Auth emails (invites, password
+// resets) go through Supabase's own SMTP instead, configured separately in the
+// Supabase dashboard.
 //
-// Both RESEND_API_KEY and RESEND_FROM_EMAIL have to be set, and the "from"
-// address's domain has to be verified in Resend, before this can send
-// anything for real.
+// The sender address's domain (or address) has to be verified with the
+// provider before anything is delivered.
 
 export type SendEmailResult = { ok: true; id: string } | { ok: false; error: string; notConfigured?: boolean };
 
+// SendGrid (SENDGRID_API_KEY + EMAIL_FROM) is used when its key is set;
+// otherwise Resend (RESEND_API_KEY + RESEND_FROM_EMAIL), as before.
+const sendGridConfigured = () => !!process.env.SENDGRID_API_KEY?.trim() && !!(process.env.EMAIL_FROM ?? process.env.RESEND_FROM_EMAIL)?.trim();
+
 export function emailIsConfigured(): boolean {
-  return !!process.env.RESEND_API_KEY && !!process.env.RESEND_FROM_EMAIL;
+  return sendGridConfigured() || (!!process.env.RESEND_API_KEY && !!process.env.RESEND_FROM_EMAIL);
 }
+
+// "CE Sandton <hello@example.org>" or a bare address.
+export function parseFrom(raw: string): { email: string; name?: string } {
+  const m = raw.trim().match(/^(.*)<([^>]+)>$/);
+  return m ? { email: m[2].trim(), name: m[1].trim().replace(/^"|"$/g, "") || undefined } : { email: raw.trim() };
+}
+
+const NOT_CONFIGURED =
+  "No email provider is set up yet — add SENDGRID_API_KEY and EMAIL_FROM (or RESEND_API_KEY and RESEND_FROM_EMAIL) to the deployment's settings.";
 
 export async function sendEmail(input: {
   to: string; // shown as the sender's own copy — real recipients go in bcc
@@ -25,22 +37,37 @@ export async function sendEmail(input: {
   // Where replies go, e.g. the member who asked for help.
   replyTo?: string;
 }): Promise<SendEmailResult> {
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM_EMAIL;
-  if (!apiKey || !from) {
-    return {
-      ok: false,
-      notConfigured: true,
-      error: "No email provider is set up for this zone yet — ask whoever manages the Supabase project to add RESEND_API_KEY and RESEND_FROM_EMAIL.",
-    };
-  }
+  if (!emailIsConfigured()) return { ok: false, notConfigured: true, error: NOT_CONFIGURED };
 
   try {
+    if (sendGridConfigured()) {
+      const from = parseFrom((process.env.EMAIL_FROM ?? process.env.RESEND_FROM_EMAIL)!);
+      const to = input.to.toLowerCase();
+      const bcc = [...new Set(input.bcc.map((e) => e.toLowerCase()))].filter((e) => e !== to);
+      const res = await fetch("https://api.sendgrid.com/v3/mail/send", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${process.env.SENDGRID_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          personalizations: [{ to: [{ email: input.to }], ...(bcc.length ? { bcc: bcc.map((email) => ({ email })) } : {}) }],
+          from,
+          subject: input.subject,
+          content: [
+            { type: "text/plain", value: input.text },
+            { type: "text/html", value: input.html },
+          ],
+          ...(input.replyTo ? { reply_to: { email: input.replyTo } } : {}),
+        }),
+      });
+      if (res.status === 202) return { ok: true, id: res.headers.get("x-message-id") ?? "" };
+      const data = await res.json().catch(() => null);
+      return { ok: false, error: data?.errors?.[0]?.message ?? `Email provider returned ${res.status}.` };
+    }
+
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        from,
+        from: process.env.RESEND_FROM_EMAIL,
         to: [input.to],
         bcc: input.bcc,
         subject: input.subject,
@@ -57,4 +84,9 @@ export async function sendEmail(input: {
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Could not reach the email provider." };
   }
+}
+
+// One email to one person (a personalised message), through the same provider.
+export async function sendEmailOne(input: { to: string; subject: string; text: string; html: string; replyTo?: string }): Promise<SendEmailResult> {
+  return sendEmail({ to: input.to, bcc: [], subject: input.subject, html: input.html, text: input.text, replyTo: input.replyTo });
 }

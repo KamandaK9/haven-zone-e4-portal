@@ -43,6 +43,8 @@ import { FollowUpDialog, OUTCOMES } from "@/components/attendance/follow-up-dial
 import { ConfirmVisitorButton } from "@/components/attendance/confirm-visitor-button";
 import { MemberDataActions } from "@/components/members/member-data-actions";
 import { RoleCard } from "@/components/members/role-card";
+import { MessagingField } from "@/components/members/messaging-field";
+import { isMinor as isMinorGroup } from "@/lib/messaging/recipients";
 import { DepartmentsField } from "@/components/members/departments-field";
 import { getDepartmentMemberships, getDepartments } from "@/lib/data/departments";
 import { assignableRoles, roleOption } from "@/lib/roles";
@@ -130,24 +132,7 @@ export default async function MemberPage({
         ]}
       />
 
-      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-        {can(profile, "manage_members") ? (
-          <MemberPhotoUpload
-            memberId={member.id}
-            firstName={member.firstName}
-            lastName={member.lastName}
-            avatarColor={member.avatarColor}
-            photoUrl={member.photoUrl}
-          />
-        ) : (
-          <MemberAvatar
-            firstName={member.firstName}
-            lastName={member.lastName}
-            avatarColor={member.avatarColor}
-            photoUrl={member.photoUrl}
-            className="h-16 w-16 text-lg"
-          />
-        )}
+      <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-semibold tracking-tight">{memberFullName(member)}</h1>
@@ -194,6 +179,19 @@ export default async function MemberPage({
               )}
             </div>
           )}
+          {modules.messaging && (can(profile, "manage_members") || member.guardianPhone || member.messagingOptOut) && (
+            <div className="mt-1.5">
+              <MessagingField
+                memberId={member.id}
+                firstName={member.firstName}
+                guardianName={member.guardianName}
+                guardianPhone={member.guardianPhone}
+                optOut={member.messagingOptOut}
+                isMinor={isMinorGroup(member.ageGroup ?? null)}
+                canEdit={can(profile, "manage_members")}
+              />
+            </div>
+          )}
           {departments.length > 0 || can(profile, "manage_settings") ? (
             <div className="mt-2">
               <DepartmentsField
@@ -208,13 +206,30 @@ export default async function MemberPage({
           ) : null}
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {member.isVisitor && can(profile, "manage_members") && <ConfirmVisitorButton memberId={member.id} />}
-            <InviteMemberButton
+            {(tenant.memberLogins !== false || isLeader(member.position) || member.hasPortalAccess) && <InviteMemberButton
               memberId={member.id}
               hasPortalAccess={member.hasPortalAccess}
               hasEmail={!!member.email}
-            />
+            />}
           </div>
         </div>
+        {can(profile, "manage_members") ? (
+          <MemberPhotoUpload
+            memberId={member.id}
+            firstName={member.firstName}
+            lastName={member.lastName}
+            avatarColor={member.avatarColor}
+            photoUrl={member.photoUrl}
+          />
+        ) : (
+          <MemberAvatar
+            firstName={member.firstName}
+            lastName={member.lastName}
+            avatarColor={member.avatarColor}
+            photoUrl={member.photoUrl}
+            className="h-16 w-16 text-lg"
+          />
+        )}
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

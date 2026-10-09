@@ -23,6 +23,8 @@ export type Church = {
 export type SubZone = {
   id: string;
   name: string;
+  history?: string;
+  foundedYear?: number;
 };
 
 export type LessonStatus = "not_started" | "in_progress" | "completed";
@@ -99,6 +101,9 @@ export type Member = {
   cellId?: string;
   ageGroup?: string; // a tenant.ageGroups key
   isVisitor: boolean; // a first-timer added at check-in, not yet confirmed
+  guardianName?: string;
+  guardianPhone?: string;
+  messagingOptOut: boolean;
 };
 
 // A group below a chapter; parentId unset = the upper level (e.g. a senior

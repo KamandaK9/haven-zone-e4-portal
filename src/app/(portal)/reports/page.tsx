@@ -6,6 +6,7 @@ import { churchToday, getAttendanceData } from "@/lib/data/attendance";
 import { summarise } from "@/lib/attendance/summary";
 import { getCourse, getVisibleClassAttendance } from "@/lib/data/courses";
 import { courseProgress } from "@/lib/courses/progress";
+import { compareSubGroups } from "@/lib/attendance/compare";
 import { Users, Church, Globe2, HandCoins } from "lucide-react";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { TopGivers } from "@/components/dashboard/top-givers";
@@ -52,6 +53,7 @@ export default async function ReportsPage({
     const members = ds.members.filter((m) => !m.isVisitor);
     const standing = summarise(members, data.services, data.attendance, churchToday());
     let course: { name: string; completed: number; inProgress: number } | undefined;
+    const completedMembers = new Set<string>();
     const c = modules.courses ? await getCourse(profile.zoneId) : undefined;
     if (c) {
       const byMember = new Map<string, string[]>();
@@ -59,7 +61,16 @@ export default async function ReportsPage({
       const ids = c.classes.map((x) => x.id);
       const done = [...byMember.values()].filter((v) => courseProgress(v, ids, c.requiredClasses).completed).length;
       course = { name: c.name, completed: done, inProgress: byMember.size - done };
+      for (const [memberId, classIds] of byMember) if (courseProgress(classIds, ids, c.requiredClasses).completed) completedMembers.add(memberId);
     }
+    const comparison = compareSubGroups({
+      churchIds: ds.churches.filter((x) => !x.isOffice).map((x) => x.id),
+      members: ds.members.map((m) => ({ id: m.id, churchId: m.churchId, isVisitor: m.isVisitor, joinDate: m.joinDate })),
+      standing,
+      services: data.services,
+      courseCompletedByMember: completedMembers,
+      today: churchToday(),
+    });
     return (
       <AttendanceReport
         ds={ds}
@@ -68,6 +79,7 @@ export default async function ReportsPage({
         attendance={data.attendance}
         standing={standing}
         course={course}
+        comparison={comparison}
         canExport={can(profile, "export_data")}
       />
     );

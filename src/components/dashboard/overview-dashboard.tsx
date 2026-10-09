@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Users, Church, Network, TrendingUp, CalendarCheck, UserCheck, PhoneCall } from "lucide-react";
+import { Users, Church, Network, TrendingUp, CalendarCheck, UserCheck, PhoneCall, UserPlus } from "lucide-react";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { ActivityFeed } from "@/components/dashboard/activity-feed";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +15,7 @@ import type { Step } from "@/lib/onboarding/steps";
 // The dashboard for a deployment that doesn't track giving: membership,
 // structure and age groups — the figures it does have. (Attendance figures
 // join here once that module is built.)
-export type AttendanceTiles = { lastSunday?: { date: string; count: number }; active: number; needFollowUp: number };
+export type AttendanceTiles = { lastSunday?: { date: string; count: number }; active: number; needFollowUp: number; newcomersWaiting: number };
 
 export function OverviewDashboard({
   ds,
@@ -63,7 +63,7 @@ export function OverviewDashboard({
       </div>
 
       {attendance && (
-        <Link href="/attendance" className="grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-xl transition-opacity hover:opacity-90">
+        <Link href="/attendance" className="grid grid-cols-2 lg:grid-cols-4 gap-3 rounded-xl transition-opacity hover:opacity-90">
           <StatCard
             label={
               attendance.lastSunday
@@ -75,6 +75,7 @@ export function OverviewDashboard({
           />
           <StatCard label="Active members" value={attendance.active.toLocaleString()} icon={UserCheck} />
           <StatCard label="Need follow-up" value={attendance.needFollowUp.toLocaleString()} icon={PhoneCall} />
+          <StatCard label="New, not yet contacted" value={attendance.newcomersWaiting.toLocaleString()} icon={UserPlus} />
         </Link>
       )}
 

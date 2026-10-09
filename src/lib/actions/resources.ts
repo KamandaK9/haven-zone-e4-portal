@@ -73,7 +73,7 @@ export async function deleteResource(id: string): Promise<ActionResult> {
   const { data, error } = await supabase.from("resources").delete().eq("id", id).select("file_path, title");
   if (error) return { ok: false, error: error.message };
   if (data?.[0]) {
-    await removeFiles(RESOURCES_BUCKET, [data[0].file_path]);
+    if (data[0].file_path) await removeFiles(RESOURCES_BUCKET, [data[0].file_path]);
     await logAudit(auth.profile, "resource.remove", `Removed "${data[0].title}" from resources`);
   }
   revalidatePath("/resources");

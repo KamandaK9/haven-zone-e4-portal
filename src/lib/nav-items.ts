@@ -3,7 +3,7 @@ import type { Capability } from "@/lib/access";
 import type { ModuleKey } from "@/lib/tenant";
 import type { Modules } from "@/lib/modules";
 import { EVENT_SERIES_DEFS } from "@/lib/event-series";
-import { LayoutDashboard, Globe2, Church, ClipboardCheck, ScanLine, School, FolderDown, BarChart3, BookOpenText, GraduationCap, CalendarDays, Mail, Settings, BookMarked, FolderOpen, Radio } from "lucide-react";
+import { LayoutDashboard, Network, Globe2, Church, ClipboardCheck, ScanLine, School, FolderDown, MessageSquare, UserPlus, ListChecks, Users2, Baby, BarChart3, BookOpenText, GraduationCap, CalendarDays, PartyPopper, Mail, Settings, BookMarked, FolderOpen, Radio } from "lucide-react";
 import { tenant } from "@/tenant";
 import { labels, singleCountry } from "@/lib/labels";
 
@@ -23,12 +23,15 @@ export type NavItemDef = {
 
 export const NAV_ITEMS: NavItemDef[] = [
   { key: "dashboard", href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, hideable: false },
-  // With a single country the country level is skipped, and this is the
-  // list of locations (see /countries).
-  {
-    key: "countries", href: "/countries", label: singleCountry ? labels.locations : labels.countries,
-    icon: singleCountry ? Church : Globe2, hideable: false,
-  },
+  // The structure. Sub-zone first where the organisation reads it that way
+  // (/sub-zones); otherwise countries — and with a single country the
+  // country level is skipped, so this is the list of locations.
+  tenant.structureRoot === "group"
+    ? { key: "countries", href: "/sub-zones", label: labels.subZones, icon: Network, hideable: false }
+    : {
+        key: "countries", href: "/countries", label: singleCountry ? labels.locations : labels.countries,
+        icon: singleCountry ? Church : Globe2, hideable: false,
+      },
   {
     key: "attendance", href: "/attendance", label: "Attendance", icon: ClipboardCheck,
     cap: "view_attendance", module: "attendance", hideable: true,
@@ -37,6 +40,14 @@ export const NAV_ITEMS: NavItemDef[] = [
     key: "courses", href: "/courses", label: tenant.course?.name ?? "Courses", icon: School,
     cap: ["manage_courses", "teach_courses"], module: "courses", hideable: true,
   },
+  {
+    key: "messages", href: "/messages", label: "Messages", icon: MessageSquare,
+    cap: ["send_messages", "approve_messages"], module: "messaging", hideable: true,
+  },
+  { key: "cell-meetings", href: "/cell-meetings", label: "Cell meetings", icon: Users2, cap: ["take_cell_attendance", "view_attendance"], module: "attendance", hideable: true },
+  { key: "follow-ups", href: "/follow-ups", label: "Follow-ups", icon: ListChecks, cap: "record_follow_up", module: "attendance", hideable: true },
+  { key: "first-timers", href: "/first-timers", label: "First-timers", icon: UserPlus, cap: "view_attendance", module: "attendance", hideable: true },
+  { key: "children", href: "/children", label: "Children's church", icon: Baby, cap: ["check_in", "manage_children"], module: "attendance", hideable: true },
   { key: "check-in", href: "/check-in", label: "Check-in", icon: ScanLine, cap: "check_in", module: "attendance", hideable: true },
   { key: "reports", href: "/reports", label: "Reports", icon: BarChart3, cap: "view_reports", hideable: true },
   { key: "ledger", href: "/ledger", label: "Ledger", icon: BookOpenText, cap: "manage_ledger", module: "ledger", hideable: true },
@@ -46,6 +57,12 @@ export const NAV_ITEMS: NavItemDef[] = [
   },
   { key: "training", href: "/training", label: "Training", icon: GraduationCap, module: "training", hideable: true },
   { key: "calendar", href: "/calendar", label: "Calendar", icon: CalendarDays, hideable: false },
+  // A tenant with its own fixed flagship events lists them under their own
+  // heading (EVENT_NAV_ITEMS); otherwise the annual events are one section,
+  // and the organisation adds its own.
+  ...(EVENT_SERIES_DEFS.length === 0
+    ? [{ key: "events", href: "/events", label: "Annual events", icon: PartyPopper, module: "events" as const, hideable: true }]
+    : []),
   { key: "live", href: "/live", label: "Live", icon: Radio, module: "livestreams", hideable: true },
   // Only when the tenant ships a handbook.
   ...(tenant.handbook

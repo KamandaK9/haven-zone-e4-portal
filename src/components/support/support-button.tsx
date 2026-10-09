@@ -14,8 +14,21 @@ import { cn } from "@/lib/utils";
 
 // The Help button in every page's top bar, for members and leaders alike.
 export function SupportButton() {
-  const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" onClick={() => setOpen(true)}>
+        <LifeBuoy className="h-4 w-4" />
+        <span className="hidden sm:inline">Help</span>
+        <span className="sr-only sm:hidden">Get help</span>
+      </Button>
+      <SupportDialog open={open} onOpenChange={setOpen} />
+    </>
+  );
+}
+
+export function SupportDialog({ open, onOpenChange: setOpen }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+  const pathname = usePathname();
   const [category, setCategory] = useState<SupportCategory>("question");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -43,11 +56,6 @@ export function SupportButton() {
 
   return (
     <>
-      <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" onClick={() => reset(true)}>
-        <LifeBuoy className="h-4 w-4" />
-        <span className="hidden sm:inline">Help</span>
-        <span className="sr-only sm:hidden">Get help</span>
-      </Button>
       <Dialog open={open} onOpenChange={reset}>
         <DialogContent className="sm:max-w-md">
           {sent ? (

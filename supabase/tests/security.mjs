@@ -368,6 +368,57 @@ expect("a member can't switch features off", r.ok && r.affected === 0, r);
 r = await as(D, "authenticated", `update zones set disabled_modules = '{}' where id = '${Z}'`);
 expect("an admin can switch features on and off", changed(r), r);
 
+// ── Children's church: materials and graduation ───────────────────────
+{
+  const HD = id(110), KID2 = id(111);
+  await db.exec(`
+    insert into auth.users (id) values ('${HD}');
+    insert into profiles (id, zone_id, role, full_name, email, position, scope, church_id, caps) values
+      ('${HD}', '${Z}', 'admin', 'Head', 'hd@x', 'member', 'chapter', '${C1}', '{check_in,manage_children}');
+    insert into members (id, zone_id, church_id, country_id, first_name, last_name, age_group) values
+      ('${KID2}', '${Z}', '${C1}', '${CO}', 'Almost', 'Teen', 'children');
+  `);
+  const mat = (who) => as(who, "authenticated", `insert into resources (zone_id, kind, title, file_path, file_name, mime) values ('${Z}', 'children', 'Week 1', '${Z}/a.pdf', 'a.pdf', 'application/pdf')`);
+  r = await mat(HD);
+  expect("the head of children's church can add lesson materials", r.ok, r);
+  r = await mat(V);
+  expect("a check-in volunteer can't", denied(r), r);
+  r = await as(HD, "authenticated", `insert into resources (zone_id, kind, title, file_path, file_name, mime) values ('${Z}', 'logo', 'Logo', '${Z}/b.png', 'b.png', 'image/png')`);
+  expect("…and the head can't add anything but children's materials", denied(r), r);
+  r = await as(V, "authenticated", `select title from resources where kind = 'children'`);
+  expect("any leader can read the materials", r.ok && r.rows.length === 1, r);
+  r = await as(M, "authenticated", `select title from resources where kind = 'children'`);
+  expect("members can't", r.ok && r.rows.length === 0, r);
+  r = await as(HD, "authenticated", `select set_child_graduation('${KID2}', '2027-03-15') as ok`);
+  expect("the head can set a graduation month", r.ok && r.rows[0].ok === true, r);
+  r = await as(HD, "authenticated", `select expected_graduation from children_roster('${C1}', '{children}') where id = '${KID2}'`);
+  expect("…which is stored as the first of that month", r.ok && JSON.stringify(r.rows[0].expected_graduation).includes("2027-03-01"), r);
+  r = await as(V, "authenticated", `select set_child_graduation('${KID2}', '2027-04-01') as ok`);
+  expect("a volunteer can't change graduation", r.ok && r.rows[0].ok === false, r);
+  r = await as(V, "authenticated", `select graduate_child('${KID2}', 'teens') as ok`);
+  expect("…or move a child up", r.ok && r.rows[0].ok === false, r);
+  r = await as(HD, "authenticated", `select graduate_child('${KID2}', 'teens') as ok`);
+  expect("the head can move a child up", r.ok && r.rows[0].ok === true, r);
+  r = await as(HD, "authenticated", `select * from children_roster('${C1}', '{children}') where id = '${KID2}'`);
+  expect("a child who moved up leaves the children's list", r.ok && r.rows.length === 0, r);
+}
+
+// ── Annual events ─────────────────────────────────────────────────────
+r = await as(D, "authenticated", `insert into event_series (zone_id, slug, name) values ('${Z}', 'conf', 'Conference')`);
+expect("an admin can add an annual event", changed(r), r);
+r = await as(M, "authenticated", `delete from event_series where slug = 'conf'`);
+expect("a member can't remove an annual event", r.ok && r.affected === 0, r);
+r = await as(D, "authenticated", `delete from event_series where slug = 'conf'`);
+expect("an admin can remove an annual event", changed(r), r);
+
+// ── Colours ───────────────────────────────────────────────────────────
+r = await as(G, "authenticated", `update zones set theme = '{"primary":"#112233","sidebar":"#000000"}' where id = '${Z}'`);
+expect("a leader without manage_access can't change the colours", r.ok && r.affected === 0, r);
+r = await as(D, "authenticated", `update zones set theme = '{"primary":"#112233","sidebar":"#000000"}' where id = '${Z}'`);
+expect("an admin can change the colours", changed(r), r);
+r = await as(D, "authenticated", `update zones set theme = null where id = '${Z}'`);
+expect("an admin can reset the colours", changed(r), r);
+
 // ── Cell roles ────────────────────────────────────────────────────────
 {
   const SC = id(60), CC = id(61), OC = id(62);
@@ -411,6 +462,174 @@ expect("an admin can switch features on and off", changed(r), r);
   expect("…but not someone outside their area", denied(r), r);
   r = await as(M2, "authenticated", `select member_id from member_departments`);
   expect("members don't see who else is in a department", r.ok && r.rows.length === 0, r);
+}
+
+// ── Class materials ───────────────────────────────────────────────────
+await db.exec(`update profiles set caps = array_append(caps, 'manage_courses') where id = '${D}' and not 'manage_courses' = any(caps)`);
+r = await as(D, "authenticated", `insert into class_materials (zone_id, class_id, title, url) values ('${Z}', '${CL1}', 'Manual', 'https://example.org/manual')`);
+expect("whoever manages courses can add class materials", r.ok, r);
+r = await as(TT, "authenticated", `select title from class_materials`);
+expect("a teacher can open class materials", r.ok && r.rows.length === 1, r);
+r = await as(TT, "authenticated", `insert into class_materials (zone_id, class_id, title, url) values ('${Z}', '${CL1}', 'Mine', 'https://example.org/x')`);
+expect("a teacher can't add materials", denied(r), r);
+r = await as(M, "authenticated", `select title from class_materials`);
+expect("members can't see class materials", r.ok && r.rows.length === 0, r);
+r = await as(D, "authenticated", `insert into class_materials (zone_id, class_id, title, url) values ('${Z}', '${CL1}', 'Bad', 'javascript:alert(1)')`);
+expect("a link must be a web address", denied(r), r);
+r = await as(D, "authenticated", `insert into class_materials (zone_id, class_id, title, file_path, file_name) values ('${Z}', '${CL1}', 'Elsewhere', '${id(99)}/x.pdf', 'x.pdf')`);
+expect("an uploaded file must be in the zone's own folder", denied(r), r);
+
+// ── Messaging ─────────────────────────────────────────────────────────
+{
+  const MSG = id(80), MSG2 = id(81);
+  await db.exec(`
+    update profiles set caps = array_cat(caps, '{send_messages,approve_messages}') where id = '${D}' and not 'send_messages' = any(caps);
+    update profiles set caps = array_append(caps, 'send_messages') where id = '${G}' and not 'send_messages' = any(caps);
+    insert into messages (id, zone_id, channel, body, status, created_by) values
+      ('${MSG}', '${Z}', 'sms', 'Hello', 'pending', '${G}'),
+      ('${MSG2}', '${Z}', 'sms', 'Other', 'pending', '${D}');
+    insert into message_recipients (message_id, zone_id, channel, name, to_address, body) values
+      ('${MSG}', '${Z}', 'sms', 'Mem Ber', '+27821112222', 'Hello'),
+      ('${MSG2}', '${Z}', 'sms', 'Oth Er', '+27829998888', 'Other');
+  `);
+  r = await as(G, "authenticated", `select id from messages`);
+  expect("a sender sees only their own messages", r.ok && r.rows.length === 1 && r.rows[0].id === MSG, r);
+  r = await as(D, "authenticated", `select id from messages`);
+  expect("an approver sees every message", r.ok && r.rows.length === 2, r);
+  r = await as(G, "authenticated", `select to_address from message_recipients`);
+  expect("a sender sees recipients of their own messages only", r.ok && r.rows.length === 1, r);
+  r = await as(M, "authenticated", `select id from messages`);
+  expect("members can't see messages", r.ok && r.rows.length === 0, r);
+  r = await as(M, "authenticated", `select to_address from message_recipients`);
+  expect("members can't see who was messaged", r.ok && r.rows.length === 0, r);
+  r = await as(G, "authenticated", `update messages set status = 'approved' where id = '${MSG}'`);
+  expect("a sender can't approve their own message by editing it", r.ok && r.affected === 0, r);
+  r = await as(D, "authenticated", `insert into messages (zone_id, channel, body) values ('${Z}', 'sms', 'Sneaky')`);
+  expect("messages can only be written by the server", denied(r), r);
+  r = await as(D, "authenticated", `update messaging_settings set monthly_sms_cap = 999999 where zone_id = '${Z}'`);
+  expect("settings can only be written by the server", r.ok && r.affected === 0, r);
+  r = await as(M, "authenticated", `select * from messaging_settings`);
+  expect("members can't read the messaging settings", r.ok && r.rows.length === 0, r);
+}
+
+// ── Follow-up tasks ───────────────────────────────────────────────────
+{
+  const TASK = id(90);
+  await db.exec(`update profiles set caps = array_append(caps, 'record_follow_up') where id in ('${G}', '${D}') and not 'record_follow_up' = any(caps);`);
+  r = await as(G, "authenticated", `insert into follow_up_tasks (id, zone_id, member_id, assigned_to, assigned_by, due_date) values ('${TASK}', '${Z}', '${MM}', '${G}', '${G}', current_date + 3)`);
+  expect("a leader can assign a follow-up for a member in their area", r.ok, r);
+  r = await as(G, "authenticated", `insert into follow_up_tasks (zone_id, member_id, assigned_to, assigned_by, due_date) values ('${Z}', '${MM2}', '${G}', '${G}', current_date + 3)`);
+  expect("…but not for someone outside their area", denied(r), r);
+  r = await as(D, "authenticated", `insert into follow_up_tasks (zone_id, member_id, assigned_to, assigned_by, due_date) values ('${Z}', '${MM}', '${G}', '${G}', current_date + 3)`);
+  expect("a task can't be created in someone else's name", denied(r), r);
+  r = await as(G, "authenticated", `insert into follow_up_tasks (zone_id, member_id, assigned_to, assigned_by, due_date) values ('${Z}', '${MM}', '${M2}', '${G}', current_date + 3)`);
+  expect("a task can only go to a login that can see the member", denied(r), r);
+  r = await as(G, "authenticated", `select id from follow_up_tasks`);
+  expect("the assignee sees their task", r.ok && r.rows.length === 1, r);
+  r = await as(M, "authenticated", `select id from follow_up_tasks`);
+  expect("members can't see follow-up tasks", r.ok && r.rows.length === 0, r);
+  r = await as(G, "authenticated", `update follow_up_tasks set status = 'done', completed_at = now() where id = '${TASK}'`);
+  expect("the assignee can finish their task", changed(r), r);
+  r = await as(G, "authenticated", `select * from follow_up_assignees('${MM}')`);
+  expect("the assignee list is leaders who can see the member", r.ok && r.rows.some((x) => x.id === G), r);
+  r = await as(null, "anon", `select * from follow_up_assignees('${MM}')`);
+  expect("anonymous can't list assignees", denied(r) || r.rows.length === 0, r);
+}
+
+// ── Cell meetings ─────────────────────────────────────────────────────
+{
+  // The cell-role fixtures from above: a senior cell (id 60) led by SL, a cell
+  // inside it (61) that AL belongs to, and another cell (62).
+  const SC = id(60), CC = id(61), OC = id(62), SL = id(63), AL = id(64), M_CC = id(68), M_OC = id(69), MEET = id(98);
+  await db.exec(`update profiles set caps = array_append(caps, 'take_cell_attendance') where id in ('${SL}', '${AL}') and not 'take_cell_attendance' = any(caps);`);
+  r = await as(SL, "authenticated", `insert into cell_meetings (id, zone_id, cell_id, meeting_date, created_by) values ('${MEET}', '${Z}', '${CC}', current_date, '${SL}')`);
+  expect("a senior cell leader can take the register of a cell inside theirs", r.ok, r);
+  r = await as(SL, "authenticated", `insert into cell_meetings (zone_id, cell_id, meeting_date, created_by) values ('${Z}', '${OC}', current_date, '${SL}')`);
+  expect("…but not of a cell that isn't theirs", denied(r), r);
+  r = await as(SL, "authenticated", `insert into cell_meetings (zone_id, cell_id, meeting_date, created_by) values ('${Z}', '${CC}', current_date, '${SL}')`);
+  expect("a cell can only meet once a day", denied(r), r);
+  r = await as(SL, "authenticated", `insert into cell_meeting_attendance (meeting_id, member_id, zone_id) values ('${MEET}', '${M_CC}', '${Z}')`);
+  expect("a leader can mark members of their cells present", r.ok, r);
+  r = await as(SL, "authenticated", `insert into cell_meeting_attendance (meeting_id, member_id, zone_id) values ('${MEET}', '${M_OC}', '${Z}')`);
+  expect("…but not someone outside their cells", denied(r), r);
+  r = await as(AL, "authenticated", `select id from cell_meetings where id = '${MEET}'`);
+  expect("an assistant in that cell sees its meetings", r.ok && r.rows.length === 1, r);
+  r = await as(AL, "authenticated", `select id from cell_meetings where cell_id = '${SC}'`);
+  expect("…and not the senior cell's, which isn't theirs", r.ok && r.rows.length === 0, r);
+  r = await as(M, "authenticated", `select id from cell_meetings`);
+  expect("members can't see cell registers", r.ok && r.rows.length === 0, r);
+  r = await as(V, "authenticated", `insert into cell_meetings (zone_id, cell_id, meeting_date, created_by) values ('${Z}', '${SC}', current_date - 1, '${V}')`);
+  expect("a check-in volunteer can't take cell registers", denied(r), r);
+}
+
+// ── Children's check-in ───────────────────────────────────────────────
+{
+  const KID = id(100), KSVC = id(101), CK = id(102);
+  await db.exec(`
+    insert into members (id, zone_id, church_id, country_id, first_name, last_name, age_group, guardian_name, guardian_phone) values
+      ('${KID}', '${Z}', '${C1}', '${CO}', 'Little', 'One', 'children', 'Mum', '0821110000');
+    insert into services (id, zone_id, church_id, service_date, kind) values ('${KSVC}', '${Z}', '${C1}', '2026-02-01', 'sunday');
+  `);
+  r = await as(V, "authenticated", `select first_name, guardian_phone from children_roster('${C1}', '{children}')`);
+  expect("a check-in volunteer gets the children, with their guardian, for their location", r.ok && r.rows.some((x) => x.first_name === "Little"), r);
+  r = await as(V, "authenticated", `select * from children_roster('${C2}', '{children}')`);
+  expect("…but not for another location", r.ok && r.rows.length === 0, r);
+  r = await as(M, "authenticated", `select * from children_roster('${C1}', '{children}')`);
+  expect("members can't list children", r.ok && r.rows.length === 0, r);
+  r = await as(V, "authenticated", `insert into child_checkins (id, zone_id, service_id, child_id, guardian_name, pickup_code, checked_in_by) values ('${CK}', '${Z}', '${KSVC}', '${KID}', 'Mum', '4827', '${V}')`);
+  expect("a volunteer can check a child in", r.ok, r);
+  r = await as(V, "authenticated", `insert into child_checkins (zone_id, service_id, child_id, guardian_name, pickup_code, checked_in_by) values ('${Z}', '${KSVC}', '${KID}', 'Mum', '1111', '${V}')`);
+  expect("a child can't be checked in twice to a service", denied(r), r);
+  r = await as(V, "authenticated", `insert into child_checkins (zone_id, service_id, child_id, guardian_name, pickup_code, checked_in_by) values ('${Z}', '${KSVC}', '${MM2}', 'Mum', '1111', '${V}')`);
+  expect("…or a child from another location", denied(r), r);
+  r = await as(V, "authenticated", `insert into child_checkins (zone_id, service_id, child_id, guardian_name, pickup_code, checked_in_by) values ('${Z}', '${KSVC}', '${MM}', 'Mum', '12', '${V}')`);
+  expect("a code must be four digits", denied(r), r);
+  r = await as(M, "authenticated", `select id from child_checkins`);
+  expect("members can't see who's in children's church", r.ok && r.rows.length === 0, r);
+  r = await as(V, "authenticated", `update child_checkins set checked_out_at = now(), checked_out_by = '${V}' where id = '${CK}'`);
+  expect("a volunteer can release a child", changed(r), r);
+}
+
+// ── Sub-zones: leadership history ─────────────────────────────────────
+{
+  // As the system (no signed-in user), like the server's admin client.
+  const sys = async (sql) => db.exec(`reset role; select set_config('request.jwt.claims', '', false); select set_config('request.jwt.claim.sub', '', false); ${sql}`);
+  const open = async (memberId) =>
+    (await db.query(`select position, sub_zone_id, started_on, ended_on from position_history where member_id = '${memberId}' order by created_at`)).rows;
+  let h = await open(MG);
+  expect("a leader's position is recorded when they're added", h.length === 1 && h[0].position === "governor" && h[0].sub_zone_id === SZ && h[0].ended_on === null, h);
+  expect("ordinary members aren't recorded", (await open(MM2)).length === 0);
+
+  await sys(`update members set position = 'sub_zone_governor' where id = '${MM2}'`);
+  await sys(`update members set position = 'member' where id = '${MM2}'`);
+  expect("a same-day change back is a correction, not history", (await open(MM2)).length === 0);
+
+  await sys(`update position_history set started_on = '2020-01-01' where member_id = '${MG}'`);
+  await sys(`update members set position = 'sub_zone_governor' where id = '${MG}'`);
+  h = await open(MG);
+  expect(
+    "a change of position closes the old entry and opens a new one",
+    h.length === 2 && h[0].ended_on !== null && h[1].position === "sub_zone_governor" && h[1].ended_on === null,
+    h
+  );
+
+  r = await as(G, "authenticated", `select id from position_history where member_id = '${MG}'`);
+  expect("leaders can read the history", r.ok && r.rows.length === 2, r);
+  r = await as(M, "authenticated", `select id from position_history`);
+  expect("members can't", r.ok && r.rows.length === 0, r);
+  r = await as(G, "authenticated", `insert into position_history (zone_id, member_name, position, sub_zone_id, manual) values ('${Z}', 'Past', 'sub_zone_governor', '${SZ}', true)`);
+  expect("only the Directors add past leaders", denied(r), r);
+  r = await as(D, "authenticated", `insert into position_history (zone_id, member_name, position, sub_zone_id, started_on, ended_on, manual) values ('${Z}', 'Past', 'sub_zone_governor', '${SZ}', '2015-01-01', '2019-12-31', true)`);
+  expect("a Director can add a past leader", changed(r), r);
+  r = await as(D, "authenticated", `insert into position_history (zone_id, member_id, member_name, position, manual) values ('${Z}', '${MM}', 'Mem Ber', 'zonal_director', false)`);
+  expect("…but can't forge an automatic entry", denied(r), r);
+  r = await as(D, "authenticated", `update position_history set position = 'zonal_director' where member_id = '${MG}'`);
+  expect("an entry's position can't be rewritten", denied(r), r);
+
+  await sys(`update churches set sub_zone_id = null where id = '${C1}'`);
+  h = await open(MG);
+  expect("moving a chapter moves its current leaders' entries", h[1].sub_zone_id === null && h[0].sub_zone_id === SZ, h);
+  await sys(`update churches set sub_zone_id = '${SZ}' where id = '${C1}'`);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

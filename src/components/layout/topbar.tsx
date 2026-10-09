@@ -2,6 +2,7 @@
 
 import { getVisibleNavItems, type StaffRole } from "@/lib/nav-items";
 import type { Modules } from "@/lib/modules";
+import type { NotificationItem } from "@/lib/data/notifications";
 import { PortalTopbar } from "./portal-shell";
 
 export function Topbar({
@@ -12,6 +13,7 @@ export function Topbar({
   caps,
   hiddenNavItems,
   modules,
+  notifications,
 }: {
   zoneName: string;
   fullName: string;
@@ -21,6 +23,7 @@ export function Topbar({
   caps: string[];
   hiddenNavItems: string[];
   modules: Modules;
+  notifications: NotificationItem[];
 }) {
   const visibleItems = getVisibleNavItems(role, caps, hiddenNavItems, modules);
   const navItems = visibleItems.filter((item) => item.key !== "settings");
@@ -33,7 +36,7 @@ export function Topbar({
       identityLabel={positionLabel}
       navItems={navItems}
       settingsItem={settingsItem}
-      showNotifications
+      notifications={notifications}
     />
   );
 }

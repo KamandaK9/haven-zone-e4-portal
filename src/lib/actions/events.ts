@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { can, getCurrentProfile, type CurrentProfile } from "@/lib/data/get-dataset";
 import { logAudit } from "./audit";
+import { EVENT_SERIES_DEFS } from "@/lib/event-series";
 import { checkUpload, EVENT_MEDIA_BUCKET } from "@/lib/event-media";
 import type { EventMediaKind } from "@/lib/supabase/types";
 import type { ActionResult } from "./members";
@@ -144,6 +145,58 @@ export async function updateSeriesPage(
   if (!data || data.length === 0) return { ok: false, error: "That event series doesn't exist." };
 
   await logAudit(profile, "event.series_update", `Edited the "${fields.name.trim()}" page`);
+  refreshEventPages();
+  return { ok: true };
+}
+
+function slugify(name: string): string {
+  return name.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48) || "event";
+}
+
+// An organisation's own annual event (a conference, camp, convention…).
+// Editions of it are added on its page.
+export async function createSeries(fields: { name: string; description?: string }): Promise<{ ok: true; slug: string } | { ok: false; error: string }> {
+  const staff = await requireStaff();
+  if (!staff.ok) return staff;
+  const { profile } = staff;
+  if (!can(profile, "manage_events")) return { ok: false, error: "Not permitted." };
+  const name = fields.name.trim();
+  if (!name) return { ok: false, error: "A name is required." };
+
+  const supabase = await createClient();
+  const { data: existing } = await supabase.from("event_series").select("slug, sort_order").eq("zone_id", profile.zoneId);
+  const taken = new Set((existing ?? []).map((s) => s.slug));
+  const base = slugify(name);
+  let slug = base;
+  for (let n = 2; taken.has(slug); n++) slug = `${base}-${n}`;
+  const sort = Math.max(-1, ...(existing ?? []).map((s) => s.sort_order)) + 1;
+
+  const { error } = await supabase
+    .from("event_series")
+    .insert({ zone_id: profile.zoneId, slug, name, description: fields.description?.trim() || null, sort_order: sort });
+  if (error) return { ok: false, error: error.message };
+  await logAudit(profile, "event.series_create", `Added the annual event "${name}"`);
+  refreshEventPages();
+  return { ok: true, slug };
+}
+
+// Only an event with no editions can be removed (so nothing is lost by
+// accident), and never one the deployment ships with.
+export async function deleteSeries(seriesId: string): Promise<ActionResult> {
+  const staff = await requireStaff();
+  if (!staff.ok) return staff;
+  const { profile } = staff;
+  if (!can(profile, "manage_events")) return { ok: false, error: "Not permitted." };
+  const supabase = await createClient();
+  const { data: series } = await supabase.from("event_series").select("slug, name").eq("id", seriesId).maybeSingle();
+  if (!series) return { ok: false, error: "That event doesn't exist." };
+  if (EVENT_SERIES_DEFS.some((d) => d.slug === series.slug)) return { ok: false, error: "This event comes with the portal and can't be removed." };
+  const { count } = await supabase.from("events").select("id", { count: "exact", head: true }).eq("series_id", seriesId);
+  if ((count ?? 0) > 0) return { ok: false, error: "Remove its editions first." };
+  const { data, error } = await supabase.from("event_series").delete().eq("id", seriesId).select("id");
+  if (error) return { ok: false, error: error.message };
+  if (!data || data.length === 0) return { ok: false, error: "Not permitted." };
+  await logAudit(profile, "event.series_delete", `Removed the annual event "${series.name}"`);
   refreshEventPages();
   return { ok: true };
 }

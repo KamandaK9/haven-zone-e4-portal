@@ -44,6 +44,7 @@ export type Database = {
           default_programs_seeded: boolean;
           handbook_rules: Json | null;
           legal_settings: Json | null;
+          theme: Json | null;
           created_at: string;
         };
         Insert: {
@@ -65,6 +66,7 @@ export type Database = {
           default_programs_seeded: boolean;
           handbook_rules: Json | null;
           legal_settings: Json | null;
+          theme: Json | null;
         }>;
         Relationships: [];
       };
@@ -144,9 +146,38 @@ export type Database = {
         Relationships: [];
       };
       sub_zones: {
-        Row: { id: string; zone_id: string; name: string };
-        Insert: { id?: string; zone_id: string; name: string };
-        Update: Partial<{ name: string }>;
+        Row: { id: string; zone_id: string; name: string; history: string | null; founded_year: number | null };
+        Insert: { id?: string; zone_id: string; name: string; history?: string | null; founded_year?: number | null };
+        Update: Partial<{ name: string; history: string | null; founded_year: number | null }>;
+        Relationships: [];
+      };
+      position_history: {
+        Row: {
+          id: string;
+          zone_id: string;
+          member_id: string | null;
+          member_name: string;
+          position: string;
+          church_id: string | null;
+          sub_zone_id: string | null;
+          started_on: string | null;
+          ended_on: string | null;
+          manual: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          zone_id: string;
+          member_id?: string | null;
+          member_name: string;
+          position: string;
+          church_id?: string | null;
+          sub_zone_id?: string | null;
+          started_on?: string | null;
+          ended_on?: string | null;
+          manual?: boolean;
+        };
+        Update: Partial<{ member_name: string; church_id: string | null; sub_zone_id: string | null; started_on: string | null; ended_on: string | null }>;
         Relationships: [];
       };
       churches: {
@@ -209,6 +240,10 @@ export type Database = {
           cell_id: string | null;
           age_group: string | null;
           is_visitor: boolean;
+          guardian_name: string | null;
+          guardian_phone: string | null;
+          expected_graduation: string | null;
+          messaging_opt_out: boolean;
           created_at: string;
         };
         Insert: {
@@ -237,6 +272,10 @@ export type Database = {
           cell_id?: string | null;
           age_group?: string | null;
           is_visitor?: boolean;
+          guardian_name?: string | null;
+          guardian_phone?: string | null;
+          expected_graduation?: string | null;
+          messaging_opt_out?: boolean;
           created_at?: string;
         };
         Update: Partial<{
@@ -263,6 +302,10 @@ export type Database = {
           cell_id: string | null;
           age_group: string | null;
           is_visitor: boolean;
+          guardian_name: string | null;
+          guardian_phone: string | null;
+          expected_graduation: string | null;
+          messaging_opt_out: boolean;
         }>;
         Relationships: [];
       };
@@ -1090,14 +1133,14 @@ export type Database = {
       };
       resources: {
         Row: {
-          id: string; zone_id: string; kind: "logo" | "brand" | "press"; title: string; description: string | null;
-          file_path: string; file_name: string; mime: string; bytes: number; width: number | null; height: number | null;
-          uploaded_by: string | null; created_at: string;
+          id: string; zone_id: string; kind: "logo" | "brand" | "press" | "children"; title: string; description: string | null;
+          file_path: string | null; file_name: string | null; mime: string | null; bytes: number; width: number | null; height: number | null;
+          uploaded_by: string | null; created_at: string; lesson_date: string | null; link_url: string | null;
         };
         Insert: {
-          id?: string; zone_id: string; kind: "logo" | "brand" | "press"; title: string; description?: string | null;
-          file_path: string; file_name: string; mime: string; bytes?: number; width?: number | null; height?: number | null;
-          uploaded_by?: string | null; created_at?: string;
+          id?: string; zone_id: string; kind: "logo" | "brand" | "press" | "children"; title: string; description?: string | null;
+          file_path?: string | null; file_name?: string | null; mime?: string | null; bytes?: number; width?: number | null; height?: number | null;
+          uploaded_by?: string | null; created_at?: string; lesson_date?: string | null; link_url?: string | null;
         };
         Update: Partial<{ title: string; description: string | null }>;
         Relationships: [];
@@ -1186,9 +1229,137 @@ export type Database = {
         Update: Partial<{ department_id: string }>;
         Relationships: [];
       };
+      class_materials: {
+        Row: {
+          id: string; zone_id: string; class_id: string; title: string; file_path: string | null; file_name: string | null;
+          mime: string | null; bytes: number | null; url: string | null; sort_order: number; created_by: string | null; created_at: string;
+        };
+        Insert: {
+          id?: string; zone_id: string; class_id: string; title: string; file_path?: string | null; file_name?: string | null;
+          mime?: string | null; bytes?: number | null; url?: string | null; sort_order?: number; created_by?: string | null; created_at?: string;
+        };
+        Update: Partial<{ title: string; sort_order: number }>;
+        Relationships: [];
+      };
+      messaging_settings: {
+        Row: {
+          zone_id: string; monthly_sms_cap: number; sms_cost_estimate: number; sms_footer: string;
+          birthday_enabled: boolean; welcome_enabled: boolean; missed_enabled: boolean; digest_enabled: boolean;
+          birthday_template: string | null; birthday_guardian_template: string | null; welcome_template: string | null; missed_template: string | null;
+          updated_by: string | null; updated_at: string;
+        };
+        Insert: {
+          zone_id: string; monthly_sms_cap?: number; sms_cost_estimate?: number; sms_footer?: string;
+          birthday_enabled?: boolean; welcome_enabled?: boolean; missed_enabled?: boolean; digest_enabled?: boolean;
+          birthday_template?: string | null; birthday_guardian_template?: string | null; welcome_template?: string | null; missed_template?: string | null;
+          updated_by?: string | null; updated_at?: string;
+        };
+        Update: Partial<{
+          monthly_sms_cap: number; sms_cost_estimate: number; sms_footer: string;
+          birthday_enabled: boolean; welcome_enabled: boolean; missed_enabled: boolean; digest_enabled: boolean;
+          birthday_template: string | null; birthday_guardian_template: string | null; welcome_template: string | null; missed_template: string | null;
+          updated_by: string | null; updated_at: string;
+        }>;
+        Relationships: [];
+      };
+      messages: {
+        Row: {
+          id: string; zone_id: string; kind: "manual" | "birthday" | "welcome" | "missed" | "pickup"; channel: "sms" | "email";
+          subject: string | null; body: string; audience: Json;
+          status: "pending" | "approved" | "sending" | "sent" | "rejected" | "cancelled";
+          created_by: string | null; created_by_name: string | null; approved_by: string | null; approved_by_name: string | null;
+          note: string | null; batch_date: string | null; created_at: string; approved_at: string | null; sent_at: string | null;
+        };
+        Insert: {
+          id?: string; zone_id: string; kind?: "manual" | "birthday" | "welcome" | "missed" | "pickup"; channel: "sms" | "email";
+          subject?: string | null; body: string; audience?: Json;
+          status?: "pending" | "approved" | "sending" | "sent" | "rejected" | "cancelled";
+          created_by?: string | null; created_by_name?: string | null; approved_by?: string | null; approved_by_name?: string | null;
+          note?: string | null; batch_date?: string | null; created_at?: string; approved_at?: string | null; sent_at?: string | null;
+        };
+        Update: Partial<{
+          status: "pending" | "approved" | "sending" | "sent" | "rejected" | "cancelled";
+          approved_by: string | null; approved_by_name: string | null; note: string | null; approved_at: string | null; sent_at: string | null;
+        }>;
+        Relationships: [];
+      };
+      message_recipients: {
+        Row: {
+          id: string; message_id: string; zone_id: string; member_id: string | null; channel: "sms" | "email"; name: string;
+          to_address: string; via: "self" | "guardian"; body: string; segments: number;
+          status: "queued" | "sent" | "failed" | "skipped"; error: string | null; provider_id: string | null; sent_at: string | null;
+        };
+        Insert: {
+          id?: string; message_id: string; zone_id: string; member_id?: string | null; channel: "sms" | "email"; name: string;
+          to_address: string; via?: "self" | "guardian"; body: string; segments?: number;
+          status?: "queued" | "sent" | "failed" | "skipped"; error?: string | null; provider_id?: string | null; sent_at?: string | null;
+        };
+        Update: Partial<{ status: "queued" | "sent" | "failed" | "skipped"; error: string | null; provider_id: string | null; sent_at: string | null }>;
+        Relationships: [];
+      };
+      follow_up_tasks: {
+        Row: {
+          id: string; zone_id: string; member_id: string; assigned_to: string; assigned_by: string | null; assigned_by_name: string | null;
+          due_date: string; note: string | null; status: "open" | "done" | "cancelled"; created_at: string; completed_at: string | null;
+          completed_follow_up: string | null;
+        };
+        Insert: {
+          id?: string; zone_id: string; member_id: string; assigned_to: string; assigned_by?: string | null; assigned_by_name?: string | null;
+          due_date: string; note?: string | null; status?: "open" | "done" | "cancelled"; created_at?: string; completed_at?: string | null;
+          completed_follow_up?: string | null;
+        };
+        Update: Partial<{ status: "open" | "done" | "cancelled"; completed_at: string | null; completed_follow_up: string | null; due_date: string; note: string | null }>;
+        Relationships: [];
+      };
+      cell_meetings: {
+        Row: { id: string; zone_id: string; cell_id: string; meeting_date: string; note: string | null; created_by: string | null; created_by_name: string | null; created_at: string };
+        Insert: { id?: string; zone_id: string; cell_id: string; meeting_date: string; note?: string | null; created_by?: string | null; created_by_name?: string | null; created_at?: string };
+        Update: Partial<{ note: string | null }>;
+        Relationships: [];
+      };
+      cell_meeting_attendance: {
+        Row: { meeting_id: string; member_id: string; zone_id: string };
+        Insert: { meeting_id: string; member_id: string; zone_id: string };
+        Update: Partial<{ member_id: string }>;
+        Relationships: [];
+      };
+      child_checkins: {
+        Row: {
+          id: string; zone_id: string; service_id: string; child_id: string; child_name: string; guardian_name: string; guardian_phone: string | null;
+          pickup_code: string; notes: string | null; checked_in_at: string; checked_in_by: string | null; checked_out_at: string | null;
+          checked_out_by: string | null; override_reason: string | null;
+        };
+        Insert: {
+          id?: string; zone_id: string; service_id: string; child_id: string; child_name?: string; guardian_name: string; guardian_phone?: string | null;
+          pickup_code: string; notes?: string | null; checked_in_at?: string; checked_in_by?: string | null; checked_out_at?: string | null;
+          checked_out_by?: string | null; override_reason?: string | null;
+        };
+        Update: Partial<{ checked_out_at: string | null; checked_out_by: string | null; override_reason: string | null; guardian_name: string; guardian_phone: string | null }>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
+      children_roster: {
+        Args: { p_church_id: string; p_age_groups: string[] };
+        Returns: { id: string; first_name: string; last_name: string; age_group: string | null; guardian_name: string | null; guardian_phone: string | null; birthday: string | null; expected_graduation: string | null }[];
+      };
+      set_child_graduation: {
+        Args: { p_member: string; p_month: string | null };
+        Returns: boolean;
+      };
+      graduate_child: {
+        Args: { p_member: string; p_to: string };
+        Returns: boolean;
+      };
+      current_user_scope_cell_ids: {
+        Args: Record<string, never>;
+        Returns: string[];
+      };
+      follow_up_assignees: {
+        Args: { p_member: string };
+        Returns: { id: string; full_name: string; position: string }[];
+      };
       qr_link_info: {
         Args: { p_token: string };
         Returns: { zone_id: string; church_name: string; service_date: string; kind: string; name: string }[];

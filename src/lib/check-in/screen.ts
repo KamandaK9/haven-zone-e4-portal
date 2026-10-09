@@ -15,12 +15,12 @@ export type CheckInScreen = {
 
 export const DEFAULT_ACCENT = "#4f46e5";
 
-export function resolveCheckInScreen(saved: { title?: string | null; tagline?: string | null } | null, backgroundUrl?: string): CheckInScreen {
+export function resolveCheckInScreen(saved: { title?: string | null; tagline?: string | null } | null, backgroundUrl?: string, themeAccent?: string): CheckInScreen {
   const d = tenant.checkInScreen ?? {};
   return {
     title: saved?.title?.trim() || d.title || tenant.name,
     tagline: saved?.tagline?.trim() || d.tagline || "",
-    accent: d.accent ?? tenant.chartPrimary ?? DEFAULT_ACCENT,
+    accent: themeAccent ?? d.accent ?? tenant.chartPrimary ?? DEFAULT_ACCENT,
     dark: d.dark ?? false,
     backgroundUrl,
   };

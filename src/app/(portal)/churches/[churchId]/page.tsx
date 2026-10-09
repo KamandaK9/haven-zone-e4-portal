@@ -24,6 +24,9 @@ import {
 } from "@/lib/data/analytics";
 import { givingFilterLabel, parseGivingFilter } from "@/lib/giving";
 import { tenant } from "@/tenant";
+import { holdersOf } from "@/lib/structure";
+import { positionLabel } from "@/lib/access";
+import { assignableRoles } from "@/lib/roles";
 import { labels, lower } from "@/lib/labels";
 import { Network } from "lucide-react";
 import { getModules } from "@/lib/modules-server";
@@ -68,24 +71,50 @@ export default async function ChurchPage({
   const [departments, memberDepartments] = await Promise.all([getDepartments(), getDepartmentMemberships()]);
   const levels = tenant.records.cellLevels;
   const subline = [church.city, country?.name, church.pastor].filter(Boolean).join(" · ");
+  // Sub-zone first, where the organisation reads its structure that way.
+  const subZone = tenant.structureRoot === "group" ? ds.subZones.find((z) => z.id === church.subZoneId) : undefined;
+  const leaderKey = tenant.access.locationLeaderPositionKey;
+  const governors = holdersOf(ds.members, leaderKey, new Set([church.id]));
 
   return (
     <div className="space-y-6">
       <Breadcrumb
-        items={[
-          { label: "Dashboard", href: "/dashboard" },
-          {
-            label: ds.countries.length === 1 ? labels.locations : (country?.name ?? labels.country),
-            href: `/countries/${church.countryId}`,
-          },
-          { label: church.name },
-        ]}
+        items={
+          subZone
+            ? [
+                { label: "Dashboard", href: "/dashboard" },
+                { label: labels.subZones, href: "/sub-zones" },
+                { label: subZone.name, href: `/sub-zones/${subZone.id}` },
+                { label: church.name },
+              ]
+            : [
+                { label: "Dashboard", href: "/dashboard" },
+                {
+                  label: ds.countries.length === 1 ? labels.locations : (country?.name ?? labels.country),
+                  href: `/countries/${church.countryId}`,
+                },
+                { label: church.name },
+              ]
+        }
       />
 
       <div className="flex items-start gap-2">
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight">{church.name}</h1>
           {subline && <p className="text-sm text-muted-foreground">{subline}</p>}
+          {leaderKey && governors.length > 0 && (
+            <p className="text-sm text-muted-foreground">
+              {positionLabel(leaderKey)}:{" "}
+              {governors.map((m, i) => (
+                <span key={m.id}>
+                  {i > 0 && ", "}
+                  <Link href={`/members/${m.id}`} className="font-medium text-foreground hover:text-primary hover:underline">
+                    {m.firstName} {m.lastName}
+                  </Link>
+                </span>
+              ))}
+            </p>
+          )}
         </div>
         {can(profile, "manage_members") && (
           <RenameChapterDialog churchId={church.id} currentName={church.name} size="default" />
@@ -142,6 +171,8 @@ export default async function ChurchPage({
             importFields={importFields}
             importTemplate={importTemplate}
             canManageSettings={can(profile, "manage_settings")}
+            roleOptions={can(profile, "assign_roles") || can(profile, "manage_access") ? assignableRoles(profile.position, modules) : undefined}
+            actor={{ position: profile.position, userId: profile.userId }}
           />
         </CardContent>
       </Card>

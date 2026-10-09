@@ -14,6 +14,7 @@ export type StepFacts = {
   logos: number;
   cohorts: number;
   services: number;
+  messagingConnected: boolean;
 };
 
 export type Step = {
@@ -79,6 +80,15 @@ export function gettingStartedSteps(f: StepFacts, markedDone: string[], modules:
       detail: "Name the classes, choose a teacher and add students.",
       href: "/courses",
       done: f.cohorts > 0,
+    });
+  }
+  if (modules.messaging) {
+    steps.push({
+      key: "messaging",
+      title: "Connect texts and email",
+      detail: "Add your Twilio and email keys so birthday, welcome and \"we missed you\" messages can go out — and set the monthly text cap.",
+      href: "/settings/messaging",
+      done: f.messagingConnected,
     });
   }
   if (modules.attendance) {

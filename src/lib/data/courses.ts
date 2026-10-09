@@ -1,6 +1,8 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { tenant } from "@/tenant";
+import { signedReadUrls } from "@/lib/storage/private-files";
+import { CLASS_MATERIALS_BUCKET } from "@/lib/courses/materials-bucket";
 
 export type CourseClass = { id: string; number: number; title: string };
 export type Course = { id: string; name: string; requiredClasses: number; classes: CourseClass[] };
@@ -126,4 +128,29 @@ export async function getMemberCourse(memberId: string) {
       return { id: e.cohort_id, name: (c as { name?: string } | null)?.name ?? "" };
     }),
   };
+}
+
+export type ClassMaterial = { id: string; classId: string; title: string; href: string; kind: "file" | "link"; fileName?: string };
+
+// Every class's materials the viewer may open (managers and teachers), with
+// fresh 5-minute links for uploaded files.
+export async function getClassMaterials(): Promise<ClassMaterial[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("class_materials")
+    .select("id, class_id, title, file_path, file_name, url")
+    .order("sort_order")
+    .order("created_at");
+  const rows = data ?? [];
+  const links = await signedReadUrls(CLASS_MATERIALS_BUCKET, rows.map((r) => r.file_path).filter((p): p is string => !!p));
+  return rows
+    .map((r) => ({
+      id: r.id,
+      classId: r.class_id,
+      title: r.title,
+      kind: r.file_path ? ("file" as const) : ("link" as const),
+      href: r.file_path ? (links.get(r.file_path) ?? "") : (r.url ?? ""),
+      fileName: r.file_name ?? undefined,
+    }))
+    .filter((m) => m.href);
 }

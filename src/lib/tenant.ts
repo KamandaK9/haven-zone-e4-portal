@@ -103,7 +103,26 @@ export type TenantConfig = {
     // (there'd otherwise be no scope for the grant to apply to). Defaults to
     // "chapter" if omitted.
     elevatedMemberScope?: Scope;
+    // Who leads a group (sub-zone) and a location (chapter), shown on their
+    // pages and in their leadership history. Optional.
+    groupLeaderPositionKey?: string;
+    locationLeaderPositionKey?: string;
   };
+  // Which level the structure pages start from: "country" (Countries →
+  // locations, the default) or "group" (sub-zones first: Sub-zone →
+  // Country → locations → cells).
+  structureRoot?: "country" | "group";
+  // Children's church check-in with pick-up codes: which age groups are
+  // checked in there (default just "children").
+  childrenCheckIn?: { ageGroups: readonly string[] };
+  // Whether ordinary members can be given a login. Default true; false when
+  // the portal is for leaders and staff only — then only people holding a
+  // role (not the plain "member" position) can be invited.
+  memberLogins?: boolean;
+  // Messaging (SMS and email): the phone country code numbers are assumed to
+  // be in when typed without one, and which age groups are minors — their
+  // messages go to a guardian. Both optional (27, and none).
+  messaging?: { countryCode?: string; minorAgeGroups?: readonly string[] };
   // The cohort-based course the courses module runs (modules.courses): its
   // name, how many classes it has, and how many distinct classes complete it.
   course?: { name: string; classes: number; requiredClasses: number };
@@ -111,6 +130,10 @@ export type TenantConfig = {
   // title, tagline and background image in Settings → Self check-in screen.
   // `accent` colours buttons and highlights; `dark` uses a dark backdrop.
   checkInScreen?: { title?: string; tagline?: string; accent?: string; dark?: boolean };
+  // Colour schemes. `default` is the preset src/tenant/theme.css ships with;
+  // `offered` are the presets shown in Settings → Colours (admins can always
+  // pick their own colours too). Omit to offer them all.
+  theme?: { default: string; offered: readonly string[] };
   // Attendance rules (src/lib/attendance/rules.ts): a member is active with at
   // least `activeMinSundays` Sunday services in the last 30 days, and flagged
   // for follow-up after `absenceAlertAfter` missed Sundays in a row. Both

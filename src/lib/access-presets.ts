@@ -17,7 +17,7 @@ export const ALL_CAPABILITIES: readonly Capability[] = [
   "check_in", "view_attendance", "record_follow_up", "view_pastoral_notes", "manage_services",
   "manage_courses", "teach_courses",
   "send_messages", "approve_messages",
-  "export_data", "manage_settings", "assign_roles",
+  "export_data", "manage_settings", "assign_roles", "take_cell_attendance", "manage_children",
 ];
 
 const LEADER_BASE: Capability[] = ["view_members", "view_contact_details", "view_giving_totals"];
