@@ -632,5 +632,44 @@ expect("an uploaded file must be in the zone's own folder", denied(r), r);
   await sys(`update churches set sub_zone_id = '${SZ}' where id = '${C1}'`);
 }
 
+// ── Structure tools: country, sub-zone, merging locations ─────────────
+{
+  const sys = async (sql) => db.exec(`reset role; select set_config('request.jwt.claims', '', false); select set_config('request.jwt.claim.sub', '', false); ${sql}`);
+  const CO2 = id(90), C3 = id(91), M3 = id(92);
+  await sys(`
+    insert into countries (id, zone_id, name) values ('${CO2}', '${Z}', 'Y');
+    insert into churches (id, zone_id, country_id, name) values ('${C3}', '${Z}', '${CO2}', 'One again');
+    insert into members (id, zone_id, church_id, country_id, first_name, last_name, position) values ('${M3}', '${Z}', '${C3}', '${CO2}', 'Dup', 'Leader', 'governor');
+  `);
+
+  r = await as(G, "authenticated", `select public.set_church_country('${C1}', '${CO2}')`);
+  expect("a governor can't change a location's country", denied(r), r);
+  r = await as(M, "authenticated", `select public.merge_churches('${C3}', '${C1}')`);
+  expect("a member can't merge locations", denied(r), r);
+  r = await as(G, "authenticated", `select public.merge_churches('${C3}', '${C1}')`);
+  expect("…nor can a governor", denied(r), r);
+  r = await as(G, "authenticated", `insert into sub_zones (zone_id, name) values ('${Z}', 'Sneaky')`);
+  expect("…or add a sub-zone", denied(r), r);
+
+  r = await as(D, "authenticated", `select public.set_church_country('${C2}', '${CO2}')`);
+  const moved = (await db.query(`select (select country_id from churches where id = '${C2}') c, (select country_id from members where id = '${MM2}') m`)).rows[0];
+  expect("a Director can fix a location's country, and its members follow", r.ok && moved.c === CO2 && moved.m === CO2, { r, moved });
+  r = await as(D, "authenticated", `select public.set_church_sub_zone('${C2}', '${SZ}')`);
+  expect("a Director can move a location into a sub-zone", r.ok && (await db.query(`select sub_zone_id from churches where id = '${C2}'`)).rows[0].sub_zone_id === SZ, r);
+  await sys(`update churches set sub_zone_id = null, country_id = '${CO}' where id = '${C2}'; update members set country_id = '${CO}' where church_id = '${C2}';`);
+
+  r = await as(D, "authenticated", `select public.merge_churches('${C3}', '${C3}')`);
+  expect("a location can't be merged into itself", denied(r), r);
+  r = await as(D, "authenticated", `select public.merge_churches('${C3}', '${C1}') as moved`);
+  const after = (await db.query(`select (select count(*)::int from churches where id = '${C3}') gone, (select church_id from members where id = '${M3}') church, (select country_id from members where id = '${M3}') country`)).rows[0];
+  expect(
+    "a Director can merge a duplicate location: members move over, the duplicate goes",
+    r.ok && r.rows[0].moved === 1 && after.gone === 0 && after.church === C1 && after.country === CO,
+    { r, after }
+  );
+  const hist = (await db.query(`select church_id, sub_zone_id, ended_on from position_history where member_id = '${M3}'`)).rows;
+  expect("merging doesn't rewrite leadership history, it moves it", hist.length === 1 && hist[0].church_id === C1 && hist[0].sub_zone_id === SZ && hist[0].ended_on === null, hist);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

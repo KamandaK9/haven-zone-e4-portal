@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ChevronRight, Network } from "lucide-react";
+import { ChevronRight, Network, Wrench } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AddSubZoneDialog } from "@/components/structure/sub-zone-dialogs";
-import { getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
+import { can, getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
 import { getMembersByChurch } from "@/lib/data/analytics";
 import { positionLabel } from "@/lib/access";
 import { labels, lower } from "@/lib/labels";
-import { groupBySubZone, holdersOf } from "@/lib/structure";
+import { commonLeadingWord, groupBySubZone, holdersOf, structureIssues } from "@/lib/structure";
 import { pluralize } from "@/lib/utils";
 import { tenant } from "@/tenant";
 
@@ -19,7 +20,15 @@ export default async function SubZonesPage() {
   const ds = await getZoneDataset(profile.zoneId);
   const groups = groupBySubZone(ds.subZones, ds.countries, ds.churches, { includeEmpty: profile.scope === "zone" });
   const leaderKey = tenant.access.groupLeaderPositionKey;
-  const isDirector = profile.role === "super_admin";
+  const isDirector = profile.role === "super_admin" || can(profile, "manage_settings");
+  // Locations that look off (wrong country, twins, not placed) — leaders
+  // aren't counted here, only things the tidy-up tools fix.
+  const real = ds.churches.filter((c) => !c.isOffice);
+  const needsTidying = isDirector
+    ? [...structureIssues(real, ds.countries, () => 1, { orgWord: commonLeadingWord(real.map((c) => c.name)), checkLeaders: false }).values()].filter(
+        (list) => list.length > 0
+      ).length
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -31,8 +40,27 @@ export default async function SubZonesPage() {
             {lower(labels.cells)}.
           </p>
         </div>
-        {isDirector && <AddSubZoneDialog />}
+        {isDirector && (
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" className="gap-1.5" asChild>
+              <Link href="/sub-zones/tidy">
+                <Wrench className="h-3.5 w-3.5" /> Tidy up
+              </Link>
+            </Button>
+            <AddSubZoneDialog />
+          </div>
+        )}
       </div>
+
+      {needsTidying > 0 && (
+        <Link
+          href="/sub-zones/tidy"
+          className="block rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm hover:border-amber-500/70"
+        >
+          {pluralize(needsTidying, lower(labels.location), lower(labels.locations))} may need fixing — wrong{" "}
+          {lower(labels.country)}, possible duplicates, or not in a {lower(labels.subZone)}. <span className="font-medium underline">Tidy up →</span>
+        </Link>
+      )}
 
       {groups.length === 0 && (
         <p className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">

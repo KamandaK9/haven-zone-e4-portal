@@ -7,13 +7,18 @@ import { logAudit } from "./audit";
 import type { ActionResult } from "./members";
 import { labels, lower } from "@/lib/labels";
 import { tenant } from "@/tenant";
+import { can } from "@/lib/data/get-dataset";
+import { flagForCountry } from "@/lib/country-flags";
 
-// The structure is the Directors' to change (RLS on sub_zones, churches and
-// position_history says the same); this checks up front for a clearer error.
+// The structure is for the Directors and anyone they give manage_settings
+// (can_change_structure in the database says the same); this checks up front
+// for a clearer error.
 async function requireDirector() {
   const profile = await getCurrentProfile();
   if (!profile) return { ok: false as const, error: "Not signed in." };
-  if (profile.role !== "super_admin") return { ok: false as const, error: "Only the Directors can change the structure." };
+  if (profile.role !== "super_admin" && !can(profile, "manage_settings")) {
+    return { ok: false as const, error: "Only the Directors (or whoever they let manage settings) can change the structure." };
+  }
   return { ok: true as const, profile, supabase: await createClient() };
 }
 
@@ -73,15 +78,10 @@ export async function moveChapterToSubZone(churchId: string, subZoneId: string |
   const auth = await requireDirector();
   if (!auth.ok) return auth;
   const { profile, supabase } = auth;
-  const { data, error } = await supabase
-    .from("churches")
-    .update({ sub_zone_id: subZoneId })
-    .eq("id", churchId)
-    .eq("zone_id", profile.zoneId)
-    .select("name");
+  const { data: church } = await supabase.from("churches").select("name").eq("id", churchId).maybeSingle();
+  const { error } = await supabase.rpc("set_church_sub_zone", { p_church: churchId, p_sub_zone: subZoneId });
   if (error) return { ok: false, error: error.message };
-  if (!data?.length) return { ok: false, error: `That ${lower(labels.location)} no longer exists.` };
-  await logAudit(profile, "church.move", `Moved ${data[0].name} ${subZoneId ? `to another ${lower(labels.subZone)}` : `out of its ${lower(labels.subZone)}`}`, {
+  await logAudit(profile, "church.move", `Moved ${church?.name ?? `a ${lower(labels.location)}`} ${subZoneId ? `to another ${lower(labels.subZone)}` : `out of its ${lower(labels.subZone)}`}`, {
     entity: { type: "church", id: churchId },
   });
   revalidatePath("/", "layout");
@@ -161,4 +161,61 @@ export async function deleteLeaderEntry(entryId: string): Promise<ActionResult> 
   });
   if (data[0].sub_zone_id) revalidatePath(`/sub-zones/${data[0].sub_zone_id}`);
   return { ok: true };
+}
+
+// A location filed under the wrong country; its members move with it.
+export async function setChapterCountry(churchId: string, countryId: string): Promise<ActionResult> {
+  const auth = await requireDirector();
+  if (!auth.ok) return auth;
+  const { profile, supabase } = auth;
+  const [{ data: church }, { data: country }] = await Promise.all([
+    supabase.from("churches").select("name").eq("id", churchId).maybeSingle(),
+    supabase.from("countries").select("name").eq("id", countryId).maybeSingle(),
+  ]);
+  const { error } = await supabase.rpc("set_church_country", { p_church: churchId, p_country: countryId });
+  if (error) return { ok: false, error: error.message };
+  await logAudit(profile, "church.move", `Moved ${church?.name ?? `a ${lower(labels.location)}`} to ${country?.name ?? "another country"}`, {
+    entity: { type: "church", id: churchId },
+  });
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+// A country that wasn't in the list yet.
+export async function addCountry(name: string): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  const auth = await requireDirector();
+  if (!auth.ok) return auth;
+  const { profile, supabase } = auth;
+  const trimmed = name.trim();
+  if (!trimmed || trimmed.length > 80) return { ok: false, error: "Enter the country's name." };
+  const { data: existing } = await supabase.from("countries").select("id").eq("zone_id", profile.zoneId).ilike("name", trimmed);
+  if (existing?.length) return { ok: false, error: `${trimmed} is already in the list.` };
+  const { data, error } = await supabase
+    .from("countries")
+    .insert({ zone_id: profile.zoneId, name: trimmed, flag: flagForCountry(trimmed) })
+    .select("id")
+    .single();
+  if (error || !data) return { ok: false, error: error?.message ?? "Couldn't add it." };
+  await logAudit(profile, "country.create", `Added the country ${trimmed}`);
+  revalidatePath("/", "layout");
+  return { ok: true, id: data.id };
+}
+
+// Two locations that are really one: everything moves to `intoId`, and
+// `fromId` is removed. Can't be undone.
+export async function mergeChapters(fromId: string, intoId: string): Promise<{ ok: true; moved: number } | { ok: false; error: string }> {
+  const auth = await requireDirector();
+  if (!auth.ok) return auth;
+  const { profile, supabase } = auth;
+  const { data: names } = await supabase.from("churches").select("id, name").in("id", [fromId, intoId]);
+  const from = names?.find((n) => n.id === fromId)?.name;
+  const into = names?.find((n) => n.id === intoId)?.name;
+  const { data, error } = await supabase.rpc("merge_churches", { p_from: fromId, p_into: intoId });
+  if (error) return { ok: false, error: error.message };
+  await logAudit(profile, "church.merge", `Merged ${from ?? `a ${lower(labels.location)}`} into ${into ?? `another ${lower(labels.location)}`} (${data} members moved)`, {
+    entity: { type: "church", id: intoId },
+    before: { mergedFrom: fromId, name: from },
+  });
+  revalidatePath("/", "layout");
+  return { ok: true, moved: data ?? 0 };
 }
