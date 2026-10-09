@@ -71,6 +71,9 @@ export const tenant: TenantConfig = {
   adminNameExample: "e.g. Pastor John Kamanda",
   defaultCurrency: "USD",
   timezone: "Africa/Johannesburg",
+  // The Haven reads its structure sub-zone first: Sub-zone → Country →
+  // Chapters → Cells.
+  structureRoot: "group",
   labels: {
     group: "Sub-zone", groupPlural: "Sub-zones",
     location: "Chapter", locationPlural: "Chapters",
@@ -94,6 +97,8 @@ export const tenant: TenantConfig = {
     memberPositionKey: "member",
     rootPositionKey: "zonal_director",
     assistantPositionKey: "assistant_zonal_director",
+    groupLeaderPositionKey: "sub_zone_governor",
+    locationLeaderPositionKey: "governor",
     portfolios: [
       { key: "finance", label: "Finance" },
       { key: "programs", label: "Programs" },
