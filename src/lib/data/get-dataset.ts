@@ -255,7 +255,9 @@ export async function getZoneDataset(zoneId: string): Promise<Dataset & { zoneNa
     .filter((c) => viewer?.scope === "zone" || visibleCountryIds.has(c.id))
     .map((c) => ({ id: c.id, name: c.name, flag: c.flag }));
 
-  const subZones: SubZone[] = (subZonesRes.data ?? []).map((z) => ({ id: z.id, name: z.name }));
+  const subZones: SubZone[] = (subZonesRes.data ?? [])
+    .map((z) => ({ id: z.id, name: z.name, history: z.history ?? undefined, foundedYear: z.founded_year ?? undefined }))
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
 
   const members: Member[] = memberRows.map((m) => ({
     id: m.id,

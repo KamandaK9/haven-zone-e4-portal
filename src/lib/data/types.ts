@@ -23,6 +23,8 @@ export type Church = {
 export type SubZone = {
   id: string;
   name: string;
+  history?: string;
+  foundedYear?: number;
 };
 
 export type LessonStatus = "not_started" | "in_progress" | "completed";

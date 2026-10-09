@@ -3,7 +3,7 @@ import type { Capability } from "@/lib/access";
 import type { ModuleKey } from "@/lib/tenant";
 import type { Modules } from "@/lib/modules";
 import { EVENT_SERIES_DEFS } from "@/lib/event-series";
-import { LayoutDashboard, Globe2, Church, ClipboardCheck, ScanLine, School, FolderDown, MessageSquare, UserPlus, ListChecks, Users2, Baby, BarChart3, BookOpenText, GraduationCap, CalendarDays, PartyPopper, Mail, Settings, BookMarked, FolderOpen, Radio } from "lucide-react";
+import { LayoutDashboard, Network, Globe2, Church, ClipboardCheck, ScanLine, School, FolderDown, MessageSquare, UserPlus, ListChecks, Users2, Baby, BarChart3, BookOpenText, GraduationCap, CalendarDays, PartyPopper, Mail, Settings, BookMarked, FolderOpen, Radio } from "lucide-react";
 import { tenant } from "@/tenant";
 import { labels, singleCountry } from "@/lib/labels";
 
@@ -23,12 +23,15 @@ export type NavItemDef = {
 
 export const NAV_ITEMS: NavItemDef[] = [
   { key: "dashboard", href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, hideable: false },
-  // With a single country the country level is skipped, and this is the
-  // list of locations (see /countries).
-  {
-    key: "countries", href: "/countries", label: singleCountry ? labels.locations : labels.countries,
-    icon: singleCountry ? Church : Globe2, hideable: false,
-  },
+  // The structure. Sub-zone first where the organisation reads it that way
+  // (/sub-zones); otherwise countries — and with a single country the
+  // country level is skipped, so this is the list of locations.
+  tenant.structureRoot === "group"
+    ? { key: "countries", href: "/sub-zones", label: labels.subZones, icon: Network, hideable: false }
+    : {
+        key: "countries", href: "/countries", label: singleCountry ? labels.locations : labels.countries,
+        icon: singleCountry ? Church : Globe2, hideable: false,
+      },
   {
     key: "attendance", href: "/attendance", label: "Attendance", icon: ClipboardCheck,
     cap: "view_attendance", module: "attendance", hideable: true,

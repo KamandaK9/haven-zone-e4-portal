@@ -95,6 +95,8 @@ export const tenant: TenantConfig = {
     memberPositionKey: "member",
     rootPositionKey: "zonal_director",
     assistantPositionKey: "assistant_zonal_director",
+    groupLeaderPositionKey: "sub_zone_governor",
+    locationLeaderPositionKey: "governor",
     portfolios: [
       { key: "finance", label: "Finance" },
       { key: "programs", label: "Programs" },

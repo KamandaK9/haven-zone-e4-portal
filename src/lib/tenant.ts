@@ -103,7 +103,15 @@ export type TenantConfig = {
     // (there'd otherwise be no scope for the grant to apply to). Defaults to
     // "chapter" if omitted.
     elevatedMemberScope?: Scope;
+    // Who leads a group (sub-zone) and a location (chapter), shown on their
+    // pages and in their leadership history. Optional.
+    groupLeaderPositionKey?: string;
+    locationLeaderPositionKey?: string;
   };
+  // Which level the structure pages start from: "country" (Countries →
+  // locations, the default) or "group" (sub-zones first: Sub-zone →
+  // Country → locations → cells).
+  structureRoot?: "country" | "group";
   // Children's church check-in with pick-up codes: which age groups are
   // checked in there (default just "children").
   childrenCheckIn?: { ageGroups: readonly string[] };

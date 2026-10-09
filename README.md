@@ -44,6 +44,17 @@ their default permissions (`src/lib/access.ts`), the zone → sub-zone →
 chapter structure (`zones`, `sub_zones`, `churches` tables), and the
 leadership-roster spreadsheet importer.
 
+## Structure: country first or sub-zone first
+
+By default the structure pages go Countries → locations. A tenant that thinks
+in sub-zones sets `structureRoot: "group"`: the sidebar then opens
+**Sub-zones** (`/sub-zones`), each with its countries, locations and cells, a
+written history the Directors edit, and its leaders over time. Set
+`access.groupLeaderPositionKey` / `locationLeaderPositionKey` to the positions
+that lead a sub-zone and a location. Leadership history (`position_history`)
+is recorded automatically whenever a member's position or location changes;
+Directors add earlier leaders by hand.
+
 ## Member fields & imports (no code per client)
 
 An organisation's extra details about people — a baptism date, a department —

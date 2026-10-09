@@ -146,9 +146,38 @@ export type Database = {
         Relationships: [];
       };
       sub_zones: {
-        Row: { id: string; zone_id: string; name: string };
-        Insert: { id?: string; zone_id: string; name: string };
-        Update: Partial<{ name: string }>;
+        Row: { id: string; zone_id: string; name: string; history: string | null; founded_year: number | null };
+        Insert: { id?: string; zone_id: string; name: string; history?: string | null; founded_year?: number | null };
+        Update: Partial<{ name: string; history: string | null; founded_year: number | null }>;
+        Relationships: [];
+      };
+      position_history: {
+        Row: {
+          id: string;
+          zone_id: string;
+          member_id: string | null;
+          member_name: string;
+          position: string;
+          church_id: string | null;
+          sub_zone_id: string | null;
+          started_on: string | null;
+          ended_on: string | null;
+          manual: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          zone_id: string;
+          member_id?: string | null;
+          member_name: string;
+          position: string;
+          church_id?: string | null;
+          sub_zone_id?: string | null;
+          started_on?: string | null;
+          ended_on?: string | null;
+          manual?: boolean;
+        };
+        Update: Partial<{ member_name: string; church_id: string | null; sub_zone_id: string | null; started_on: string | null; ended_on: string | null }>;
         Relationships: [];
       };
       churches: {

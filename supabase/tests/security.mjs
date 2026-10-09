@@ -590,5 +590,47 @@ expect("an uploaded file must be in the zone's own folder", denied(r), r);
   expect("a volunteer can release a child", changed(r), r);
 }
 
+// ── Sub-zones: leadership history ─────────────────────────────────────
+{
+  // As the system (no signed-in user), like the server's admin client.
+  const sys = async (sql) => db.exec(`reset role; select set_config('request.jwt.claims', '', false); select set_config('request.jwt.claim.sub', '', false); ${sql}`);
+  const open = async (memberId) =>
+    (await db.query(`select position, sub_zone_id, started_on, ended_on from position_history where member_id = '${memberId}' order by created_at`)).rows;
+  let h = await open(MG);
+  expect("a leader's position is recorded when they're added", h.length === 1 && h[0].position === "governor" && h[0].sub_zone_id === SZ && h[0].ended_on === null, h);
+  expect("ordinary members aren't recorded", (await open(MM2)).length === 0);
+
+  await sys(`update members set position = 'sub_zone_governor' where id = '${MM2}'`);
+  await sys(`update members set position = 'member' where id = '${MM2}'`);
+  expect("a same-day change back is a correction, not history", (await open(MM2)).length === 0);
+
+  await sys(`update position_history set started_on = '2020-01-01' where member_id = '${MG}'`);
+  await sys(`update members set position = 'sub_zone_governor' where id = '${MG}'`);
+  h = await open(MG);
+  expect(
+    "a change of position closes the old entry and opens a new one",
+    h.length === 2 && h[0].ended_on !== null && h[1].position === "sub_zone_governor" && h[1].ended_on === null,
+    h
+  );
+
+  r = await as(G, "authenticated", `select id from position_history where member_id = '${MG}'`);
+  expect("leaders can read the history", r.ok && r.rows.length === 2, r);
+  r = await as(M, "authenticated", `select id from position_history`);
+  expect("members can't", r.ok && r.rows.length === 0, r);
+  r = await as(G, "authenticated", `insert into position_history (zone_id, member_name, position, sub_zone_id, manual) values ('${Z}', 'Past', 'sub_zone_governor', '${SZ}', true)`);
+  expect("only the Directors add past leaders", denied(r), r);
+  r = await as(D, "authenticated", `insert into position_history (zone_id, member_name, position, sub_zone_id, started_on, ended_on, manual) values ('${Z}', 'Past', 'sub_zone_governor', '${SZ}', '2015-01-01', '2019-12-31', true)`);
+  expect("a Director can add a past leader", changed(r), r);
+  r = await as(D, "authenticated", `insert into position_history (zone_id, member_id, member_name, position, manual) values ('${Z}', '${MM}', 'Mem Ber', 'zonal_director', false)`);
+  expect("…but can't forge an automatic entry", denied(r), r);
+  r = await as(D, "authenticated", `update position_history set position = 'zonal_director' where member_id = '${MG}'`);
+  expect("an entry's position can't be rewritten", denied(r), r);
+
+  await sys(`update churches set sub_zone_id = null where id = '${C1}'`);
+  h = await open(MG);
+  expect("moving a chapter moves its current leaders' entries", h[1].sub_zone_id === null && h[0].sub_zone_id === SZ, h);
+  await sys(`update churches set sub_zone_id = '${SZ}' where id = '${C1}'`);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
