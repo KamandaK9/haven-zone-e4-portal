@@ -89,7 +89,7 @@ export type StructureIssue =
   | { kind: "duplicate"; ofId: string; ofName: string }
   | { kind: "no_leader" };
 
-// "Haven Harare CBD2" → "harare cbd 2"; a trailing " 1" is dropped, so
+// "Grace Harare CBD2" → "harare cbd 2" (with orgWord "Grace"); a trailing " 1" is dropped, so
 // "Victoria Falls 1" and "Victoria Falls" compare equal.
 export function chapterNameKey(name: string, orgWord?: string): string {
   let key = name
