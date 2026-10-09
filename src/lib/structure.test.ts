@@ -69,35 +69,35 @@ describe("leaders", () => {
 
 describe("structureIssues", () => {
   it("matches names that are probably the same location", () => {
-    expect(chapterNameKey("Haven Victoria Falls 1", "Haven")).toBe(chapterNameKey("Victoria Falls"));
-    expect(chapterNameKey("Haven Harare CBD2", "Haven")).toBe(chapterNameKey("Harare CBD 2"));
-    expect(chapterNameKey("Harare CBD 1")).toBe(chapterNameKey("Haven Harare CBD", "Haven"));
+    expect(chapterNameKey("Grace Victoria Falls 1", "Grace")).toBe(chapterNameKey("Victoria Falls"));
+    expect(chapterNameKey("Grace Harare CBD2", "Grace")).toBe(chapterNameKey("Harare CBD 2"));
+    expect(chapterNameKey("Harare CBD 1")).toBe(chapterNameKey("Grace Harare CBD", "Grace"));
     expect(chapterNameKey("Harare CBD 2")).not.toBe(chapterNameKey("Harare CBD"));
   });
 
   it("doesn't take sister locations for twins", () => {
-    const sisters = [church("Haven Gaborone 1A", "bw", "sz2"), church("Haven Gaborone 1B", "bw", "sz2"), church("Glen Norah A", "bw", "sz2"), church("Glen Norah B", "bw", "sz2")];
-    const issues = structureIssues(sisters, countries, () => 1, { orgWord: "Haven" });
+    const sisters = [church("Grace Gaborone 1A", "bw", "sz2"), church("Grace Gaborone 1B", "bw", "sz2"), church("Glen Norah A", "bw", "sz2"), church("Glen Norah B", "bw", "sz2")];
+    const issues = structureIssues(sisters, countries, () => 1, { orgWord: "Grace" });
     expect([...issues.values()].flat()).toEqual([]);
   });
 
   it("flags the odd country out, likely twins, and missing sub-zones and leaders", () => {
     const zw = { id: "zw", name: "Zimbabwe", flag: "" };
     const churches = [
-      church("Haven Sandton", "za", "sz1"),
-      church("Haven Soweto", "za", "sz1"),
+      church("Grace Sandton", "za", "sz1"),
+      church("Grace Soweto", "za", "sz1"),
       church("Tswelopele", "zw", "sz1"),
       church("Glen View", "zw", "sz3"),
-      church("Haven Glen View 1", "zw", "sz3"),
-      church("Haven Glen Norah A", "zw", "sz3"),
-      church("Haven Marondera", "zw"),
+      church("Grace Glen View 1", "zw", "sz3"),
+      church("Grace Glen Norah A", "zw", "sz3"),
+      church("Grace Marondera", "zw"),
     ];
-    const issues = structureIssues(churches, [...countries, zw], (id) => (id === "Haven Sandton" ? 1 : 0), { orgWord: "Haven" });
+    const issues = structureIssues(churches, [...countries, zw], (id) => (id === "Grace Sandton" ? 1 : 0), { orgWord: "Grace" });
     const kinds = (id: string) => issues.get(id)!.map((i) => i.kind).sort();
     expect(issues.get("Tswelopele")).toContainEqual({ kind: "country", usual: "South Africa" });
-    expect(kinds("Haven Sandton")).toEqual([]);
-    expect(issues.get("Glen View")).toContainEqual({ kind: "duplicate", ofId: "Haven Glen View 1", ofName: "Haven Glen View 1" });
-    expect(kinds("Haven Glen Norah A")).toEqual(["no_leader"]); // not a twin of Glen View
-    expect(kinds("Haven Marondera")).toEqual(["no_leader", "no_sub_zone"]);
+    expect(kinds("Grace Sandton")).toEqual([]);
+    expect(issues.get("Glen View")).toContainEqual({ kind: "duplicate", ofId: "Grace Glen View 1", ofName: "Grace Glen View 1" });
+    expect(kinds("Grace Glen Norah A")).toEqual(["no_leader"]); // not a twin of Glen View
+    expect(kinds("Grace Marondera")).toEqual(["no_leader", "no_sub_zone"]);
   });
 });
