@@ -189,6 +189,20 @@ export type TenantConfig = {
     chapterPrefixes: readonly string[];
     // Chapter-name keywords → country, offered as editable guesses on import.
     countryGuesses: readonly (readonly [country: string, keywords: readonly string[]])[];
+    // How the organisation writes leadership titles in its roster sheet, when
+    // that differs from the position labels ("SZG", "DGF", "Finance
+    // Secretary"). Checked in order, before the labels themselves; `match`
+    // is a case-insensitive regular expression run on the title lowercased,
+    // with punctuation turned into spaces. Omit to match on labels only.
+    // `portfolio`: a fixed one, null for none, or omitted to read it from the
+    // title (portfolioTitles).
+    titles?: readonly { match: string; position: string; portfolio?: string | null }[];
+    // Same, for working out a deputy's portfolio from the title ("DGF" →
+    // finance). Portfolio labels are matched too.
+    portfolioTitles?: readonly { match: string; portfolio: string }[];
+    // Titles that mean "no leadership position" without being flagged as
+    // unrecognised (e.g. "Cell leader", "Pastor").
+    ignoredTitles?: readonly string[];
   };
   // Chapter record-keeping (Records page and the cells directory).
   records: {

@@ -1,4 +1,5 @@
 import { Landmark, Users, Tent } from "lucide-react";
+import { NETWORK_ROSTER_TITLES } from "@/lib/roster-titles";
 import type { TenantConfig, PositionDef } from "@/lib/tenant";
 import type { Capability } from "@/lib/access";
 import { handbook } from "./handbook";
@@ -138,6 +139,8 @@ export const tenant: TenantConfig = {
   roster: {
     chapterPrefixes: ["example church", "example"],
     countryGuesses: [],
+    // How this network writes leadership titles in its roster ("SZG", "DGF"…).
+    ...NETWORK_ROSTER_TITLES,
   },
 
   records: {
