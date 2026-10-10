@@ -70,6 +70,15 @@ export const NAV_ITEMS: NavItemDef[] = [
     : []),
   { key: "resources", href: "/resources", label: "Resources", icon: FolderDown, module: "resources", hideable: true },
   { key: "newsletter", href: "/newsletter", label: "Newsletter", icon: Mail, cap: "send_newsletter", module: "newsletter", hideable: true },
+  // The client's own pages (tenant.extensionPages → /x/<slug>).
+  ...(tenant.extensionPages ?? []).map((p) => ({
+    key: `x-${p.slug}`,
+    href: `/x/${p.slug}`,
+    label: p.label,
+    icon: p.icon,
+    cap: p.cap === undefined ? undefined : typeof p.cap === "string" ? p.cap : [...p.cap],
+    hideable: true,
+  })),
   { key: "settings", href: "/settings", label: "Settings", icon: Settings, cap: "manage_access", hideable: false },
 ];
 

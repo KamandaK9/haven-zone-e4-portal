@@ -44,6 +44,25 @@ their default permissions (`src/lib/access.ts`), the zone → sub-zone →
 chapter structure (`zones`, `sub_zones`, `churches` tables), and the
 leadership-roster spreadsheet importer.
 
+## A client's own logic (extensions)
+
+Settings go in `src/tenant/index.ts`; a client's **own behaviour** goes in
+`src/tenant/extensions.ts` (server-only, so it can hold secrets and call other
+systems). Neither is ever overwritten by a Stratum update.
+
+- **Pages**: declare `extensionPages: [{ slug, label, icon, cap }]` in the
+  tenant config and put the page body in `extensions.pages[slug]` — it appears
+  in the sidebar at `/x/<slug>`, for whoever holds `cap`.
+- **Dashboard cards**: `extensions.dashboardCards`.
+- **Hooks** for integrations: `onMembersCreated` (manual, import or setup),
+  `onMemberUpdated`, `onMemberDeleted`, `onGivingImported`, and `daily` (runs
+  with the daily job). They run after the core action has succeeded and the
+  response has gone; a failure is logged and never affects the action.
+
+If a client needs something core doesn't offer a slot for, add the slot to
+Stratum (so every client can use it) rather than editing core in the client
+repo.
+
 ## Structure: country first or sub-zone first
 
 By default the structure pages go Countries → locations. A tenant that thinks

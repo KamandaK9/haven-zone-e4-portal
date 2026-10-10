@@ -1,5 +1,6 @@
 "use server";
 
+import { fireHook } from "@/lib/extensions";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -213,6 +214,8 @@ export async function mergeDuplicateMembers(keepId: string, mergeId: string): Pr
     `Merged "${mergeName}" into "${keepName}"${transferredLogin ? " (portal login moved to the surviving record)" : ""}`,
     { entity: { type: "member", id: keepId }, before: { keep, merge }, after: { survivorId: keepId, mergedAwayId: mergeId } }
   );
+  fireHook("onMemberUpdated", { zoneId: profile.zoneId, memberId: keepId, what: "merged with a duplicate" });
+  fireHook("onMemberDeleted", { zoneId: profile.zoneId, memberId: mergeId });
   revalidatePath("/", "layout");
   return { ok: true };
 }

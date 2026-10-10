@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { extensions } from "@/lib/extensions";
 import { Users, Church, Globe2, TrendingUp } from "lucide-react";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { CountryGrid } from "@/components/dashboard/country-grid";
@@ -315,6 +316,17 @@ export default async function DashboardPage({
           </Card>
         </div>
       </div>
+
+      {/* The client's own cards (src/tenant/extensions.ts). */}
+      {(extensions.dashboardCards ?? [])
+        .filter((card) => !card.cap || can(profile, card.cap))
+        .map((card) => (
+          <ExtensionCard key={card.key} render={() => card.render({ profile })} />
+        ))}
     </div>
   );
+}
+
+async function ExtensionCard({ render }: { render: () => React.ReactNode | Promise<React.ReactNode> }) {
+  return <>{await render()}</>;
 }

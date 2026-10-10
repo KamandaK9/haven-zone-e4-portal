@@ -1,5 +1,6 @@
 "use server";
 
+import { fireHook } from "@/lib/extensions";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { can, getCurrentProfile } from "@/lib/data/get-dataset";
@@ -64,6 +65,7 @@ export async function bulkImportGiving(rows: GivingImportRow[]): Promise<BulkGiv
 
   const memberCount = new Set(toWrite.map((r) => r.memberId)).size;
   await logAudit(profile, "giving.bulk_import", `Imported ${toWrite.length} giving entries for ${memberCount} members`);
+  fireHook("onGivingImported", { zoneId: profile.zoneId, rows: toWrite.length });
   for (const path of ["/dashboard", "/reports", "/ledger", "/countries", "/members"]) revalidatePath(path);
   return { ok: true, imported: toWrite.length, members: memberCount };
 }
