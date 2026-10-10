@@ -4,8 +4,7 @@ import { ChevronRight, Network, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AddSubZoneDialog } from "@/components/structure/sub-zone-dialogs";
-import { can, getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
-import { getMembersByChurch } from "@/lib/data/analytics";
+import { can, getCurrentProfile, getMemberCounts, getZoneDataset } from "@/lib/data/get-dataset";
 import { positionLabel } from "@/lib/access";
 import { labels, lower } from "@/lib/labels";
 import { commonLeadingWord, groupBySubZone, holdersOf, structureIssues } from "@/lib/structure";
@@ -17,7 +16,8 @@ import { tenant } from "@/tenant";
 export default async function SubZonesPage() {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
-  const ds = await getZoneDataset(profile.zoneId);
+  // Leaders only (for names); everyone else is counted in the database.
+  const [ds, counts] = await Promise.all([getZoneDataset(profile.zoneId, { leadersOnly: true }), getMemberCounts()]);
   const groups = groupBySubZone(ds.subZones, ds.countries, ds.churches, { includeEmpty: profile.scope === "zone" });
   const leaderKey = tenant.access.groupLeaderPositionKey;
   const isDirector = profile.role === "super_admin" || can(profile, "manage_settings");
@@ -73,7 +73,7 @@ export default async function SubZonesPage() {
           .filter((g) => g.subZone)
           .map(({ subZone, countries, churchCount }) => {
             const churchIds = new Set(countries.flatMap((c) => c.churches.map((ch) => ch.id)));
-            const memberCount = [...churchIds].reduce((n, id) => n + getMembersByChurch(ds, id).length, 0);
+            const memberCount = [...churchIds].reduce((n, id) => n + (counts.get(id)?.total ?? 0), 0);
             const leaders = holdersOf(ds.members, leaderKey, churchIds);
             return (
               <Link

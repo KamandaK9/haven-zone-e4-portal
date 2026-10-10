@@ -671,5 +671,19 @@ expect("an uploaded file must be in the zone's own folder", denied(r), r);
   expect("merging doesn't rewrite leadership history, it moves it", hist.length === 1 && hist[0].church_id === C1 && hist[0].sub_zone_id === SZ && hist[0].ended_on === null, hist);
 }
 
+// ── Member counts per location ────────────────────────────────────────
+{
+  const counts = async (user) => {
+    const r = await as(user, "authenticated", "select church_id, total::int from public.member_counts_in_scope() order by church_id");
+    return r.ok ? Object.fromEntries(r.rows.map((x) => [x.church_id, x.total])) : r;
+  };
+  const d = await counts(D);
+  expect("a Director's counts cover every location", d[C1] >= 1 && d[C2] >= 1, d);
+  const g = await counts(G);
+  expect("a governor's counts cover only their own location", g[C1] >= 1 && g[C2] === undefined, g);
+  r = await as(null, "anon", "select * from public.member_counts_in_scope()");
+  expect("counts aren't available signed out", denied(r), r);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

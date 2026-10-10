@@ -43,7 +43,8 @@ export default async function ChurchPage({
   const profile = await getCurrentProfile();
   const modules = await getModules();
   if (!profile) redirect("/");
-  const ds = await getZoneDataset(profile.zoneId);
+  // This location's members only; structure and giving totals are zone-wide.
+  const ds = await getZoneDataset(profile.zoneId, { churchId });
   const { currency, rates } = await getDisplayCurrency(profile.zoneCurrency);
   const church = getChurch(ds, churchId);
 

@@ -76,6 +76,7 @@ const ACTION_LABELS: Record<string, string> = {
   "member_field.create": "Added a member field",
   "member_field.update": "Changed a member field",
   "settings.theme": "Colours changed",
+  "settings.update_organisation": "Organisation settings",
   "import_template.update": "Member import columns",
   "member.update_fields": "Edited a member's extra details",
 };
@@ -171,6 +172,11 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
 
       {tab === "general" && (
         <>
+          <LinkRow
+            href="/settings/organisation"
+            title="Organisation"
+            description="The sign-in page wording, bank accounts, meeting types, department suggestions and attendance rules."
+          />
           <Card>
             <CardHeader>
               <CardTitle>Features</CardTitle>

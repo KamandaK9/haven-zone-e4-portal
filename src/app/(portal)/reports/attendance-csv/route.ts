@@ -1,4 +1,5 @@
 import { can, getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
+import { getOrgSettings } from "@/lib/org-settings-server";
 import { getZoneCells } from "@/lib/data/cells";
 import { churchToday, getAttendanceData } from "@/lib/data/attendance";
 import { summarise } from "@/lib/attendance/summary";
@@ -24,7 +25,7 @@ export async function GET() {
   const churchName = new Map(ds.churches.map((c) => [c.id, c.name]));
   const contacts = can(profile, "view_contact_details");
   const members = ds.members.filter((m) => !m.isVisitor);
-  const standing = summarise(members, data.services, data.attendance, churchToday());
+  const standing = summarise(members, data.services, data.attendance, churchToday(), (await getOrgSettings(profile.zoneId)).attendance);
   const group = (key?: string) => tenant.ageGroups?.find((g) => g.key === key)?.label ?? "";
 
   const header = ["Name", labels.location, labels.cell, "Age group", ...(contacts ? ["Phone"] : []), "Status", "Sundays missed in a row", "Last attended"];

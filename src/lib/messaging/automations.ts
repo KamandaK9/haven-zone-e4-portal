@@ -1,9 +1,9 @@
 import "server-only";
+import { getOrgSettings } from "@/lib/org-settings-server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { emailIsConfigured, sendEmailOne } from "@/lib/email";
 import { getAttendanceData, churchToday } from "@/lib/data/attendance";
 import { summarise } from "@/lib/attendance/summary";
-import { ATTENDANCE_RULES } from "@/lib/attendance/rules";
 import { getSiteUrl } from "@/lib/site-url";
 import { tenant } from "@/tenant";
 import { dispatchMessage } from "./dispatch";
@@ -124,7 +124,8 @@ export async function runDailyAutomations(): Promise<Record<string, unknown>> {
       // Only act on fresh data: if nobody's been checking people in, say nothing.
       if (latestSunday && Date.parse(today) - Date.parse(latestSunday) <= 10 * DAY) {
         const members = (await allMembers(admin, ", church_id, is_visitor")).filter((m) => !m.is_visitor);
-        const standing = summarise(members.map((m) => ({ id: m.id, churchId: m.church_id as string })), data.services, data.attendance, today);
+        const rules = (await getOrgSettings(zoneId)).attendance;
+        const standing = summarise(members.map((m) => ({ id: m.id, churchId: m.church_id as string })), data.services, data.attendance, today, rules);
         const { data: sentBefore } = await admin.from("messages").select("id").eq("zone_id", zoneId).eq("kind", "missed").limit(5000);
         const { data: prior } = sentBefore?.length
           ? await admin.from("message_recipients").select("member_id, sent_at").in("message_id", sentBefore.map((m) => m.id)).not("sent_at", "is", null).limit(50000)
@@ -134,7 +135,7 @@ export async function runDailyAutomations(): Promise<Record<string, unknown>> {
         const recent = new Set(data.followUps.filter((f) => f.createdAt >= new Date(Date.now() - 14 * DAY).toISOString()).map((f) => f.memberId));
         const due = members.filter((m) => {
           const s = standing.get(m.id);
-          if (!s || s.missedInARow < ATTENDANCE_RULES.absenceAlertAfter || recent.has(m.id)) return false;
+          if (!s || s.missedInARow < rules.absenceAlertAfter || recent.has(m.id)) return false;
           const last = lastMessaged.get(m.id);
           return !last || (!!s.lastAttended && last.slice(0, 10) < s.lastAttended);
         });
@@ -165,7 +166,8 @@ async function sendMondayDigests(admin: Admin, zoneId: string, today: string): P
   if (!data.available) return 0;
   const members = (await allMembers(admin, ", church_id, is_visitor, join_date")) as (MemberForMessage & { church_id: string; is_visitor: boolean; join_date: string | null })[];
   const regulars = members.filter((m) => !m.is_visitor);
-  const standing = summarise(regulars.map((m) => ({ id: m.id, churchId: m.church_id })), data.services, data.attendance, today);
+  const rules = (await getOrgSettings(zoneId)).attendance;
+  const standing = summarise(regulars.map((m) => ({ id: m.id, churchId: m.church_id })), data.services, data.attendance, today, rules);
   const { data: churches } = await admin.from("churches").select("id, name");
   const churchName = new Map((churches ?? []).map((c) => [c.id, c.name]));
   const { data: leaders } = await admin.from("profiles").select("full_name, email, scope, church_id, caps").eq("zone_id", zoneId).in("scope", ["zone", "chapter"]);
@@ -181,7 +183,7 @@ async function sendMondayDigests(admin: Admin, zoneId: string, today: string): P
     const lastCount = lastDate ? sundays.filter((s) => s.date === lastDate).reduce((n, s) => n + s.attendees, 0) : 0;
     const mine = regulars.filter((m) => inScope(m.church_id));
     const active = mine.filter((m) => standing.get(m.id)?.status === "active").length;
-    const followUp = mine.filter((m) => (standing.get(m.id)?.missedInARow ?? 0) >= ATTENDANCE_RULES.absenceAlertAfter).length;
+    const followUp = mine.filter((m) => (standing.get(m.id)?.missedInARow ?? 0) >= rules.absenceAlertAfter).length;
     const firstTimers = members.filter((m) => m.is_visitor && inScope(m.church_id) && (m.join_date ?? "") >= weekAgo).length;
     const area = leader.scope === "zone" ? tenant.name : (churchName.get(leader.church_id ?? "") ?? tenant.name);
     const lines = [

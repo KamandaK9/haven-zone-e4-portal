@@ -1,11 +1,11 @@
 "use server";
 
+import { getOrgSettings } from "@/lib/org-settings-server";
 import { revalidatePath } from "next/cache";
 import { authorise } from "@/lib/records/authorise";
 import { RECORDS_BUCKET, checkRecordFile } from "@/lib/records/files";
 import { pathIsUnder, removeFiles } from "@/lib/storage/private-files";
 import type { ChequeStatus } from "@/lib/supabase/types";
-import { tenant } from "@/tenant";
 import { logAudit } from "./audit";
 import type { ActionResult } from "./members";
 import type { UploadedFile } from "./records";
@@ -34,8 +34,8 @@ function ledgerDescription(input: ChequeInput) {
   return `Cheque ${input.chequeNumber.trim()} · ${input.payee.trim()}${input.purpose?.trim() ? ` — ${input.purpose.trim()}` : ""}`;
 }
 
-function validate(input: ChequeInput): string | null {
-  if (!tenant.records.bankAccounts.some((a) => a.key === input.account)) return "Pick the account the cheque was drawn on.";
+function validate(input: ChequeInput, accountKeys: readonly string[]): string | null {
+  if (!accountKeys.includes(input.account)) return "Pick the account the cheque was drawn on.";
   if (!input.chequeNumber.trim()) return "Enter the cheque number.";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.issueDate)) return "Pick the date on the cheque.";
   if (!input.payee.trim()) return "Who is the cheque payable to?";
@@ -49,11 +49,11 @@ function validate(input: ChequeInput): string | null {
 }
 
 export async function saveCheque(input: ChequeInput): Promise<ActionResult> {
-  const problem = validate(input);
-  if (problem) return { ok: false, error: problem };
   const auth = await authorise(input.churchId, "cheque");
   if (!auth.ok) return auth;
   const { profile, supabase, folder } = auth;
+  const problem = validate(input, (await getOrgSettings(profile.zoneId)).bankAccounts.map((a) => a.key));
+  if (problem) return { ok: false, error: problem };
   if (input.stub && !pathIsUnder(input.stub.path, folder)) return { ok: false, error: "That upload doesn't belong to this chapter." };
 
   const fields = {
