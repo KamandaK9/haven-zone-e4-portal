@@ -44,6 +44,26 @@ their default permissions (`src/lib/access.ts`), the zone → sub-zone →
 chapter structure (`zones`, `sub_zones`, `churches` tables), and the
 leadership-roster spreadsheet importer.
 
+## Editions: Stratum Cornerstone and Stratum Forge
+
+One engine, packaged per kind of organisation (`src/lib/editions.ts`); a
+tenant picks one with `edition` (default `"cornerstone"`).
+
+- **Stratum Cornerstone** — churches and ministries: everything, including
+  the church-only areas (services and check-in, first-timers, children's
+  church, courses, giving, church messaging). Statuses: Member / Worker /
+  Cell Leader / Pastor.
+- **Stratum Forge** — businesses with branches: members, structure, records,
+  ledger, training, livestreams, handbook, newsletter, resources. Church-only
+  areas don't exist (not even as "not in your plan"). Statuses: Staff /
+  Contractor / Intern / Volunteer; the `business` role preset (Owner →
+  Director → managers → Branch Manager → Team Lead → Staff).
+
+`npm run new-client` asks for the edition first; `stratum.client.forge.example.json`
+sets up a demo Forge client. New business features (onboarding, leave,
+shifts, assets) are Forge modules; keep church wording inside
+Cornerstone-only areas or the edition's `words`.
+
 ## A client's own logic (extensions)
 
 Settings go in `src/tenant/index.ts`; a client's **own behaviour** goes in

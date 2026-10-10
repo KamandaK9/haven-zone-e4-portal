@@ -22,7 +22,7 @@ export type ImportedMemberRow = {
     lastName: string;
     email?: string;
     phone?: string;
-    role?: "Member" | "Worker" | "Cell Leader" | "Pastor";
+    role?: string; // a member status (src/lib/statuses.ts)
     givingTotal?: number;
     givingDate?: string;
     // Leadership-roster-only fields (parse-leadership-roster.ts).

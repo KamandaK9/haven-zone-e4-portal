@@ -8,7 +8,8 @@
 // full GenericSchema shape or type inference silently collapses to `never`.
 
 export type LessonStatus = "not_started" | "in_progress" | "completed";
-export type MemberRole = "Member" | "Worker" | "Cell Leader" | "Pastor";
+// A member's status; the list depends on the edition (src/lib/statuses.ts).
+export type MemberRole = string;
 export type LessonVideoStatus = "uploading" | "processing" | "ready" | "errored";
 export type ProfileRole = "super_admin" | "admin" | "member";
 export type ActivityType = "new_member" | "training_complete" | "giving" | "baptism" | "event";

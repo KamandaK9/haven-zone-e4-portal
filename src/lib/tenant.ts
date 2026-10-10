@@ -82,6 +82,9 @@ export type TenantExtensions = {
 };
 
 export type TenantConfig = {
+  // Which Stratum edition this is (src/lib/editions.ts): "cornerstone" for
+  // churches (the default), "forge" for businesses.
+  edition?: import("@/lib/editions").EditionKey;
   // The client's own pages (see ExtensionPageDef); their code is in
   // src/tenant/extensions.ts.
   extensionPages?: readonly ExtensionPageDef[];
@@ -188,10 +191,11 @@ export type TenantConfig = {
   // go into the church entered on the previous step, and its cells are set up
   // from the sheet). Defaults to both; [] drops the step.
   setupImportModes?: readonly ("roster" | "simple")[];
-  // The statuses a member can have (members.role), in place of Stratum's
-  // Member / Worker / Cell Leader / Pastor — e.g. just Member and Worker when
-  // leadership is shown from people's roles instead. Optional.
-  memberStatuses?: readonly ("Member" | "Worker" | "Cell Leader" | "Pastor")[];
+  // The statuses a member can have (members.role), in place of the
+  // edition's (Cornerstone: Member / Worker / Cell Leader / Pastor) — e.g.
+  // just Member and Worker when leadership is shown from people's roles
+  // instead. Optional.
+  memberStatuses?: readonly string[];
   // Departments (Settings → Departments) offered as one-tap additions — the
   // organisation's usual ones. Optional.
   departmentSuggestions?: readonly string[];

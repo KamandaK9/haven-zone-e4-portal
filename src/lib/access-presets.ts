@@ -77,6 +77,27 @@ const SINGLE_CHURCH: PositionDef[] = [
   { key: "member", label: "Member", rank: 5, scope: "self", loginRole: "member", baseCaps: [] },
 ];
 
+// A business with branches (Stratum Forge): owners and directors run it,
+// managers have functional roles, branch managers run a branch and team leads
+// see their team. Everyone else is Staff.
+const BUSINESS: PositionDef[] = [
+  { key: "owner", label: "Owner", rank: 0, scope: "zone", loginRole: "super_admin", baseCaps: ALL_CAPABILITIES },
+  { key: "director", label: "Director", rank: 1, scope: "zone", loginRole: "super_admin", baseCaps: ALL_CAPABILITIES },
+  {
+    key: "operations_manager", label: "Operations Manager", rank: 2, scope: "zone", loginRole: "admin",
+    baseCaps: ["view_members", "view_contact_details", "manage_members", "manage_calendar", "send_newsletter", "manage_records", "manage_events", "manage_livestreams", "manage_training", "view_reports", "assign_roles"],
+  },
+  {
+    key: "finance_manager", label: "Finance Manager", rank: 2, scope: "zone", loginRole: "admin",
+    baseCaps: ["view_members", "manage_ledger", "manage_records", "view_reports"],
+  },
+  { key: "regional_manager", label: "Regional Manager", rank: 3, scope: "sub_zone", loginRole: "admin", baseCaps: ["view_members", "view_contact_details", "manage_members", "manage_records", "assign_roles"] },
+  { key: "branch_manager", label: "Branch Manager", rank: 4, scope: "chapter", loginRole: "admin", baseCaps: ["view_members", "view_contact_details", "manage_members", "manage_records", "assign_roles"] },
+  { key: "team_lead", label: "Team Lead", rank: 5, scope: "cell", loginRole: "admin", baseCaps: ["view_members", "view_contact_details"] },
+  // Key stays "member" (the database default for everyone); shown as Staff.
+  { key: "member", label: "Staff", rank: 6, scope: "self", loginRole: "member", baseCaps: [] },
+];
+
 export const ACCESS_PRESETS = {
   "church-network": {
     label: "Church network (zone → sub-zones → chapters)",
@@ -96,6 +117,16 @@ export const ACCESS_PRESETS = {
       memberPositionKey: "member",
       rootPositionKey: "senior_pastor",
       assistantPositionKey: "pastor",
+    },
+  },
+  business: {
+    label: "Business (company → regions → branches → teams)",
+    access: {
+      positions: BUSINESS,
+      portfolios: [] as PortfolioDef[],
+      memberPositionKey: "member",
+      rootPositionKey: "owner",
+      assistantPositionKey: "director",
     },
   },
 } satisfies Record<string, { label: string; access: TenantConfig["access"] }>;
