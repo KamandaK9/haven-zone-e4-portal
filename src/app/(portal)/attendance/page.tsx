@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getOrgSettings } from "@/lib/org-settings-server";
 import { redirect } from "next/navigation";
 import { ClipboardCheck, UserCheck, UserX, HelpCircle, ScanLine } from "lucide-react";
 import { StatCard } from "@/components/dashboard/stat-card";
@@ -13,7 +14,6 @@ import { can, getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
 import { getZoneCells } from "@/lib/data/cells";
 import { churchToday, getAttendanceData, serviceTitle } from "@/lib/data/attendance";
 import { summarise } from "@/lib/attendance/summary";
-import { ATTENDANCE_RULES } from "@/lib/attendance/rules";
 import { memberFullName } from "@/lib/data/analytics";
 import { requireModule } from "@/lib/require-module";
 import { labels, lower } from "@/lib/labels";
@@ -36,7 +36,8 @@ export default async function AttendancePage() {
   // Members are already limited to the viewer's scope (RLS) — for a cell
   // role, the cells they lead or belong to.
   const members = ds.members.filter((m) => !m.isVisitor);
-  const standing = summarise(members, data.services, data.attendance, today);
+  const rules = (await getOrgSettings(profile.zoneId)).attendance;
+  const standing = summarise(members, data.services, data.attendance, today, rules);
   const counts = { active: 0, irregular: 0, unknown: 0 };
   for (const s of standing.values()) counts[s.status]++;
 
@@ -45,7 +46,7 @@ export default async function AttendancePage() {
 
   const needFollowUp = members
     .map((m) => ({ m, s: standing.get(m.id)! }))
-    .filter(({ s }) => s.missedInARow >= ATTENDANCE_RULES.absenceAlertAfter)
+    .filter(({ s }) => s.missedInARow >= rules.absenceAlertAfter)
     .sort((a, b) => b.s.missedInARow - a.s.missedInARow || memberFullName(a.m).localeCompare(memberFullName(b.m)));
 
   const visitors = ds.members.filter((m) => m.isVisitor);
@@ -76,15 +77,15 @@ export default async function AttendancePage() {
         <StatCard label="Not enough Sundays yet" value={String(counts.unknown)} icon={HelpCircle} />
       </div>
       <p className="-mt-3 text-xs text-muted-foreground">
-        Active means at least {ATTENDANCE_RULES.activeMinSundays} Sunday services in the last 30 days. Members are flagged
-        for follow-up after {ATTENDANCE_RULES.absenceAlertAfter} missed Sundays in a row.
+        Active means at least {rules.activeMinSundays} Sunday services in the last 30 days. Members are flagged
+        for follow-up after {rules.absenceAlertAfter} missed Sundays in a row.
       </p>
 
       <Card>
         <CardHeader>
           <CardTitle>Need a follow-up</CardTitle>
           <CardDescription>
-            Missed {ATTENDANCE_RULES.absenceAlertAfter} or more Sundays in a row
+            Missed {rules.absenceAlertAfter} or more Sundays in a row
             {profile.scope === "cell" ? ` — your ${lower(labels.cell)}` : ""}.
           </CardDescription>
         </CardHeader>

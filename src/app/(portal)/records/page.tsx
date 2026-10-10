@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getOrgSettings } from "@/lib/org-settings-server";
 import { redirect } from "next/navigation";
 import { requireModule } from "@/lib/require-module";
 import { AlertTriangle, Landmark, Mail, NotebookPen, ReceiptText } from "lucide-react";
@@ -11,7 +12,6 @@ import { getChapterCheques, getChapterMeetings, getChapterRecords, getRecordChap
 import { getDisplayCurrency } from "@/lib/currency-server";
 import type { ChapterRecordKind } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
-import { tenant } from "@/tenant";
 
 const TABS = [
   { key: "minutes", label: "Minutes", icon: NotebookPen, cap: "manage_records", blurb: "Minutes of every executive meeting, with attendance and decisions." },
@@ -28,6 +28,7 @@ export default async function RecordsPage({
 }) {
   await requireModule("records");
   const profile = await getCurrentProfile();
+  const orgSettings = await getOrgSettings(profile?.zoneId);
   if (!profile) redirect("/");
   if (profile.role === "member") redirect("/me");
   const tabs = TABS.filter((t) => can(profile, t.cap));
@@ -104,7 +105,7 @@ export default async function RecordsPage({
               key={chapter.id}
               churchId={chapter.id}
               cheques={cheques ?? []}
-              accounts={tenant.records.bankAccounts}
+              accounts={orgSettings.bankAccounts}
               currency={currency}
               rates={rates}
               canSeeLedger={can(profile, "manage_ledger")}
@@ -116,8 +117,8 @@ export default async function RecordsPage({
               churchId={chapter.id}
               records={records ?? []}
               options={{
-                accounts: tenant.records.bankAccounts,
-                meetingTypes: tenant.records.meetingTypes,
+                accounts: orgSettings.bankAccounts,
+                meetingTypes: orgSettings.meetingTypes,
                 meetings,
                 currency,
                 rates,

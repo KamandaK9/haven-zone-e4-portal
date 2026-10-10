@@ -1,4 +1,4 @@
-import { attendanceStatus, consecutiveMissedSundays, sundayServicesFor, type AttendanceStatus, type ServiceLite } from "./rules";
+import { ATTENDANCE_RULES, attendanceStatus, consecutiveMissedSundays, sundayServicesFor, type AttendanceRules, type AttendanceStatus, type ServiceLite } from "./rules";
 
 export type AttendanceRow = { serviceId: string; memberId: string };
 
@@ -15,7 +15,8 @@ export function summarise(
   members: { id: string; churchId: string }[],
   services: ServiceLite[],
   attendance: AttendanceRow[],
-  today: string
+  today: string,
+  rules: AttendanceRules = ATTENDANCE_RULES
 ): Map<string, MemberAttendance> {
   const attendedBy = new Map<string, Set<string>>();
   for (const a of attendance) {
@@ -37,7 +38,7 @@ export function summarise(
     const lastAttended = [...attended].map((id) => dateOf.get(id)).filter((d): d is string => !!d).sort().at(-1);
     out.set(m.id, {
       memberId: m.id,
-      status: attendanceStatus(sundays, attended, today),
+      status: attendanceStatus(sundays, attended, today, rules),
       missedInARow: sundays.length === 0 ? 0 : consecutiveMissedSundays(sundays, attended),
       lastAttended,
     });

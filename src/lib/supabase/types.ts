@@ -46,6 +46,7 @@ export type Database = {
           legal_settings: Json | null;
           theme: Json | null;
           known_capabilities: string[] | null;
+          settings: Json | null;
           created_at: string;
         };
         Insert: {
@@ -69,6 +70,7 @@ export type Database = {
           legal_settings: Json | null;
           theme: Json | null;
           known_capabilities: string[] | null;
+          settings: Json | null;
         }>;
         Relationships: [];
       };
