@@ -1,4 +1,5 @@
 import { tenant } from "@/tenant";
+import { edition } from "@/lib/edition";
 import { labels } from "@/lib/labels";
 import type { Modules } from "@/lib/modules";
 
@@ -59,7 +60,7 @@ export function gettingStartedSteps(f: StepFacts, markedDone: string[], modules:
     {
       key: "leaders",
       title: "Invite your leaders",
-      detail: "Give pastors, cell leaders, teachers and check-in volunteers their own login, each seeing only their part.",
+      detail: `Give ${edition.words.leaderExamples} their own login, each seeing only their part.`,
       href: "/settings/access",
       done: f.logins > 1,
     },

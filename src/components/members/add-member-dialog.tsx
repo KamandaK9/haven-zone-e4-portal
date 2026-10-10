@@ -1,5 +1,6 @@
 "use client";
 
+import { DEFAULT_MEMBER_STATUS } from "@/lib/statuses";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { UserPlus, AlertCircle } from "lucide-react";
@@ -35,7 +36,7 @@ export function AddMemberDialog({ churchId, countryId }: { churchId: string; cou
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [role, setRole] = useState<MemberRole>("Member");
+  const [role, setRole] = useState<MemberRole>(DEFAULT_MEMBER_STATUS);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,7 +45,7 @@ export function AddMemberDialog({ churchId, countryId }: { churchId: string; cou
     setLastName("");
     setEmail("");
     setPhone("");
-    setRole("Member");
+    setRole(DEFAULT_MEMBER_STATUS);
     setError(null);
   }
 

@@ -1,4 +1,5 @@
 import { tenant } from "@/tenant";
+import { edition } from "@/lib/edition";
 import type { ModuleKey } from "@/lib/tenant";
 
 // Every optional feature Stratum offers, for Settings → Features. Whether a
@@ -7,7 +8,7 @@ import type { ModuleKey } from "@/lib/tenant";
 
 export type Modules = Record<ModuleKey, boolean>;
 
-export const FEATURE_CATALOGUE: readonly { key: ModuleKey; name: string; description: string; comingSoon?: boolean }[] = [
+const ALL_FEATURES: readonly { key: ModuleKey; name: string; description: string; comingSoon?: boolean }[] = [
   { key: "attendance", name: "Attendance & check-in", description: "Services and check-in at the door (volunteer, self check-in tablet or QR code), children's church with pick-up codes, cell meeting registers, first-timer journey, absence alerts and assigned follow-ups." },
   { key: "courses", name: tenant.course?.name ?? "Courses", description: "Class groups with a teacher and a register; completion after a set number of classes." },
   { key: "resources", name: "Resources", description: "Logos, brand assets and press releases for leaders to download, with logo guidelines." },
@@ -22,7 +23,12 @@ export const FEATURE_CATALOGUE: readonly { key: ModuleKey; name: string; descrip
   { key: "newsletter", name: "Newsletter", description: "Email broadcasts to members." },
 ];
 
-export const isIncluded = (key: ModuleKey): boolean => !!tenant.modules[key];
+// In the deployment's plan, and part of its edition at all.
+// The features this edition offers at all (a Forge portal never lists
+// church-only ones, even as "not in your plan").
+export const FEATURE_CATALOGUE = ALL_FEATURES.filter((f) => edition.modules.includes(f.key));
+
+export const isIncluded = (key: ModuleKey): boolean => !!tenant.modules[key] && edition.modules.includes(key);
 
 export function effectiveModules(disabled: readonly string[]): Modules {
   const out = {} as Modules;

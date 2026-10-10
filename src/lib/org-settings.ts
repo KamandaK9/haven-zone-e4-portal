@@ -61,7 +61,8 @@ export function applyOrgOverrides(defaults: OrgSettings, stored: unknown): OrgSe
 export function validateOrgSettings(s: OrgSettings): string | null {
   if (!s.login.headline.trim() || s.login.headline.length > 120) return "The login headline needs to be 1–120 characters.";
   if (s.login.blurb.length > 400) return "Keep the login text under 400 characters.";
-  if (s.bankAccounts.length === 0) return "Keep at least one bank account.";
+  // Only an organisation that keeps records has bank accounts to keep.
+  if (s.bankAccounts.length === 0 && tenant.records.bankAccounts.length > 0) return "Keep at least one bank account.";
   if (s.bankAccounts.some((a) => !a.label.trim() || a.label.length > 80)) return "Every bank account needs a name (up to 80 characters).";
   if (new Set(s.bankAccounts.map((a) => a.label.trim().toLowerCase())).size !== s.bankAccounts.length) return "Two bank accounts have the same name.";
   if (s.meetingTypes.some((m) => m.length > 80) || s.departmentSuggestions.some((d) => d.length > 80)) return "Keep each item under 80 characters.";

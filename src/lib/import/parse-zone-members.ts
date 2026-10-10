@@ -1,9 +1,10 @@
 import { buildHeaderMap, normalizeHeader, readTableFile } from "./read-table-file";
+import { MEMBER_STATUSES } from "@/lib/statuses";
 import type { WizardCountry } from "@/components/setup/types";
 import type { ParsedMemberRow } from "@/lib/actions/members";
 import type { MemberRole } from "@/lib/data/types";
 
-const ROLE_VALUES: MemberRole[] = ["Member", "Worker", "Cell Leader", "Pastor"];
+const ROLE_VALUES: readonly MemberRole[] = MEMBER_STATUSES;
 
 type Field = "country" | "church" | "firstName" | "lastName" | "email" | "phone" | "role" | "inactive";
 

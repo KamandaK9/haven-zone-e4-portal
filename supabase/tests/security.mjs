@@ -685,5 +685,14 @@ expect("an uploaded file must be in the zone's own folder", denied(r), r);
   expect("counts aren't available signed out", denied(r), r);
 }
 
+// ── Member statuses follow the edition ────────────────────────────────
+{
+  let st = await db.query(`update members set role = 'Staff' where id = '${MM2}' returning role`).then((x) => x.rows[0]?.role, (e) => e.message);
+  expect("a member can have another edition's status", st === "Staff", st);
+  st = await db.query(`update members set role = '' where id = '${MM2}'`).then(() => "accepted", (e) => e.message);
+  expect("…but not an empty one", st !== "accepted", st);
+  await db.query(`update members set role = 'Member' where id = '${MM2}'`);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

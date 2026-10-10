@@ -1,5 +1,6 @@
 "use server";
 
+import { memberStatusOr } from "@/lib/statuses";
 import { fireHook } from "@/lib/extensions";
 import { randomInt } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -301,7 +302,7 @@ export async function completeZoneSetup(payload: SetupPayload): Promise<Complete
         last_name: row.member.lastName,
         email: row.member.email ?? null,
         phone: row.member.phone ?? null,
-        role: row.member.role ?? "Member",
+        role: memberStatusOr(row.member.role),
         position: row.member.position ?? "member",
         portfolio: row.member.portfolio ?? null,
         avatar_color: randomAvatarColor(),
