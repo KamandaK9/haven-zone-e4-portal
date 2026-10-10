@@ -1,4 +1,5 @@
 import { Landmark, Globe2, Users, Tent, Sparkles } from "lucide-react";
+import { NETWORK_ROSTER_TITLES } from "@/lib/roster-titles";
 import type { TenantConfig, PositionDef } from "@/lib/tenant";
 import type { Capability } from "@/lib/access";
 import { handbook } from "./handbook";
@@ -163,6 +164,9 @@ export const tenant: TenantConfig = {
       ["Eswatini", ["ezulwini","manzini","matsapha","mbabane"]],
       ["Malawi", ["malawi"]],
     ],
+    // How the zone writes leadership titles in its roster ("SZG", "DGF",
+    // "Finance Secretary"…).
+    ...NETWORK_ROSTER_TITLES,
   },
 
   records: {

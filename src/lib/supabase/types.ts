@@ -45,6 +45,8 @@ export type Database = {
           handbook_rules: Json | null;
           legal_settings: Json | null;
           theme: Json | null;
+          known_capabilities: string[] | null;
+          settings: Json | null;
           created_at: string;
         };
         Insert: {
@@ -67,6 +69,8 @@ export type Database = {
           handbook_rules: Json | null;
           legal_settings: Json | null;
           theme: Json | null;
+          known_capabilities: string[] | null;
+          settings: Json | null;
         }>;
         Relationships: [];
       };
@@ -1340,6 +1344,7 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      member_counts_in_scope: { Args: Record<string, never>; Returns: { church_id: string; total: number; visitors: number }[] };
       set_church_country: { Args: { p_church: string; p_country: string }; Returns: undefined };
       set_church_sub_zone: { Args: { p_church: string; p_sub_zone: string | null }; Returns: undefined };
       merge_churches: { Args: { p_from: string; p_into: string }; Returns: number };

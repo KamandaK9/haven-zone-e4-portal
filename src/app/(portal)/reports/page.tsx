@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { getOrgSettings } from "@/lib/org-settings-server";
 import { labels, lower } from "@/lib/labels";
 import { AttendanceReport } from "@/components/reports/attendance-report";
 import { getZoneCells } from "@/lib/data/cells";
@@ -51,7 +52,8 @@ export default async function ReportsPage({
     if (!modules.attendance) redirect("/dashboard");
     const [ds, cells, data] = await Promise.all([getZoneDataset(profile.zoneId), getZoneCells(profile.zoneId), getAttendanceData()]);
     const members = ds.members.filter((m) => !m.isVisitor);
-    const standing = summarise(members, data.services, data.attendance, churchToday());
+    const rules = (await getOrgSettings(profile.zoneId)).attendance;
+    const standing = summarise(members, data.services, data.attendance, churchToday(), rules);
     let course: { name: string; completed: number; inProgress: number } | undefined;
     const completedMembers = new Set<string>();
     const c = modules.courses ? await getCourse(profile.zoneId) : undefined;
@@ -70,6 +72,7 @@ export default async function ReportsPage({
       services: data.services,
       courseCompletedByMember: completedMembers,
       today: churchToday(),
+      rules,
     });
     return (
       <AttendanceReport
@@ -80,6 +83,7 @@ export default async function ReportsPage({
         standing={standing}
         course={course}
         comparison={comparison}
+        rules={rules}
         canExport={can(profile, "export_data")}
       />
     );

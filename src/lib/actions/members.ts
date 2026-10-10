@@ -1,5 +1,6 @@
 "use server";
 
+import { fireHook } from "@/lib/extensions";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -90,6 +91,7 @@ export async function createMember(input: CreateMemberInput): Promise<ActionResu
   });
 
   await logAudit(profile, "member.create", `Added ${input.firstName.trim()} ${input.lastName.trim()} at ${church?.name ?? "a church"}`);
+  fireHook("onMembersCreated", { zoneId: profile.zoneId, memberIds: [member.id], source: "manual" });
   revalidatePath("/", "layout");
   return { ok: true };
 }
@@ -324,6 +326,7 @@ export async function bulkImportMembers(input: {
   });
 
   await logAudit(profile, "member.bulk_import", `Imported ${inserted.length} members at ${church?.name ?? "a church"}`);
+  fireHook("onMembersCreated", { zoneId: profile.zoneId, memberIds: inserted.map((m) => m.id), source: "import" });
   revalidatePath("/", "layout");
   return { ok: true, inserted: inserted.length, errors, unmatchedCells };
 }

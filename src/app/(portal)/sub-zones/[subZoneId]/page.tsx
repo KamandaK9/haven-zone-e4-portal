@@ -6,8 +6,7 @@ import { StatCard } from "@/components/dashboard/stat-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EditSubZoneDialog, MoveChapterSelect } from "@/components/structure/sub-zone-dialogs";
 import { LeaderHistory } from "@/components/structure/leader-history";
-import { can, getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
-import { getMembersByChurch } from "@/lib/data/analytics";
+import { can, getCurrentProfile, getMemberCounts, getZoneDataset } from "@/lib/data/get-dataset";
 import { getZoneCells } from "@/lib/data/cells";
 import { getLeadershipHistory } from "@/lib/data/structure";
 import { positionLabel } from "@/lib/access";
@@ -22,7 +21,8 @@ export default async function SubZonePage({ params }: { params: Promise<{ subZon
   const { subZoneId } = await params;
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
-  const ds = await getZoneDataset(profile.zoneId);
+  // Leaders only (for names); everyone else is counted in the database.
+  const [ds, counts] = await Promise.all([getZoneDataset(profile.zoneId, { leadersOnly: true }), getMemberCounts()]);
   const subZone = ds.subZones.find((z) => z.id === subZoneId);
   const crumbs = [
     { label: "Dashboard", href: "/dashboard" },
@@ -40,7 +40,7 @@ export default async function SubZonePage({ params }: { params: Promise<{ subZon
 
   const group = groupBySubZone([subZone], ds.countries, ds.churches).find((g) => g.subZone?.id === subZoneId)!;
   const churchIds = new Set(group.countries.flatMap((c) => c.churches.map((ch) => ch.id)));
-  const memberCount = [...churchIds].reduce((n, id) => n + getMembersByChurch(ds, id).length, 0);
+  const memberCount = [...churchIds].reduce((n, id) => n + (counts.get(id)?.total ?? 0), 0);
   const cells = (await getZoneCells(profile.zoneId)).filter((c) => churchIds.has(c.churchId));
   const groupLeaderKey = tenant.access.groupLeaderPositionKey;
   const locationLeaderKey = tenant.access.locationLeaderPositionKey;
@@ -146,7 +146,7 @@ export default async function SubZonePage({ params }: { params: Promise<{ subZon
                         <p className="truncate text-xs text-muted-foreground">
                           {locationLeaderKey &&
                             `${positionLabel(locationLeaderKey)}: ${governors.length ? governors.map((m) => `${m.firstName} ${m.lastName}`).join(", ") : "not recorded"} · `}
-                          {pluralize(getMembersByChurch(ds, church.id).length, "member")} · {pluralize(churchCells, lower(labels.cell), lower(labels.cells))}
+                          {pluralize((counts.get(church.id)?.total ?? 0), "member")} · {pluralize(churchCells, lower(labels.cell), lower(labels.cells))}
                         </p>
                       </div>
                       {isDirector && <MoveChapterSelect churchId={church.id} subZoneId={church.subZoneId} subZones={ds.subZones} />}

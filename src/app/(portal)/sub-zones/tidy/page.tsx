@@ -1,8 +1,7 @@
 import { redirect } from "next/navigation";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { StructureTidy, type TidyRow } from "@/components/structure/structure-tidy";
-import { can, getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
-import { getMembersByChurch } from "@/lib/data/analytics";
+import { can, getCurrentProfile, getMemberCounts, getZoneDataset } from "@/lib/data/get-dataset";
 import { getZoneCells } from "@/lib/data/cells";
 import { positionLabel } from "@/lib/access";
 import { labels, lower } from "@/lib/labels";
@@ -15,7 +14,8 @@ export default async function StructureTidyPage() {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
   if (profile.role !== "super_admin" && !can(profile, "manage_settings")) redirect("/sub-zones");
-  const ds = await getZoneDataset(profile.zoneId);
+  // Leaders only (for names); everyone else is counted in the database.
+  const [ds, counts] = await Promise.all([getZoneDataset(profile.zoneId, { leadersOnly: true }), getMemberCounts()]);
   const cells = await getZoneCells(profile.zoneId);
   const leaderKey = tenant.access.locationLeaderPositionKey;
   const churches = ds.churches.filter((c) => !c.isOffice);
@@ -30,7 +30,7 @@ export default async function StructureTidyPage() {
       name: c.name,
       countryId: c.countryId,
       subZoneId: c.subZoneId,
-      memberCount: getMembersByChurch(ds, c.id).length,
+      memberCount: (counts.get(c.id)?.total ?? 0),
       cellCount: cells.filter((cell) => cell.churchId === c.id).length,
       leaders: holdersOf(ds.members, leaderKey, new Set([c.id])).map((m) => `${m.firstName} ${m.lastName}`),
       issues: issues.get(c.id) ?? [],

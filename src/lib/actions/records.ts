@@ -1,5 +1,6 @@
 "use server";
 
+import { getOrgSettings } from "@/lib/org-settings-server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/data/get-dataset";
@@ -7,7 +8,6 @@ import { authorise, type RecordUploadPurpose } from "@/lib/records/authorise";
 import { checkRecordFile, RECORDS_BUCKET } from "@/lib/records/files";
 import { createPrivateUpload, pathIsUnder, removeFiles } from "@/lib/storage/private-files";
 import type { ChapterRecordKind } from "@/lib/supabase/types";
-import { tenant } from "@/tenant";
 import { logAudit } from "./audit";
 import type { ActionResult } from "./members";
 
@@ -49,12 +49,12 @@ export type RecordInput = {
   files: UploadedFile[];
 };
 
-function validate(input: RecordInput): string | null {
+function validate(input: RecordInput, accountKeys: readonly string[]): string | null {
   if (!input.title.trim()) return "Give it a title.";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.recordDate)) return "Pick a date.";
   if (input.kind === "correspondence" && input.direction !== "in" && input.direction !== "out") return "Say whether it was received or sent.";
   if (input.kind === "bank_advice") {
-    if (!tenant.records.bankAccounts.some((a) => a.key === input.account)) return "Pick the account.";
+    if (!accountKeys.includes(input.account ?? "")) return "Pick the account.";
     if (!(typeof input.amount === "number" && input.amount > 0)) return "Enter the amount.";
   }
   for (const f of input.files) {
@@ -82,11 +82,11 @@ function columns(input: RecordInput) {
 }
 
 export async function saveRecord(input: RecordInput): Promise<ActionResult> {
-  const problem = validate(input);
-  if (problem) return { ok: false, error: problem };
   const auth = await authorise(input.churchId, input.kind);
   if (!auth.ok) return auth;
   const { profile, supabase, folder } = auth;
+  const problem = validate(input, (await getOrgSettings(profile.zoneId)).bankAccounts.map((a) => a.key));
+  if (problem) return { ok: false, error: problem };
   if (input.files.some((f) => !pathIsUnder(f.path, folder))) return { ok: false, error: "That upload doesn't belong to this chapter." };
 
   let recordId = input.id;
