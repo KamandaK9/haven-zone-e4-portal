@@ -1,0 +1,13 @@
+# One block per client: its domain → its service in docker-compose.yml.
+# Caddy fetches and renews HTTPS certificates by itself once the domain's
+# DNS points at this server.
+
+portal.thehaven.example {
+	encode zstd gzip
+	reverse_proxy haven:3000
+}
+
+# portal.gracechurch.example {
+# 	encode zstd gzip
+# 	reverse_proxy grace:3000
+# }

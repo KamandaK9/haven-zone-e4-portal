@@ -1,7 +1,8 @@
 import { timingSafeEqual } from "node:crypto";
 import { runDailyAutomations } from "@/lib/messaging/automations";
 
-// Runs once a day (vercel.json → crons). Vercel sends CRON_SECRET as a
+// Runs once a day — scheduled by vercel.json (crons) on Vercel, or by the
+// scheduler in deploy/docker-compose.example.yml on a server. Both send CRON_SECRET as a
 // bearer token; anything else is refused, so this can't be triggered from
 // outside.
 export const maxDuration = 300;
