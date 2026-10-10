@@ -70,7 +70,7 @@ export default async function MemberPage({
   const profile = await getCurrentProfile();
   const modules = await getModules();
   if (!profile) redirect("/");
-  const ds = await getZoneDataset(profile.zoneId);
+  const ds = await getZoneDataset(profile.zoneId, { memberId });
   const { currency, rates } = await getDisplayCurrency(profile.zoneCurrency);
   const member = getMember(ds, memberId);
 
