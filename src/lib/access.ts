@@ -15,7 +15,7 @@
 // recompute action there) to refresh stored caps.
 
 import { tenant } from "@/tenant";
-import type { PositionDef } from "@/lib/tenant";
+import type { PositionDef, TenantConfig } from "@/lib/tenant";
 
 // Which slice of the org a position sees. "cell" sits below "chapter"
 // (a church) for tenants with leaders scoped to one cell.
@@ -205,43 +205,47 @@ export type ParsedDesignation = {
   unrecognised: boolean;
 };
 
-function portfolioFromText(t: string): Portfolio | null {
-  if (/financ|\bdgf\b|\bfin\b/.test(t)) return "finance";
-  if (/program/.test(t)) return "programs";
-  if (/admin|\bdga\b/.test(t)) return "administration";
-  if (/operation|\bdgo\b|\bdeputy govern\w*\s*:?\s*o\b/.test(t)) return "operations";
+type RosterConfig = Pick<TenantConfig["roster"], "titles" | "portfolioTitles" | "ignoredTitles">;
+type AccessConfig = Pick<TenantConfig["access"], "positions" | "portfolios" | "memberPositionKey">;
+
+const re = (source: string) => new RegExp(source, "i");
+// "Sub Zone Governor" → /\bsub zone governor\b/
+const labelRe = (label: string) => new RegExp(`\\b${label.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().replace(/ /g, "\\s*")}\\b`);
+
+function portfolioFromText(t: string, roster: RosterConfig, access: AccessConfig): Portfolio | null {
+  for (const rule of roster.portfolioTitles ?? []) if (re(rule.match).test(t)) return rule.portfolio;
+  for (const p of access.portfolios) if (labelRe(p.label).test(t)) return p.key;
   return null;
 }
 
-// NOTE: this maps one tenant's (The Haven's) roster-spreadsheet DESIGNATION
-// text to position keys, and is only reached via
-// src/lib/import/parse-leadership-roster.ts, which only Haven-shaped clients
-// use. It belongs in that tenant, not core — left here for now to avoid
-// touching a working import path; move it if a second tenant needs
-// designation-text parsing with different wording.
-export function parseDesignation(raw: string | undefined): ParsedDesignation {
+// A roster sheet's title text ("SZG", "Deputy Governor: Finance") → a
+// position (and portfolio). The tenant's own title rules first
+// (tenant.roster.titles), then the position labels, longest first so
+// "Assistant Zonal Director" wins over "Zonal Director". Anything else is a
+// member — flagged unrecognised unless listed in tenant.roster.ignoredTitles.
+export function parseDesignation(
+  raw: string | undefined,
+  roster: RosterConfig = tenant.roster,
+  access: AccessConfig = tenant.access
+): ParsedDesignation {
   const t = (raw ?? "").toLowerCase().replace(/[^a-z\s]/g, " ").replace(/\s+/g, " ").trim();
-  const plain = (position: Position, portfolio: Portfolio | null = null): ParsedDesignation => ({
-    position,
-    portfolio,
-    unrecognised: false,
-  });
+  const member: ParsedDesignation = { position: access.memberPositionKey, portfolio: null, unrecognised: false };
+  if (!t) return member;
 
-  if (!t || /^(members?|brother|sister)$/.test(t)) return plain("member");
-  if (/assistant zonal director/.test(t)) return plain("assistant_zonal_director");
-  if (/zonal director/.test(t)) return plain("zonal_director");
-  if (/deputy zonal secretary/.test(t)) return plain("deputy_zonal_secretary", portfolioFromText(t));
-  if (/zonal secretary/.test(t)) return plain("zonal_secretary", portfolioFromText(t));
-  if (/sub ?zone governor|\bszg\b/.test(t)) return plain("sub_zone_governor");
-  if (/^dg\b|\bdg[afo]\b|deputy g|dg /.test(t)) return plain("deputy_governor", portfolioFromText(t));
-  if (/^gov(ern[eo]r)?$|^governor/.test(t)) return plain("governor");
-
-  // A chapter Finance Secretary works like a finance deputy. "Dues Champion"
-  // is deliberately NOT mapped — the Zonal Director can grant that person
-  // finance access by hand if wanted.
-  if (/financ\w* secretary/.test(t)) return plain("deputy_governor", "finance");
-  if (/cell leader|pastor|special|general secretary|^secretary$|coordinator/.test(t)) {
-    return { position: "member", portfolio: null, unrecognised: false };
+  for (const rule of roster.titles ?? []) {
+    if (re(rule.match).test(t)) {
+      if (rule.position === access.memberPositionKey) return member;
+      const portfolio = rule.portfolio === undefined ? portfolioFromText(t, roster, access) : rule.portfolio;
+      return { position: rule.position, portfolio, unrecognised: false };
+    }
   }
-  return { position: "member", portfolio: null, unrecognised: true };
+  const byLength = [...access.positions].sort((a, b) => b.label.length - a.label.length);
+  for (const p of byLength) {
+    if (labelRe(p.label).test(t)) {
+      if (p.key === access.memberPositionKey) return member;
+      return { position: p.key, portfolio: p.portfolioCaps ? portfolioFromText(t, roster, access) : null, unrecognised: false };
+    }
+  }
+  if ((roster.ignoredTitles ?? []).some((i) => re(i).test(t))) return member;
+  return { ...member, unrecognised: true };
 }

@@ -45,6 +45,7 @@ export type Database = {
           handbook_rules: Json | null;
           legal_settings: Json | null;
           theme: Json | null;
+          known_capabilities: string[] | null;
           created_at: string;
         };
         Insert: {
@@ -67,6 +68,7 @@ export type Database = {
           handbook_rules: Json | null;
           legal_settings: Json | null;
           theme: Json | null;
+          known_capabilities: string[] | null;
         }>;
         Relationships: [];
       };

@@ -1,5 +1,6 @@
 "use server";
 
+import { fireHook } from "@/lib/extensions";
 import { revalidatePath } from "next/cache";
 import { can, getCurrentProfile } from "@/lib/data/get-dataset";
 import { fieldKeyFrom, memberFieldProblem, normaliseFieldValue, type MemberField, type MemberFieldInput } from "@/lib/custom-fields";
@@ -124,6 +125,7 @@ export async function setMemberFieldValues(memberId: string, values: Record<stri
     if (error) return { ok: false, error: error.message };
   }
   if (profile.role !== "member") await logAudit(profile, "member.update_fields", "Edited a member's details", { entity: { type: "member", id: memberId } });
+  fireHook("onMemberUpdated", { zoneId: profile.zoneId, memberId, what: "their details" });
   revalidatePath(`/members/${memberId}`);
   revalidatePath("/me/profile");
   return { ok: true };

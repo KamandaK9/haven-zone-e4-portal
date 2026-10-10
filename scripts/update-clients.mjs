@@ -69,7 +69,8 @@ for (const client of clients) {
     }
 
     let branch = `stratum-update-${date}`;
-    for (let n = 2; tryGit(repo, "rev-parse", "--verify", "--quiet", `origin/${branch}`).ok; n++) branch = `stratum-update-${date}-${n}`;
+    const taken = (b) => tryGit(repo, "rev-parse", "--verify", "--quiet", `origin/${b}`).ok || tryGit(repo, "rev-parse", "--verify", "--quiet", b).ok;
+    for (let n = 2; taken(branch); n++) branch = `stratum-update-${date}-${n}`;
     const work = mkdtempSync(join(tmpdir(), `stratum-${client.name}-`));
     rmSync(work, { recursive: true, force: true });
     git(repo, "worktree", "add", "--quiet", "-b", branch, work, `origin/${base}`);
@@ -100,13 +101,17 @@ for (const client of clients) {
         "",
         "Test the preview, then merge. `npm run db:check` shows whether the live database is up to date.",
       ].join("\n");
-      const pr = execFileSync("gh", ["pr", "create", "--base", base, "--head", branch, "--title", `Stratum update ${date}`, "--body", body], {
+      // The client's own GitHub repo (gh would otherwise guess, and may pick upstream).
+      const origin = git(repo, "remote", "get-url", "origin").match(/github\.com[:/](.+?)(?:\.git)?$/)?.[1];
+      if (!origin) throw new Error("origin isn't a GitHub repo");
+      const pr = execFileSync("gh", ["pr", "create", "--repo", origin, "--base", base, "--head", branch, "--title", `Stratum update ${date}`, "--body", body], {
         cwd: work,
         encoding: "utf8",
       }).trim();
       results.push([label, `PR opened: ${pr}`]);
     } finally {
       tryGit(repo, "worktree", "remove", "--force", work);
+      tryGit(repo, "branch", "-D", branch); // pushed (or abandoned); the PR holds it
     }
   } catch (e) {
     results.push([label, `FAILED — ${String(e.stderr || e.message).split("\n")[0]}`]);

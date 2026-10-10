@@ -1,5 +1,6 @@
 "use server";
 
+import { fireHook } from "@/lib/extensions";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/data/get-dataset";
@@ -25,6 +26,7 @@ export async function updateOwnContactInfo(input: { email?: string; phone?: stri
 
   if (error) return { ok: false, error: error.message };
 
+  fireHook("onMemberUpdated", { zoneId: profile.zoneId, memberId: profile.linkedMemberId, what: "contact details" });
   revalidatePath("/me");
   revalidatePath("/me/profile");
   return { ok: true };

@@ -1,4 +1,5 @@
 import "server-only";
+import { syncNewCapabilities } from "@/lib/capability-sync";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -81,7 +82,10 @@ export const getCurrentProfile = cache(async (): Promise<CurrentProfile | null> 
   // a snapshot, so a permission added after their login was created (e.g.
   // editing event pages) would be missing — and RLS reads the stored list.
   // Heal it on the spot instead of making someone press "Refresh permissions".
-  let caps: string[] = profile.caps ?? [];
+  // Capabilities added to the code since this organisation last synced go
+  // to every login whose position holds them by default.
+  const synced = await syncNewCapabilities(profile.zone_id);
+  let caps: string[] = synced.get(user.id) ?? profile.caps ?? [];
   if (
     (profile.position === tenant.access.rootPositionKey || profile.position === tenant.access.assistantPositionKey) &&
     CAPABILITIES.some((c) => !caps.includes(c))
