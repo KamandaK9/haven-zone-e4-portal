@@ -1,5 +1,6 @@
 "use server";
 
+import { fireHook } from "@/lib/extensions";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -35,6 +36,7 @@ export async function deleteMember(memberId: string, confirmName: string): Promi
   if (member.photo_path) await createAdminClient().storage.from(MEMBER_PHOTOS_BUCKET).remove([member.photo_path]);
 
   await logAudit(profile, "member.erase", "Deleted a member and all their records (erasure request)");
+  fireHook("onMemberDeleted", { zoneId: profile.zoneId, memberId });
   revalidatePath("/", "layout");
   return { ok: true };
 }

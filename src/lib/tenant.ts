@@ -41,7 +41,50 @@ export type PositionDef = {
 
 export type PortfolioDef = { key: string; label: string };
 
+// ── Extensions: a client's own logic, without editing core ─────────────
+// Pages and sidebar entries are declared here (in the tenant config, which
+// is safe for the browser); their code — and integration hooks — live in
+// src/tenant/extensions.ts, which only the server loads (src/lib/extensions.ts).
+
+// A client-only page at /x/<slug>, listed in the sidebar.
+export type ExtensionPageDef = {
+  slug: string; // lowercase letters, digits and dashes
+  label: string;
+  icon: LucideIcon;
+  // Who sees it (any of these); omitted = any leader.
+  cap?: Capability | readonly Capability[];
+};
+
+export type ExtensionMembersEvent = { zoneId: string; memberIds: readonly string[]; source: "manual" | "import" | "setup" };
+
+export type TenantExtensions = {
+  // Page bodies for tenant.extensionPages, by slug. Server components; get
+  // the signed-in profile and the rest of the URL (/x/<slug>/a/b → ["a","b"]).
+  pages?: Readonly<
+    Record<string, (props: { profile: import("@/lib/data/get-dataset").CurrentProfile; path: readonly string[] }) => React.ReactNode | Promise<React.ReactNode>>
+  >;
+  // Extra cards at the bottom of the dashboard.
+  dashboardCards?: readonly {
+    key: string;
+    cap?: Capability;
+    render: (props: { profile: import("@/lib/data/get-dataset").CurrentProfile }) => React.ReactNode | Promise<React.ReactNode>;
+  }[];
+  // Called after the core action has succeeded and the response has been
+  // sent; an error is logged and never undoes or blocks the action.
+  hooks?: {
+    onMembersCreated?: (e: ExtensionMembersEvent) => void | Promise<void>;
+    onMemberUpdated?: (e: { zoneId: string; memberId: string; what: string }) => void | Promise<void>;
+    onMemberDeleted?: (e: { zoneId: string; memberId: string }) => void | Promise<void>;
+    onGivingImported?: (e: { zoneId: string; rows: number }) => void | Promise<void>;
+    // Once a day, with the core daily automations (/api/cron/daily).
+    daily?: () => unknown | Promise<unknown>;
+  };
+};
+
 export type TenantConfig = {
+  // The client's own pages (see ExtensionPageDef); their code is in
+  // src/tenant/extensions.ts.
+  extensionPages?: readonly ExtensionPageDef[];
   // How the organisation refers to itself in running copy ("Time in Grace Church").
   name: string;
   // Product name shown on the login page and browser tab.
@@ -103,7 +146,15 @@ export type TenantConfig = {
     // (there'd otherwise be no scope for the grant to apply to). Defaults to
     // "chapter" if omitted.
     elevatedMemberScope?: Scope;
+    // Who leads a group (sub-zone) and a location (chapter), shown on their
+    // pages and in their leadership history. Optional.
+    groupLeaderPositionKey?: string;
+    locationLeaderPositionKey?: string;
   };
+  // Which level the structure pages start from: "country" (Countries →
+  // locations, the default) or "group" (sub-zones first: Sub-zone →
+  // Country → locations → cells).
+  structureRoot?: "country" | "group";
   // Children's church check-in with pick-up codes: which age groups are
   // checked in there (default just "children").
   childrenCheckIn?: { ageGroups: readonly string[] };
@@ -181,6 +232,20 @@ export type TenantConfig = {
     chapterPrefixes: readonly string[];
     // Chapter-name keywords → country, offered as editable guesses on import.
     countryGuesses: readonly (readonly [country: string, keywords: readonly string[]])[];
+    // How the organisation writes leadership titles in its roster sheet, when
+    // that differs from the position labels ("SZG", "DGF", "Finance
+    // Secretary"). Checked in order, before the labels themselves; `match`
+    // is a case-insensitive regular expression run on the title lowercased,
+    // with punctuation turned into spaces. Omit to match on labels only.
+    // `portfolio`: a fixed one, null for none, or omitted to read it from the
+    // title (portfolioTitles).
+    titles?: readonly { match: string; position: string; portfolio?: string | null }[];
+    // Same, for working out a deputy's portfolio from the title ("DGF" →
+    // finance). Portfolio labels are matched too.
+    portfolioTitles?: readonly { match: string; portfolio: string }[];
+    // Titles that mean "no leadership position" without being flagged as
+    // unrecognised (e.g. "Cell leader", "Pastor").
+    ignoredTitles?: readonly string[];
   };
   // Chapter record-keeping (Records page and the cells directory).
   records: {

@@ -1,5 +1,6 @@
 "use server";
 
+import { fireHook } from "@/lib/extensions";
 import { randomInt } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { randomAvatarColor } from "@/lib/avatar-color";
@@ -260,6 +261,7 @@ export async function completeZoneSetup(payload: SetupPayload): Promise<Complete
   // 4b. Imported members, if the wizard's import step supplied any —
   // resolved against the countries/churches just created above.
   let importedCount = 0;
+  const createdMemberIds: string[] = [];
   if (payload.importedMembers && payload.importedMembers.length > 0) {
     type MemberInsert = {
       zone_id: string;
@@ -325,6 +327,7 @@ export async function completeZoneSetup(payload: SetupPayload): Promise<Complete
         return fail(memberError?.message ?? "Member import failed partway through.");
       }
       importedCount += inserted.length;
+      createdMemberIds.push(...inserted.map((m) => m.id));
 
       const offset = toInsert.indexOf(batch[0]);
       const trainingRows = inserted.flatMap((m) =>
@@ -430,5 +433,6 @@ export async function completeZoneSetup(payload: SetupPayload): Promise<Complete
     return fail(completeError.message);
   }
 
+  if (createdMemberIds.length > 0) fireHook("onMembersCreated", { zoneId, memberIds: createdMemberIds, source: "setup" });
   return { ok: true, zoneId, assistantCredentials, importedCount };
 }

@@ -4,9 +4,12 @@ import { tenant } from "@/tenant";
 // - active: at least `activeMinSundays` Sunday services in the last 30 days;
 // - absence alert: `absenceAlertAfter` Sunday services missed in a row.
 // Only Sunday services at the member's own location count. Thresholds come
-// from tenant.attendance (CE Sandton: 2 and 2, from the pastor).
+// come from the organisation's settings (Settings → Organisation); these are
+// the defaults, from tenant.attendance.
 
-export const ATTENDANCE_RULES = {
+export type AttendanceRules = { activeMinSundays: number; absenceAlertAfter: number };
+
+export const ATTENDANCE_RULES: AttendanceRules = {
   activeMinSundays: tenant.attendance?.activeMinSundays ?? 2,
   absenceAlertAfter: tenant.attendance?.absenceAlertAfter ?? 2,
 };
@@ -42,14 +45,19 @@ function daysBefore(iso: string, days: number): string {
 // "unknown" until the location has recorded enough Sundays in the window to
 // judge — a church that has only just started checking people in shouldn't
 // mark everyone irregular.
-export function attendanceStatus(sundaysNewestFirst: ServiceLite[], attended: Set<string>, today: string): AttendanceStatus {
+export function attendanceStatus(
+  sundaysNewestFirst: ServiceLite[],
+  attended: Set<string>,
+  today: string,
+  rules: AttendanceRules = ATTENDANCE_RULES
+): AttendanceStatus {
   const since = daysBefore(today, 30);
   const inWindow = sundaysNewestFirst.filter((s) => s.date > since);
-  if (inWindow.length < ATTENDANCE_RULES.activeMinSundays) return "unknown";
+  if (inWindow.length < rules.activeMinSundays) return "unknown";
   const count = inWindow.filter((s) => attended.has(s.id)).length;
-  return count >= ATTENDANCE_RULES.activeMinSundays ? "active" : "irregular";
+  return count >= rules.activeMinSundays ? "active" : "irregular";
 }
 
-export function needsFollowUp(sundaysNewestFirst: ServiceLite[], attended: Set<string>): boolean {
-  return consecutiveMissedSundays(sundaysNewestFirst, attended) >= ATTENDANCE_RULES.absenceAlertAfter;
+export function needsFollowUp(sundaysNewestFirst: ServiceLite[], attended: Set<string>, rules: AttendanceRules = ATTENDANCE_RULES): boolean {
+  return consecutiveMissedSundays(sundaysNewestFirst, attended) >= rules.absenceAlertAfter;
 }

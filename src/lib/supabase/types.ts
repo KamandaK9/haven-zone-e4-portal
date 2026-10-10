@@ -45,6 +45,8 @@ export type Database = {
           handbook_rules: Json | null;
           legal_settings: Json | null;
           theme: Json | null;
+          known_capabilities: string[] | null;
+          settings: Json | null;
           created_at: string;
         };
         Insert: {
@@ -67,6 +69,8 @@ export type Database = {
           handbook_rules: Json | null;
           legal_settings: Json | null;
           theme: Json | null;
+          known_capabilities: string[] | null;
+          settings: Json | null;
         }>;
         Relationships: [];
       };
@@ -146,9 +150,38 @@ export type Database = {
         Relationships: [];
       };
       sub_zones: {
-        Row: { id: string; zone_id: string; name: string };
-        Insert: { id?: string; zone_id: string; name: string };
-        Update: Partial<{ name: string }>;
+        Row: { id: string; zone_id: string; name: string; history: string | null; founded_year: number | null };
+        Insert: { id?: string; zone_id: string; name: string; history?: string | null; founded_year?: number | null };
+        Update: Partial<{ name: string; history: string | null; founded_year: number | null }>;
+        Relationships: [];
+      };
+      position_history: {
+        Row: {
+          id: string;
+          zone_id: string;
+          member_id: string | null;
+          member_name: string;
+          position: string;
+          church_id: string | null;
+          sub_zone_id: string | null;
+          started_on: string | null;
+          ended_on: string | null;
+          manual: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          zone_id: string;
+          member_id?: string | null;
+          member_name: string;
+          position: string;
+          church_id?: string | null;
+          sub_zone_id?: string | null;
+          started_on?: string | null;
+          ended_on?: string | null;
+          manual?: boolean;
+        };
+        Update: Partial<{ member_name: string; church_id: string | null; sub_zone_id: string | null; started_on: string | null; ended_on: string | null }>;
         Relationships: [];
       };
       churches: {
@@ -1311,6 +1344,10 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      member_counts_in_scope: { Args: Record<string, never>; Returns: { church_id: string; total: number; visitors: number }[] };
+      set_church_country: { Args: { p_church: string; p_country: string }; Returns: undefined };
+      set_church_sub_zone: { Args: { p_church: string; p_sub_zone: string | null }; Returns: undefined };
+      merge_churches: { Args: { p_from: string; p_into: string }; Returns: number };
       children_roster: {
         Args: { p_church_id: string; p_age_groups: string[] };
         Returns: { id: string; first_name: string; last_name: string; age_group: string | null; guardian_name: string | null; guardian_phone: string | null; birthday: string | null; expected_graduation: string | null }[];

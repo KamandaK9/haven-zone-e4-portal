@@ -8,7 +8,7 @@ import type { Cell } from "@/lib/data/types";
 import type { ServiceRow } from "@/lib/data/attendance";
 import type { AttendanceRow, MemberAttendance } from "@/lib/attendance/summary";
 import { firstTimerReturns, sundayTrend } from "@/lib/attendance/report";
-import { ATTENDANCE_RULES } from "@/lib/attendance/rules";
+import { ATTENDANCE_RULES, type AttendanceRules } from "@/lib/attendance/rules";
 import type { SubGroupRow } from "@/lib/attendance/compare";
 import { labels, lower } from "@/lib/labels";
 
@@ -25,7 +25,9 @@ export function AttendanceReport({
   course,
   comparison,
   canExport,
+  rules = ATTENDANCE_RULES,
 }: {
+  rules?: AttendanceRules;
   ds: Dataset;
   cells: Cell[];
   services: ServiceRow[];
@@ -112,7 +114,7 @@ export function AttendanceReport({
         <Card>
           <CardHeader>
             <CardTitle>{labels.locations} side by side</CardTitle>
-            <CardDescription>Active means {ATTENDANCE_RULES.activeMinSundays}+ Sundays in the last 30 days</CardDescription>
+            <CardDescription>Active means {rules.activeMinSundays}+ Sundays in the last 30 days</CardDescription>
           </CardHeader>
           <CardContent className="overflow-x-auto p-0">
             <table className="w-full min-w-[560px] border-t text-sm">

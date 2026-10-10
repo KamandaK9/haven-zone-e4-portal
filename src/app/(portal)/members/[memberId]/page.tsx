@@ -1,4 +1,5 @@
 import { sumByMonth } from "@/lib/giving";
+import { getOrgSettings } from "@/lib/org-settings-server";
 import { ContributionsCard } from "@/components/members/contributions-card";
 import { summariseContributions } from "@/lib/giving-summary";
 import { memberStanding } from "@/lib/handbook/member-standing";
@@ -38,7 +39,7 @@ import { labels } from "@/lib/labels";
 import { getCourse, getMemberCourse } from "@/lib/data/courses";
 import { courseProgress } from "@/lib/courses/progress";
 import { churchToday, getMemberAttendance } from "@/lib/data/attendance";
-import { ATTENDANCE_RULES, attendanceStatus, consecutiveMissedSundays, sundayServicesFor } from "@/lib/attendance/rules";
+import { attendanceStatus, consecutiveMissedSundays, sundayServicesFor } from "@/lib/attendance/rules";
 import { FollowUpDialog, OUTCOMES } from "@/components/attendance/follow-up-dialog";
 import { ConfirmVisitorButton } from "@/components/attendance/confirm-visitor-button";
 import { MemberDataActions } from "@/components/members/member-data-actions";
@@ -69,7 +70,7 @@ export default async function MemberPage({
   const profile = await getCurrentProfile();
   const modules = await getModules();
   if (!profile) redirect("/");
-  const ds = await getZoneDataset(profile.zoneId);
+  const ds = await getZoneDataset(profile.zoneId, { memberId });
   const { currency, rates } = await getDisplayCurrency(profile.zoneCurrency);
   const member = getMember(ds, memberId);
 
@@ -112,7 +113,8 @@ export default async function MemberPage({
   const att = showAttendance ? await getMemberAttendance(member.id, member.churchId) : undefined;
   const today = churchToday();
   const sundays = att ? sundayServicesFor(att.services, member.churchId, today) : [];
-  const standing = att ? attendanceStatus(sundays, att.attended, today) : undefined;
+  const attendanceRules = (await getOrgSettings(profile.zoneId)).attendance;
+  const standing = att ? attendanceStatus(sundays, att.attended, today, attendanceRules) : undefined;
   const missed = att && sundays.length ? consecutiveMissedSundays(sundays, att.attended) : 0;
   const course = modules.courses ? await getCourse(profile.zoneId) : undefined;
   const memberCourse = course ? await getMemberCourse(member.id) : undefined;
@@ -378,7 +380,7 @@ export default async function MemberPage({
                 <CardTitle>Recent Sundays</CardTitle>
                 <CardDescription>At {church?.name}, newest first</CardDescription>
               </div>
-              {missed >= ATTENDANCE_RULES.absenceAlertAfter && can(profile, "record_follow_up") && (
+              {missed >= attendanceRules.absenceAlertAfter && can(profile, "record_follow_up") && (
                 <FollowUpDialog memberId={member.id} memberName={memberFullName(member)} />
               )}
             </CardHeader>

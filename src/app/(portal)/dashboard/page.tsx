@@ -1,4 +1,6 @@
 import { redirect } from "next/navigation";
+import { getOrgSettings } from "@/lib/org-settings-server";
+import { extensions } from "@/lib/extensions";
 import { Users, Church, Globe2, TrendingUp } from "lucide-react";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { CountryGrid } from "@/components/dashboard/country-grid";
@@ -38,7 +40,6 @@ import { summarise } from "@/lib/attendance/summary";
 import { getNewcomers } from "@/lib/data/journey";
 import { smsIsConfigured } from "@/lib/messaging/twilio";
 import { emailIsConfigured } from "@/lib/email";
-import { ATTENDANCE_RULES } from "@/lib/attendance/rules";
 import { gettingStartedSteps, type Step } from "@/lib/onboarding/steps";
 import { createClient } from "@/lib/supabase/server";
 import { getZoneCells } from "@/lib/data/cells";
@@ -65,7 +66,8 @@ export default async function DashboardPage({
     if (modules.attendance && can(profile, "view_attendance")) {
       const data = await getAttendanceData();
       const members = ds.members.filter((m) => !m.isVisitor);
-      const standing = [...summarise(members, data.services, data.attendance, churchToday()).values()];
+      const rules = (await getOrgSettings(profile.zoneId)).attendance;
+      const standing = [...summarise(members, data.services, data.attendance, churchToday(), rules).values()];
       const lastSunday = data.services.find((s) => s.kind === "sunday");
       const lastSundayCount = lastSunday
         ? data.services.filter((s) => s.kind === "sunday" && s.date === lastSunday.date).reduce((n, s) => n + s.attendees, 0)
@@ -73,7 +75,7 @@ export default async function DashboardPage({
       attendance = {
         lastSunday: lastSunday ? { date: lastSunday.date, count: lastSundayCount } : undefined,
         active: standing.filter((s) => s.status === "active").length,
-        needFollowUp: standing.filter((s) => s.missedInARow >= ATTENDANCE_RULES.absenceAlertAfter).length,
+        needFollowUp: standing.filter((s) => s.missedInARow >= rules.absenceAlertAfter).length,
         newcomersWaiting: (await getNewcomers(ds.members)).filter((n) => n.stage === "new").length,
       };
     }
@@ -315,6 +317,17 @@ export default async function DashboardPage({
           </Card>
         </div>
       </div>
+
+      {/* The client's own cards (src/tenant/extensions.ts). */}
+      {(extensions.dashboardCards ?? [])
+        .filter((card) => !card.cap || can(profile, card.cap))
+        .map((card) => (
+          <ExtensionCard key={card.key} render={() => card.render({ profile })} />
+        ))}
     </div>
   );
+}
+
+async function ExtensionCard({ render }: { render: () => React.ReactNode | Promise<React.ReactNode> }) {
+  return <>{await render()}</>;
 }

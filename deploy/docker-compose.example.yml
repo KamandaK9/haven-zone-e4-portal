@@ -1,0 +1,45 @@
+# Many client portals on one server (a VPS, or a client's own machine).
+# Copy this folder to the server (e.g. /srv/stratum), rename this file to
+# docker-compose.yml, and add one service per client. See deploy/README.md.
+#
+#   clients/<name>.env   each client's settings (never committed anywhere)
+#   Caddyfile            which domain goes to which client (HTTPS is automatic)
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+  # Runs each client's daily automations (birthdays, reminders…) at 05:00.
+  scheduler:
+    image: alpine:3.20
+    restart: unless-stopped
+    volumes:
+      - ./clients:/clients:ro
+      - ./cron/run-daily.sh:/run-daily.sh:ro
+    command: sh -c 'echo "0 5 * * * sh /run-daily.sh" | crontab - && crond -f -l 8'
+
+  # ── One block per client. The service name is the client's name: it's
+  # used by the Caddyfile, the scheduler and the deploy workflow
+  # (DEPLOY_SERVICE). The image is built and pushed by the client repo's
+  # deploy workflow.
+  haven:
+    image: ghcr.io/OWNER/haven-portal:latest
+    restart: unless-stopped
+    env_file: clients/haven.env
+    mem_limit: 768m
+
+  # grace:
+  #   image: ghcr.io/OWNER/grace-portal:latest
+  #   restart: unless-stopped
+  #   env_file: clients/grace.env
+  #   mem_limit: 768m
+
+volumes:
+  caddy_data:
+  caddy_config:

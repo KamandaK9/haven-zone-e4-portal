@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
+import { getOrgSettings } from "@/lib/org-settings-server";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DepartmentsEditor } from "@/components/settings/departments-editor";
 import { can, getCurrentProfile } from "@/lib/data/get-dataset";
 import { getDepartmentMemberships, getDepartments } from "@/lib/data/departments";
-import { tenant } from "@/tenant";
 
 export const metadata = { title: "Departments" };
 
@@ -28,7 +28,7 @@ export default async function DepartmentsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <DepartmentsEditor departments={departments} counts={counts} suggestions={tenant.departmentSuggestions ?? []} />
+          <DepartmentsEditor departments={departments} counts={counts} suggestions={(await getOrgSettings(profile.zoneId)).departmentSuggestions} />
         </CardContent>
       </Card>
     </div>

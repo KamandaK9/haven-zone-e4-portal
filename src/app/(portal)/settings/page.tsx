@@ -67,9 +67,16 @@ const ACTION_LABELS: Record<string, string> = {
   "training_lesson.update": "Edited a lesson",
   "training_lesson.delete": "Deleted a lesson",
   "newsletter.send": "Sent a newsletter",
+  "sub_zone.create": `Added a ${lower(labels.subZone)}`,
+  "sub_zone.update": `Edited a ${lower(labels.subZone)}`,
+  "sub_zone.leader_history": "Leadership history",
+  "church.move": `Moved a ${lower(labels.location)}`,
+  "church.merge": `Merged two ${lower(labels.locations)}`,
+  "country.create": `Added a ${lower(labels.country)}`,
   "member_field.create": "Added a member field",
   "member_field.update": "Changed a member field",
   "settings.theme": "Colours changed",
+  "settings.update_organisation": "Organisation settings",
   "import_template.update": "Member import columns",
   "member.update_fields": "Edited a member's extra details",
 };
@@ -165,6 +172,11 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
 
       {tab === "general" && (
         <>
+          <LinkRow
+            href="/settings/organisation"
+            title="Organisation"
+            description="The sign-in page wording, bank accounts, meeting types, department suggestions and attendance rules."
+          />
           <Card>
             <CardHeader>
               <CardTitle>Features</CardTitle>

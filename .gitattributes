@@ -7,3 +7,4 @@ supabase/seed.sql merge=ours
 README.md merge=ours
 docs/legal/** merge=ours
 stratum.client.json merge=ours
+vercel.json merge=ours

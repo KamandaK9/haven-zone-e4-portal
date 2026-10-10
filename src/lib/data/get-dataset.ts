@@ -1,4 +1,5 @@
 import "server-only";
+import { syncNewCapabilities } from "@/lib/capability-sync";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -81,7 +82,10 @@ export const getCurrentProfile = cache(async (): Promise<CurrentProfile | null> 
   // a snapshot, so a permission added after their login was created (e.g.
   // editing event pages) would be missing — and RLS reads the stored list.
   // Heal it on the spot instead of making someone press "Refresh permissions".
-  let caps: string[] = profile.caps ?? [];
+  // Capabilities added to the code since this organisation last synced go
+  // to every login whose position holds them by default.
+  const synced = await syncNewCapabilities(profile.zone_id);
+  let caps: string[] = synced.get(user.id) ?? profile.caps ?? [];
   if (
     (profile.position === tenant.access.rootPositionKey || profile.position === tenant.access.assistantPositionKey) &&
     CAPABILITIES.some((c) => !caps.includes(c))
@@ -171,17 +175,20 @@ type MemberRow = {
 // setting (1000) — a zone with more members than that would otherwise have
 // every dashboard/reports view silently truncated with no error. Page
 // through with .range() until a page comes back short.
-async function fetchAllMembers(supabase: SupabaseClient<Database>, zoneId: string): Promise<MemberRow[]> {
+async function fetchAllMembers(supabase: SupabaseClient<Database>, zoneId: string, scope: DatasetScope): Promise<MemberRow[]> {
   const pageSize = 1000;
   const all: MemberRow[] = [];
   for (let from = 0; ; from += pageSize) {
-    const { data, error } = await supabase
+    let query = supabase
       .from("members")
       .select(
         "*, giving_entries(month, amount, category), trainings(id, status, assigned_at, completed_at, training_programs(id, name, description, video_url, icon, points))"
       )
-      .eq("zone_id", zoneId)
-      .range(from, from + pageSize - 1);
+      .eq("zone_id", zoneId);
+    if (scope.churchId) query = query.eq("church_id", scope.churchId);
+    if (scope.memberId) query = query.eq("id", scope.memberId);
+    if (scope.leadersOnly) query = query.neq("position", tenant.access.memberPositionKey);
+    const { data, error } = await query.range(from, from + pageSize - 1);
     if (error) throw error;
     all.push(...((data as unknown as MemberRow[]) ?? []));
     if (!data || data.length < pageSize) break;
@@ -210,7 +217,26 @@ async function fetchGivingTotals(supabase: SupabaseClient<Database>): Promise<Gi
   return all;
 }
 
-export async function getZoneDataset(zoneId: string): Promise<Dataset & { zoneName: string }> {
+// Which members a page needs. Everything else in the dataset (structure,
+// giving totals per location, programs, events) is the same either way.
+export type DatasetScope = {
+  churchId?: string; // one location's members
+  memberId?: string; // one member
+  leadersOnly?: boolean; // only people holding a position (structure pages)
+};
+
+// Members per location (total and visitors), counted in the database — for
+// pages that load only some members but show everyone's numbers.
+export async function getMemberCounts(): Promise<Map<string, { total: number; visitors: number }>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("member_counts_in_scope");
+  const counts = new Map<string, { total: number; visitors: number }>();
+  if (error) return counts;
+  for (const row of data ?? []) counts.set(row.church_id, { total: Number(row.total), visitors: Number(row.visitors) });
+  return counts;
+}
+
+export async function getZoneDataset(zoneId: string, scope: DatasetScope = {}): Promise<Dataset & { zoneName: string }> {
   const supabase = await createClient();
   const viewer = await getCurrentProfile();
   const canSeeContacts = !!viewer && can(viewer, "view_contact_details");
@@ -230,8 +256,9 @@ export async function getZoneDataset(zoneId: string): Promise<Dataset & { zoneNa
     supabase.from("countries").select("*").eq("zone_id", zoneId),
     supabase.from("churches").select("*").eq("zone_id", zoneId),
     supabase.from("sub_zones").select("*").eq("zone_id", zoneId),
-    fetchAllMembers(supabase, zoneId),
-    supabase.from("activity").select("*").eq("zone_id", zoneId).order("timestamp", { ascending: false }),
+    fetchAllMembers(supabase, zoneId, scope),
+    // Only the latest is ever shown; the table grows forever.
+    supabase.from("activity").select("*").eq("zone_id", zoneId).order("timestamp", { ascending: false }).limit(50),
     supabase.from("events").select("*").eq("zone_id", zoneId),
     supabase.from("training_programs").select("*").eq("zone_id", zoneId).order("created_at", { ascending: true }),
     fetchGivingTotals(supabase),
@@ -255,7 +282,9 @@ export async function getZoneDataset(zoneId: string): Promise<Dataset & { zoneNa
     .filter((c) => viewer?.scope === "zone" || visibleCountryIds.has(c.id))
     .map((c) => ({ id: c.id, name: c.name, flag: c.flag }));
 
-  const subZones: SubZone[] = (subZonesRes.data ?? []).map((z) => ({ id: z.id, name: z.name }));
+  const subZones: SubZone[] = (subZonesRes.data ?? [])
+    .map((z) => ({ id: z.id, name: z.name, history: z.history ?? undefined, foundedYear: z.founded_year ?? undefined }))
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
 
   const members: Member[] = memberRows.map((m) => ({
     id: m.id,
