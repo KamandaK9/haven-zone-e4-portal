@@ -1,0 +1,116 @@
+name: Deploy
+
+# After CI passes on main: bring the database up to date, then deploy the
+# app — so new code never meets an old database. Every client repo gets this
+# file through Stratum updates; it does nothing until that repo is set up
+# (deploy/README.md):
+#
+#   secret   DATABASE_URL         Postgres connection string (Supabase cloud or self-hosted)
+#   variable DEPLOY_TARGET        "vercel" or "server" (unset: database only)
+#   vercel:  secret VERCEL_DEPLOY_HOOK
+#   server:  secrets DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY (optional DEPLOY_KNOWN_HOSTS)
+#            variables DEPLOY_SERVICE (its name in docker-compose.yml), DEPLOY_PATH (default /srv/stratum),
+#            NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, NEXT_PUBLIC_SITE_URL
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  database:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - name: Skip when this repo isn't set up for deploys
+        if: env.DATABASE_URL == ''
+        run: echo "No DATABASE_URL secret — skipping the database step."
+      - uses: supabase/setup-cli@v1
+        if: env.DATABASE_URL != ''
+        with:
+          version: latest
+      # A database whose migrations were applied by hand has no record of
+      # them; pushing would replay old one-off backfills. Stop until it's
+      # been marked up to date (npm run db:check -- --repair-command).
+      - name: Check the database's migration record
+        if: env.DATABASE_URL != ''
+        run: |
+          has_schema=$(psql "$DATABASE_URL" -tAc "select to_regclass('public.zones') is not null")
+          recorded=$(psql "$DATABASE_URL" -tAc "select case when to_regclass('supabase_migrations.schema_migrations') is null then 0 else (select count(*) from supabase_migrations.schema_migrations) end")
+          if [ "$has_schema" = "t" ] && [ "$recorded" = "0" ]; then
+            echo "::error::This database has tables but no migration record. Run 'npm run db:check -- --repair-command' locally and run the command it prints, once."
+            exit 1
+          fi
+      - name: Apply new migrations
+        if: env.DATABASE_URL != ''
+        run: supabase db push --db-url "$DATABASE_URL" --include-all
+
+  app:
+    needs: database
+    if: vars.DEPLOY_TARGET == 'vercel' || vars.DEPLOY_TARGET == 'server'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy on Vercel
+        if: vars.DEPLOY_TARGET == 'vercel'
+        env:
+          HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
+        run: |
+          test -n "$HOOK" || { echo "VERCEL_DEPLOY_HOOK secret is missing"; exit 1; }
+          curl -fsS -X POST "$HOOK"
+
+      - uses: actions/checkout@v4
+        if: vars.DEPLOY_TARGET == 'server'
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - name: Image name
+        if: vars.DEPLOY_TARGET == 'server'
+        id: image
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+      - uses: docker/login-action@v3
+        if: vars.DEPLOY_TARGET == 'server'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        if: vars.DEPLOY_TARGET == 'server'
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.image.outputs.name }}:latest
+            ${{ steps.image.outputs.name }}:${{ github.event.workflow_run.head_sha || github.sha }}
+          build-args: |
+            NEXT_PUBLIC_SUPABASE_URL=${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+            NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+            NEXT_PUBLIC_SITE_URL=${{ vars.NEXT_PUBLIC_SITE_URL }}
+      - name: Restart on the server
+        if: vars.DEPLOY_TARGET == 'server'
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+          KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          SERVICE: ${{ vars.DEPLOY_SERVICE }}
+          DIR: ${{ vars.DEPLOY_PATH || '/srv/stratum' }}
+        run: |
+          test -n "$HOST" && test -n "$USER" && test -n "$KEY" && test -n "$SERVICE" || { echo "Server secrets/variables are missing"; exit 1; }
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
+          if [ -n "$KNOWN_HOSTS" ]; then printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts; OPTS=""; else OPTS="-o StrictHostKeyChecking=accept-new"; fi
+          ssh -i ~/.ssh/deploy $OPTS "$USER@$HOST" "cd '$DIR' && docker compose pull '$SERVICE' && docker compose up -d '$SERVICE'"

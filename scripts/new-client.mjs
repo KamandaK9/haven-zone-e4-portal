@@ -114,7 +114,13 @@ const ioEmail = await ask("legal.informationOfficer.email", "Information Officer
 const ioPhone = await ask("legal.informationOfficer.phone", "Information Officer's phone (optional)", "");
 const religiousBody = await yes("legal.religiousBody", "Is it a religious organisation?", true);
 const supabaseRegion = await ask("legal.supabaseRegion", "Supabase project region (e.g. eu-west-1)", "");
-const hostingRegion = await ask("legal.hostingRegion", "Hosting region (e.g. Vercel, Frankfurt)", "");
+const hostingChoice = String(await ask("hosting", "Where will the portal run: 1 = Vercel, 2 = a server (a VPS or their own)", "1"));
+const hosting = hostingChoice === "2" || hostingChoice === "server" ? "server" : "vercel";
+const hostingRegion = await ask(
+  "legal.hostingRegion",
+  hosting === "vercel" ? "Vercel region (e.g. Frankfurt)" : "Who runs the server, and where (e.g. Hetzner, Johannesburg)",
+  ""
+);
 const siteUrl = await ask("siteUrl", "The portal's URL once deployed (optional)", "");
 rl?.close();
 
@@ -209,7 +215,9 @@ const legal = {
   retention: { membersAfterLeaving: 2, financial: 5, auditLog: 5, supportAndRequests: 2 },
   operators: [
     { name: "Supabase", purpose: "Database, sign-in and file storage", location: placeholder(supabaseRegion, "Region of the Supabase project") },
-    { name: "Vercel", purpose: "Hosting the portal", location: placeholder(hostingRegion, "Region of the deployment") },
+    hosting === "vercel"
+      ? { name: "Vercel", purpose: "Hosting the portal", location: placeholder(hostingRegion, "Region of the deployment") }
+      : { name: "Server hosting", purpose: "Hosting the portal", location: placeholder(hostingRegion, "Server provider and location") },
     ...(modules.training || modules.livestreams ? [{ name: "Mux", purpose: "Lesson videos and livestreams", location: "United States" }] : []),
     { name: "Resend", purpose: "Sending email (invites, newsletters, support)", location: "United States" },
   ],
@@ -333,6 +341,7 @@ writeFileSync(
   at(".env.local"),
   envExample
     .replace(/^SETUP_KEY=.*$/m, `SETUP_KEY=${randomBytes(32).toString("hex")}`)
+    .replace(/^CRON_SECRET=.*$/m, `CRON_SECRET=${randomBytes(32).toString("hex")}`)
     .replace(/^NEXT_PUBLIC_SITE_URL=.*$/m, `NEXT_PUBLIC_SITE_URL=${siteUrl}`),
   { mode: 0o600 }
 );
@@ -340,7 +349,7 @@ const answers = {
   name, slug, portalName, description, defaultOrgName, emailDomain, adminNameExample, currency, timezone, brandColor,
   logo: logoPath || "", countries: countryCodes, structurePreset: preset,
   labels: { group: groupLabel, location: locationLabel, cell: cellLabel, cellGroup: cellUpper },
-  modules, eventSeries, bankAccounts, meetingTypes, siteUrl,
+  modules, eventSeries, bankAccounts, meetingTypes, siteUrl, hosting,
   legal: { organisationName: legalName, physicalAddress: address, informationOfficer: { name: ioName, email: ioEmail, phone: ioPhone }, religiousBody, supabaseRegion, hostingRegion },
 };
 writeFileSync(at("stratum.client.json"), JSON.stringify(answers, null, 2) + "\n");
@@ -375,8 +384,10 @@ Next:
   1. cd ${target}${flag("install") ? "" : " && npm ci"}
   2. Create a Supabase project, put its URL and keys in .env.local, then:
        npx supabase link --project-ref <ref> && npx supabase db push
+     (npm run db:check confirms the database matches the code.)
   3. Apply the dashboard settings in Stratum's README → Security.
-  4. Deploy, set the same env vars there (incl. SETUP_KEY and NEXT_PUBLIC_SITE_URL),
-     and open /setup?key=<SETUP_KEY from .env.local> to create the first admin.
+  4. Automatic deploys ${hosting === "vercel" ? "on Vercel" : "to the server"}: follow deploy/README.md → 1 and ${hosting === "vercel" ? "2a" : "2b"}
+     (GitHub secrets/variables${hosting === "server" ? ", the client's env file, compose service and domain" : ", deploy hook"}).
+     Then open /setup?key=<SETUP_KEY from .env.local> to create the first admin.
   5. ${gaps ? `Fill in the ${gaps} remaining privacy detail(s) in the portal (Settings → Privacy) and ` : ""}complete docs/legal/ — start with docs/legal/README.md.
 `);

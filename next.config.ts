@@ -8,6 +8,9 @@ const supabaseHost = process.env.NEXT_PUBLIC_SUPABASE_URL ? new URL(process.env.
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // A self-contained server for running in a container on any host (see
+  // Dockerfile and deploy/README.md). Vercel builds don't need it.
+  output: process.env.BUILD_STANDALONE === "1" ? "standalone" : undefined,
   async headers() {
     return [
       { source: "/:path*", headers: STATIC_SECURITY_HEADERS },

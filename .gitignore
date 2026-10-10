@@ -48,3 +48,6 @@ next-env.d.ts
 
 # Source documents transcribed into src/tenant/ — not shipped
 *.docx
+
+# Stratum: your list of client repos (scripts/update-clients.mjs)
+/clients.local.json

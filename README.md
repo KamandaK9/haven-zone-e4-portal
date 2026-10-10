@@ -274,6 +274,10 @@ need):
 npx supabase migration repair --status applied <baseline-timestamp>
 ```
 
+**Never name a tenant's positions in SQL.** A migration that gives existing
+logins a new capability must not list position keys (some old ones do — they're
+already applied, and do nothing on a new database); see `src/lib/access.ts`.
+
 Local development against a local stack: `npx supabase start`, then
 `npx supabase db reset` to apply migrations and the seed.
 
@@ -329,5 +333,15 @@ both sides changed one, the client's version wins. That needs
 to `TenantConfig`, the merge still succeeds and `npm run typecheck` points at
 what the client's tenant needs to add.
 
-Apply new migrations to the client's database after merging
-(`npx supabase db push`).
+**All clients at once:** list your client repos in `clients.local.json`
+(git-ignored; `[{ "name": "haven", "path": "../haven-portal", "base": "main" }]`)
+and run `npm run update-clients` (`--dry-run` to preview, `--only <name>`). Each
+client gets a PR with what's new and which migrations it brings; test the
+preview and merge. A conflict stops only that client.
+
+**Deploying** is automatic once a client repo is set up (`deploy/README.md`):
+after CI passes on `main`, the deploy workflow applies new migrations to the
+client's database, then deploys the app — on Vercel or on a server (Docker; one
+VPS can hold many clients). Until then, apply migrations by hand after merging
+(`npx supabase db push`). `npm run db:check` tells you, read-only, whether a
+live database has everything the code needs.
