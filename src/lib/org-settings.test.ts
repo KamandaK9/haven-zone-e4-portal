@@ -1,4 +1,14 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+// A tenant that keeps records, so this doesn't depend on whose config is loaded.
+vi.mock("@/tenant", () => ({
+  tenant: {
+    login: { headline: "Welcome", blurb: "Sign in to continue." },
+    records: { bankAccounts: [{ key: "main", label: "Main" }], meetingTypes: ["Board"] },
+    departmentSuggestions: ["Choir"],
+    attendance: { activeMinSundays: 2, absenceAlertAfter: 2 },
+  },
+}));
 import { accountKeyFrom, applyOrgOverrides, defaultOrgSettings, validateOrgSettings } from "./org-settings";
 
 describe("organisation settings", () => {
