@@ -1,5 +1,6 @@
 "use server";
 
+import { memberStatusOr } from "@/lib/statuses";
 import { fireHook } from "@/lib/extensions";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
@@ -59,7 +60,7 @@ export async function createMember(input: CreateMemberInput): Promise<ActionResu
       last_name: input.lastName.trim(),
       email: input.email?.trim() || null,
       phone: input.phone?.trim() || null,
-      role: input.role,
+      role: memberStatusOr(input.role),
       // Someone added by hand joined now; roster imports leave this blank.
       join_date: new Date().toISOString().slice(0, 10),
       avatar_color: randomAvatarColor(),
@@ -221,7 +222,7 @@ export async function bulkImportMembers(input: {
       email: row.email?.trim() || null,
       phone: row.phone?.trim() || null,
       join_date: row.joinDate,
-      role: row.role ?? "Member",
+      role: memberStatusOr(row.role),
       avatar_color: randomAvatarColor(),
       title: row.title?.trim() || null,
       birthday: row.birthday?.trim() || null,

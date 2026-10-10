@@ -70,7 +70,8 @@ export type GivingAggregate = {
   amount: number;
 };
 
-export type MemberRole = "Member" | "Worker" | "Cell Leader" | "Pastor";
+// A member's status; the list depends on the edition (src/lib/statuses.ts).
+export type MemberRole = string;
 
 export type Member = {
   id: string;
