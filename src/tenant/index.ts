@@ -66,7 +66,7 @@ const positions: readonly PositionDef[] = [
 // than a generic Stratum portal lives in this folder; see src/lib/tenant.ts.
 export const tenant: TenantConfig = {
   name: "The Haven",
-  portalName: "The Haven Zone Portal",
+  portalName: "The Haven Zone E4 Portal",
   description: "Member management and analytics for The Haven Zone E4",
   defaultOrgName: "The Haven Zone E4",
   adminNameExample: "e.g. Pastor John Kamanda",
@@ -122,14 +122,13 @@ export const tenant: TenantConfig = {
   chartRamp: ["#c4b5fd", "#a78bfa", "#8b5cf6", "#7c3aed"],
   avatarColors: ["#7c3aed", "#a21caf", "#9333ea", "#be185d", "#6d28d9", "#c026d3", "#8b5cf6"],
 
-  // The nine countries The Haven Zone E4 covers.
+  // The eight countries The Haven Zone E4 covers.
   countries: [
     { name: "South Africa", flag: "🇿🇦" },
     { name: "Botswana", flag: "🇧🇼" },
     { name: "Zimbabwe", flag: "🇿🇼" },
     { name: "Namibia", flag: "🇳🇦" },
     { name: "Zambia", flag: "🇿🇲" },
-    { name: "Malawi", flag: "🇲🇼" },
     { name: "Eswatini", flag: "🇸🇿" },
     { name: "Mozambique", flag: "🇲🇿" },
     { name: "Angola", flag: "🇦🇴" },
@@ -162,7 +161,8 @@ export const tenant: TenantConfig = {
       ["Namibia", ["windhoek","swakopmund","walvisbay","katutura","oshakati"]],
       ["Zambia", ["kitwe","lusaka","ndola","makeni","solwezi","uptown","millenials zambia"]],
       ["Eswatini", ["ezulwini","manzini","matsapha","mbabane"]],
-      ["Malawi", ["malawi"]],
+      ["Mozambique", ["maputo","matola","beira","nampula","tete","xai-xai"]],
+      ["Angola", ["luanda","benguela","huambo","lubango","cabinda"]],
     ],
     // How the zone writes leadership titles in its roster ("SZG", "DGF",
     // "Finance Secretary"…).

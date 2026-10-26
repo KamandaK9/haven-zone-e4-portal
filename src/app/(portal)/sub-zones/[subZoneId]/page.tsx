@@ -2,12 +2,19 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Church as ChurchIcon, Network, Users, CalendarDays } from "lucide-react";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
+import { GivingTrendChart } from "@/components/charts/giving-trend-chart";
+import { GivingCategorySelect } from "@/components/dashboard/giving-category-select";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EditSubZoneDialog, MoveChapterSelect } from "@/components/structure/sub-zone-dialogs";
 import { LeaderHistory } from "@/components/structure/leader-history";
 import { can, getCurrentProfile, getMemberCounts, getZoneDataset } from "@/lib/data/get-dataset";
 import { getZoneCells } from "@/lib/data/cells";
+import { getDisplayCurrency } from "@/lib/currency-server";
+import { formatMoney } from "@/lib/currency";
+import { getGivingTrendForChurches } from "@/lib/data/analytics";
+import { givingFilterLabel, parseGivingFilter } from "@/lib/giving";
+import { getModules } from "@/lib/modules-server";
 import { getLeadershipHistory } from "@/lib/data/structure";
 import { positionLabel } from "@/lib/access";
 import { labels, lower } from "@/lib/labels";
@@ -17,8 +24,15 @@ import { tenant } from "@/tenant";
 
 // One sub-zone: its story, its leader now and before, and its locations by
 // country, each with its own leader.
-export default async function SubZonePage({ params }: { params: Promise<{ subZoneId: string }> }) {
+export default async function SubZonePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ subZoneId: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const { subZoneId } = await params;
+  const givingFilter = parseGivingFilter((await searchParams).giving);
   const profile = await getCurrentProfile();
   if (!profile) redirect("/");
   // Leaders only (for names); everyone else is counted in the database.
@@ -42,6 +56,10 @@ export default async function SubZonePage({ params }: { params: Promise<{ subZon
   const churchIds = new Set(group.countries.flatMap((c) => c.churches.map((ch) => ch.id)));
   const memberCount = [...churchIds].reduce((n, id) => n + (counts.get(id)?.total ?? 0), 0);
   const cells = (await getZoneCells(profile.zoneId)).filter((c) => churchIds.has(c.churchId));
+  const showGiving = (await getModules()).giving && ds.giving.length > 0;
+  const { currency, rates } = await getDisplayCurrency(profile.zoneCurrency);
+  const givingTrend = getGivingTrendForChurches(ds, churchIds, givingFilter);
+  const givingTotal = givingTrend.reduce((sum, p) => sum + p.amount, 0);
   const groupLeaderKey = tenant.access.groupLeaderPositionKey;
   const locationLeaderKey = tenant.access.locationLeaderPositionKey;
   const leaders = holdersOf(ds.members, groupLeaderKey, churchIds);
@@ -113,6 +131,26 @@ export default async function SubZonePage({ params }: { params: Promise<{ subZon
           </CardContent>
         </Card>
       </div>
+
+      {showGiving && (
+        <Card>
+          <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
+            <div className="space-y-1.5">
+              <CardTitle>
+                <GivingCategorySelect value={givingFilter} />
+              </CardTitle>
+              <CardDescription>{subZone.name}, last 12 months</CardDescription>
+            </div>
+            <div className="text-right">
+              <p className="text-xl font-semibold tracking-tight tabular-nums">{formatMoney(givingTotal, currency, rates)}</p>
+              <p className="text-xs text-muted-foreground">{givingFilter === "all" ? "Total giving" : givingFilterLabel(givingFilter)}</p>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <GivingTrendChart data={givingTrend} currency={currency} rates={rates} />
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

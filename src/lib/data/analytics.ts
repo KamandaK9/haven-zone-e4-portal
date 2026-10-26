@@ -176,28 +176,49 @@ export function getGivingTrendZone(ds: Dataset, filter: GivingFilter = "all", no
   }));
 }
 
-export function getGivingByCountry(ds: Dataset, filter: GivingFilter = "all") {
+// Giving views are always the last 12 months, so every total on the portal
+// means the same thing.
+function givingLast12Months(ds: Dataset, now: Date): GivingAggregate[] {
+  const months = new Set(getLast12Months(now));
+  return ds.giving.filter((g) => months.has(g.month));
+}
+
+// The monthly trend for a set of locations (a sub-zone, a country).
+export function getGivingTrendForChurches(ds: Dataset, churchIds: ReadonlySet<string>, filter: GivingFilter = "all", now = new Date()) {
+  const rows = ds.giving.filter((g) => churchIds.has(g.churchId));
+  return getLast12Months(now).map((month) => ({
+    month,
+    amount: sumGiving(
+      rows.filter((g) => g.month === month),
+      filter
+    ),
+  }));
+}
+
+export function getGivingByCountry(ds: Dataset, filter: GivingFilter = "all", now = new Date()) {
   const countryByChurch = new Map(ds.churches.map((c) => [c.id, c.countryId]));
+  const rows = givingLast12Months(ds, now);
   return ds.countries
     .map((c) => ({
       countryId: c.id,
       name: c.name,
       amount: sumGiving(
-        ds.giving.filter((g) => countryByChurch.get(g.churchId) === c.id),
+        rows.filter((g) => countryByChurch.get(g.churchId) === c.id),
         filter
       ),
     }))
     .sort((a, b) => b.amount - a.amount);
 }
 
-export function getGivingByChurch(ds: Dataset, countryId?: string, filter: GivingFilter = "all") {
+export function getGivingByChurch(ds: Dataset, countryId?: string, filter: GivingFilter = "all", now = new Date()) {
+  const rows = givingLast12Months(ds, now);
   const churches = (countryId ? getChurchesByCountry(ds, countryId) : ds.churches).filter((c) => !c.isOffice);
   return churches
     .map((c) => ({
       churchId: c.id,
       name: c.name,
       amount: sumGiving(
-        ds.giving.filter((g) => g.churchId === c.id),
+        rows.filter((g) => g.churchId === c.id),
         filter
       ),
     }))

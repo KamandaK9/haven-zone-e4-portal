@@ -2,13 +2,14 @@ import { redirect } from "next/navigation";
 import { CountryGrid } from "@/components/dashboard/country-grid";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { BarBreakdownChart } from "@/components/charts/bar-breakdown-chart";
+import { GivingTrendChart } from "@/components/charts/giving-trend-chart";
 import { GivingCategorySelect } from "@/components/dashboard/giving-category-select";
 import Link from "next/link";
 import { Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { can, getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
 import { getDisplayCurrency } from "@/lib/currency-server";
-import { getGivingByCountry } from "@/lib/data/analytics";
+import { getGivingByCountry, getGivingTrendZone } from "@/lib/data/analytics";
 import { givingFilterLabel, parseGivingFilter } from "@/lib/giving";
 import { pluralize } from "@/lib/utils";
 
@@ -24,6 +25,7 @@ export default async function CountriesPage({
   if (ds.countries.length === 1) redirect(`/countries/${ds.countries[0].id}`);
   const { currency, rates } = await getDisplayCurrency(profile.zoneCurrency);
   const giving = getGivingByCountry(ds, givingFilter);
+  const trend = getGivingTrendZone(ds, givingFilter);
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -52,10 +54,22 @@ export default async function CountriesPage({
       {ds.countries.length > 0 && (
         <Card>
           <CardHeader>
+            <CardTitle>Giving, last 12 months</CardTitle>
+            <CardDescription>{givingFilterLabel(givingFilter)}, month by month across all countries</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <GivingTrendChart data={trend} currency={currency} rates={rates} />
+          </CardContent>
+        </Card>
+      )}
+
+      {ds.countries.length > 0 && (
+        <Card>
+          <CardHeader>
             <CardTitle>
               <GivingCategorySelect value={givingFilter} />
             </CardTitle>
-            <CardDescription>{givingFilterLabel(givingFilter)} by country</CardDescription>
+            <CardDescription>{givingFilterLabel(givingFilter)} by country, 12-month sum</CardDescription>
           </CardHeader>
           <CardContent>
             <BarBreakdownChart

@@ -1,4 +1,4 @@
-# Stratum — The Haven Zone Portal
+# Stratum — The Haven Zone E4 Portal
 
 Member management and analytics for The Haven Zone E4: members, chapters and
 countries, giving and ledger, training courses, events and a member

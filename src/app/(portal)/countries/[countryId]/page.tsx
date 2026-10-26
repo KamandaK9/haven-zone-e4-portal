@@ -5,6 +5,7 @@ import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { BarBreakdownChart } from "@/components/charts/bar-breakdown-chart";
+import { GivingTrendChart } from "@/components/charts/giving-trend-chart";
 import { GivingCategorySelect } from "@/components/dashboard/giving-category-select";
 import { can, getCurrentProfile, getZoneDataset } from "@/lib/data/get-dataset";
 import { RenameChapterDialog } from "@/components/dashboard/rename-chapter-dialog";
@@ -16,6 +17,7 @@ import {
   getCountry,
   getCountryStats,
   getGivingByChurch,
+  getGivingTrendForChurches,
 } from "@/lib/data/analytics";
 import { pluralize } from "@/lib/utils";
 import { givingFilterLabel, parseGivingFilter } from "@/lib/giving";
@@ -63,6 +65,7 @@ export default async function CountryPage({
   // One country: this page *is* the list of locations, so it's titled that way.
   const single = ds.countries.length === 1;
   const churchIds = new Set(churches.map((c) => c.id));
+  const trend = getGivingTrendForChurches(ds, churchIds, givingFilter);
   const cells = showGiving ? [] : (await getZoneCells(profile.zoneId)).filter((c) => churchIds.has(c.churchId));
 
   return (
@@ -95,7 +98,7 @@ export default async function CountryPage({
         <StatCard label={labels.locations} value={String(stats.churchCount)} icon={ChurchIcon} />
         {showGiving ? (
           <StatCard
-            label={givingFilter === "all" ? "Total giving" : `${givingFilterLabel(givingFilter)} giving`}
+            label={givingFilter === "all" ? "Giving, 12 months" : `${givingFilterLabel(givingFilter)}, 12 months`}
             value={formatMoney(totalGiving, currency, rates)}
             icon={HandCoins}
           />
@@ -165,10 +168,22 @@ export default async function CountryPage({
       {showGiving && giving.length > 0 && (
         <Card>
           <CardHeader>
+            <CardTitle>Giving, last 12 months</CardTitle>
+            <CardDescription>{givingFilterLabel(givingFilter)}, month by month in {country.name}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <GivingTrendChart data={trend} currency={currency} rates={rates} />
+          </CardContent>
+        </Card>
+      )}
+
+      {showGiving && giving.length > 0 && (
+        <Card>
+          <CardHeader>
             <CardTitle>
               <GivingCategorySelect value={givingFilter} />
             </CardTitle>
-            <CardDescription>By {lower(labels.location)}, {country.name}</CardDescription>
+            <CardDescription>By {lower(labels.location)}, {country.name}, 12-month sum</CardDescription>
           </CardHeader>
           <CardContent>
             <BarBreakdownChart
